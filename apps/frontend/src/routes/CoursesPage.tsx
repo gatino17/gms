@@ -168,7 +168,7 @@ function CourseCard({ c, idx, onEdit, onDelete, onOpen }: CourseCardProps) {
     >
       {/* HEADER: imagen + degradado + título + profe + chips + estado */}
       <div
-        className={`relative h-24 md:h-28 ${
+        className={`relative h-28 md:h-32 ${
           c.image_url ? '' : headerGrad
         }`}
       >
@@ -233,7 +233,7 @@ function CourseCard({ c, idx, onEdit, onDelete, onOpen }: CourseCardProps) {
       </div>
 
       {/* BODY: horarios, info y precios como en la imagen de ejemplo */}
-      <div className="p-3 md:p-4 flex flex-col gap-3 text-xs md:text-sm text-gray-700">
+      <div className="p-1 md:p-1.5 flex flex-col gap-3 text-xs md:text-sm text-gray-700">
         {/* Horarios */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2 font-medium text-gray-900">

@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+*.log
+.env
+temp*.txt
+.vscode/
+.idea/
+apps/backend/app/static/uploads/
+apps/backend/static/uploads/

@@ -1,0 +1,730 @@
+﻿import { useEffect, useMemo, useState } from 'react'
+import { api } from '../lib/api'
+import { useTenant } from '../lib/tenant'
+
+/* =========================
+   Tipos
+========================= */
+type Student = {
+  id: number
+  tenant_id: number
+  first_name: string
+  last_name: string
+  email?: string | null
+  phone?: string | null
+  gender?: string | null
+  notes?: string | null
+  photo_url?: string | null
+  joined_at?: string | null
+  birthdate?: string | null
+  is_active?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+type CourseRef = { id:number; name:string }
+
+type EnrollRow = {
+  courseId: string
+  start: string
+  lessonsPerWeek: '1'|'2'
+  end: string
+  planType: 'monthly' | 'single_class'
+  amount: string
+  method: '' | 'cash' | 'card' | 'transfer'
+}
+
+type PaymentMode = 'none' | 'per_course' | 'total'
+
+/* =========================
+   Constantes / Utils
+========================= */
+const DEFAULT_MONTHLY = 25000
+const DEFAULT_SINGLE = 7000
+
+function fmtCLP(n:number) {
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(n)
+}
+function todayISO() { return new Date().toISOString().slice(0,10) }
+
+/* =========================
+   UI: Badge + Card
+========================= */
+function Badge({ children, tone='indigo'}:{children:React.ReactNode; tone?:'indigo'|'emerald'|'gray' }) {
+  const tones:any = {
+    indigo: 'bg-indigo-100 text-indigo-700',
+    emerald:'bg-emerald-100 text-emerald-700',
+    gray:   'bg-gray-200 text-gray-700',
+  }
+  return <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${tones[tone]}`}>{children}</span>
+}
+
+type StudentCardProps = {
+  s: Student
+  idx: number
+  onEdit: () => void
+  onDetail: () => void
+  onDelete: () => void
+}
+
+function StudentCard({ s, idx, onEdit, onDetail, onDelete }: StudentCardProps){
+  const activo = s.is_active !== false
+  const fullName = `${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || '(Sin nombre)'
+  const genero = s.gender ?? 'â€”'
+  const ingreso = s.joined_at ?? 'â€”'
+  const email = s.email ?? 'â€”'
+  const phone = s.phone ?? 'â€”'
+  const hasNotes = !!(s.notes && s.notes.trim())
+
+  // Degradado dinÃ¡mico: alterna tonos si estÃ¡ activo; gris si inactivo
+  const grad = activo
+    ? (idx % 2 === 0
+        ? 'bg-gradient-to-b from-fuchsia-50/70 to-white'
+        : 'bg-gradient-to-b from-violet-50/70 to-white')
+    : 'bg-gradient-to-b from-gray-50 to-white'
+
+  return (
+    <div className={`relative rounded-2xl p-4 border ${grad} shadow-sm hover:shadow-md transition`}>
+      {/* Encabezado */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base md:text-lg font-semibold text-gray-800">
+            {fullName}
+          </h3>
+          <div className="mt-1">
+            <Badge tone={activo ? 'emerald' : 'gray'}>{activo ? 'Activo' : 'Inactivo'}</Badge>
+          </div>
+        </div>
+        {/* Avatar simple */}
+        <div className="w-10 h-10 rounded-xl bg-white/80 border flex items-center justify-center overflow-hidden">
+          {s.photo_url ? (
+            <img src={s.photo_url} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-xs text-gray-400"># {idx+1}</span>
+          )}
+        </div>
+      </div>
+
+      {/* DescripciÃ³n con Ã­conos */}
+      <div className="mt-3 space-y-2 text-sm">
+        {/* Ingreso */}
+        <div className="flex items-center gap-2 text-gray-700">
+          <svg width="16" height="16" viewBox="0 0 24 24" className="shrink-0"><path fill="currentColor" d="M7 2v2H5a2 2 0 0 0-2 2v2h18V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2zM3 10v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8zm2 2h14v6H5z"/></svg>
+          <span className="font-medium">Ingreso:</span>
+          <span className="ml-1">{ingreso}</span>
+        </div>
+        {/* GÃ©nero */}
+        <div className="flex items-center gap-2 text-gray-700">
+          <svg width="16" height="16" viewBox="0 0 24 24" className="shrink-0"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5a5 5 0 0 0 5 5m0 2c-4.33 0-8 2.17-8 5v1h16v-1c0-2.83-3.67-5-8-5"/></svg>
+          <span className="font-medium">GÃ©nero:</span>
+          <span className="ml-1">{genero}</span>
+        </div>
+        {/* Email */}
+        <div className="flex items-center gap-2 text-gray-700">
+          <svg width="16" height="16" viewBox="0 0 24 24" className="shrink-0"><path fill="currentColor" d="M12 13L2 6.76V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6.76zM12 11l10-6H2z"/></svg>
+          <span className="truncate">{email}</span>
+        </div>
+        {/* TelÃ©fono */}
+        <div className="flex items-center gap-2 text-gray-700">
+          <svg width="16" height="16" viewBox="0 0 24 24" className="shrink-0"><path fill="currentColor" d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1 .25l-2.2 2.2a15.1 15.1 0 0 1-6.63-6.63l2.2-2.2a1 1 0 0 0 .25-1A12.6 12.6 0 0 1 8.5 4H5a1 1 0 0 0-1 1c0 9.39 7.61 17 17 17a1 1 0 0 0 1-1v-3.5a1 1 0 0 0-1-1"/></svg>
+          <span>{phone}</span>
+        </div>
+        {/* Notas (opcional) */}
+        {hasNotes && (
+          <div className="flex items-start gap-2 text-gray-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" className="mt-0.5 shrink-0"><path fill="currentColor" d="M4 3h12l4 4v14a2 2 0 0 1-2 2H4zM15 3v5h5"/></svg>
+            <p className="line-clamp-2">{s.notes}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Footer acciones */}
+      <div className="mt-4 flex items-center justify-between">
+        <button onClick={onDetail} className="px-3 py-2 rounded-xl border text-sm hover:bg-white/50">
+          Ver Detalles
+        </button>
+        <div className="flex gap-2">
+          <button onClick={onEdit} className="px-3 py-2 rounded-xl border text-sm hover:bg-white/50">
+            Editar
+          </button>
+          <button onClick={onDelete} className="px-3 py-2 rounded-xl border border-red-300 text-red-700 text-sm hover:bg-red-50">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* =========================
+   PÃ¡gina principal
+========================= */
+export default function StudentsPage() {
+  const [data, setData] = useState<Student[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { tenantId } = useTenant()
+
+  const [q, setQ] = useState('')
+  const [editId, setEditId] = useState<number | null>(null)
+  const [showEdit, setShowEdit] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Paso 1: formulario minimal
+  const [form, setForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    gender: '',
+    joined_at: todayISO(),
+    birthdate: '',
+    is_active: true,
+    notes: '',
+  })
+
+  // Foto
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+
+  // Paso 2: inscripciones mÃºltiples
+  const [courses, setCourses] = useState<CourseRef[]>([])
+  const [enrollments, setEnrollments] = useState<EnrollRow[]>([
+    { courseId:'', start: todayISO(), lessonsPerWeek:'1', end:'', planType:'monthly', amount: String(DEFAULT_MONTHLY), method:'' }
+  ])
+
+  // Paso 3: pago
+  const [payMode, setPayMode] = useState<PaymentMode>('none')
+  const [totalDiscount, setTotalDiscount] = useState<string>('0')
+  const [totalMethod, setTotalMethod] = useState<'' | 'cash' | 'card' | 'transfer'>('')
+
+  const subtotal = useMemo(() => {
+    if (payMode !== 'total') return 0
+    return enrollments.reduce((acc, r) => {
+      const v = Number(r.amount || '0')
+      return acc + (Number.isFinite(v) ? v : 0)
+    }, 0)
+  }, [payMode, enrollments])
+
+  const totalToPay = useMemo(() => {
+    if (payMode !== 'total') return 0
+    const disc = Number(totalDiscount || '0')
+    const s = subtotal - (Number.isFinite(disc) ? disc : 0)
+    return Math.max(0, s)
+  }, [payMode, subtotal, totalDiscount])
+
+  // ------- carga/listado --------
+  const load = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const params: any = {}
+      if (q) params.q = q
+      const res = await api.get('/api/pms/students', { params })
+      setData(res.data)
+    } catch (e: any) {
+      setError(e?.message ?? 'Error cargando alumnos')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() /* eslint-disable-next-line */ }, [tenantId])
+  useEffect(() => { const id=setTimeout(load,300); return ()=>clearTimeout(id) /* eslint-disable-next-line */ }, [q])
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const res = await api.get('/api/pms/courses')
+        setCourses((res.data||[]).map((c:any)=>({id:c.id, name:c.name})))
+      } catch {}
+    }
+    loadCourses()
+  }, [tenantId])
+
+  // Preview foto
+  useEffect(() => {
+    if (imageFile) {
+      const url = URL.createObjectURL(imageFile)
+      setImagePreview(url)
+      return () => URL.revokeObjectURL(url)
+    }
+    setImagePreview(null)
+  }, [imageFile])
+
+  // Autocalcular fin
+  useEffect(() => {
+    setEnrollments(prev => prev.map(row => {
+      if (!row.start) return { ...row, end: '' }
+      if (row.planType === 'single_class') return { ...row, end: row.start }
+      const d = new Date(row.start)
+      const addDays = row.lessonsPerWeek === '1' ? 21 : 24
+      const end = new Date(d.getTime()); end.setDate(end.getDate() + addDays)
+      return { ...row, end: end.toISOString().slice(0,10) }
+    }))
+  }, [enrollments.length])
+
+  // MÃ©tricas
+  const metrics = useMemo(() => {
+    const totalActive = data.filter(s => s.is_active !== false).length
+    const female = data.filter(s => {
+      const g = (s.gender ?? '').trim().toLowerCase()
+      return g.startsWith('f') || g.startsWith('muj') || g === 'female' || g === 'femenino' || g === 'mujer'
+    }).length
+    const male = data.filter(s => {
+      const g = (s.gender ?? '').trim().toLowerCase()
+      return (g.startsWith('m') && !g.startsWith('muj')) || g === 'male' || g === 'masculino' || g === 'hombre'
+    }).length
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
+    const newThisWeek = data.filter(s => {
+      if (!s.joined_at) return false
+      const d = new Date(s.joined_at)
+      return d >= weekAgo
+    }).length
+    return { totalActive, female, male, newThisWeek }
+  }, [data])
+
+  // Helpers inscripciones
+  const addEnrollRow = () => {
+    setEnrollments(arr => ([
+      ...arr,
+      { courseId:'', start: todayISO(), lessonsPerWeek:'1', end:'', planType:'monthly', amount:String(DEFAULT_MONTHLY), method:'' }
+    ]))
+  }
+  const removeEnrollRow = (idx:number) => {
+    setEnrollments(arr => arr.filter((_,i)=> i!==idx))
+  }
+  const handleEnrollChange = (idx:number, patch: Partial<EnrollRow>) => {
+    setEnrollments(arr => {
+      const row = { ...arr[idx], ...patch }
+      if (patch.planType) {
+        row.amount = patch.planType === 'single_class' ? String(DEFAULT_SINGLE) : String(DEFAULT_MONTHLY)
+        if (patch.planType === 'single_class') row.lessonsPerWeek = '1'
+      }
+      const copy = [...arr]; copy[idx] = row
+      if (row.start) {
+        if (row.planType === 'single_class') row.end = row.start
+        else {
+          const d = new Date(row.start)
+          const addDays = row.lessonsPerWeek === '1' ? 21 : 24
+          const end = new Date(d.getTime()); end.setDate(end.getDate() + addDays)
+          row.end = end.toISOString().slice(0,10)
+        }
+      } else row.end = ''
+      return copy
+    })
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Alumnos</h1>
+        <div className="flex gap-2">
+          <button
+            className="px-4 py-2 bg-emerald-600 text-white rounded"
+            onClick={()=>{
+              setEditId(null)
+              setSaveError(null)
+              setForm({ first_name:'', last_name:'', email:'', phone:'', gender:'', joined_at: todayISO(), birthdate:'', is_active:true, notes:'' })
+              setImageFile(null); setImageError(null); setImagePreview(null)
+              setEnrollments([{ courseId:'', start: todayISO(), lessonsPerWeek:'1', end:'', planType:'monthly', amount:String(DEFAULT_MONTHLY), method:'' }])
+              setPayMode('none'); setTotalDiscount('0'); setTotalMethod('')
+              setShowEdit(true)
+            }}
+          >Agregar alumno</button>
+          <input
+            className="border rounded px-3 py-2"
+            placeholder="Buscar (nombre o email)"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <button className="px-4 py-2 rounded border" onClick={load}>Buscar</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="p-3 bg-white rounded border"><div className="text-xs text-gray-500">Activos</div><div className="text-xl font-semibold">{metrics.totalActive}</div></div>
+        <div className="p-3 bg-white rounded border"><div className="text-xs text-gray-500">Mujeres</div><div className="text-xl font-semibold text-pink-600">{metrics.female}</div></div>
+        <div className="p-3 bg-white rounded border"><div className="text-xs text-gray-500">Hombres</div><div className="text-xl font-semibold text-blue-600">{metrics.male}</div></div>
+        <div className="p-3 bg-white rounded border"><div className="text-xs text-gray-500">Nuevos (7 dÃ­as)</div><div className="text-xl font-semibold">{metrics.newThisWeek}</div></div>
+      </div>
+
+      {loading && <div>Cargando...</div>}
+      {error && <div className="text-red-600">{error}</div>}
+
+      {/* Listado en Cards */}
+      {!loading && !error && (
+        <div>
+          <h2 className="text-sm text-gray-600 mb-2">Administra todos los alumnos</h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {data.map((s, idx) => (
+              <StudentCard
+                key={s.id}
+                s={s}
+                idx={idx}
+                onDetail={() => { window.location.href = `/students/${s.id}` }}
+                onEdit={async () => {
+                  try{
+                    const res = await api.get(`/api/pms/students/${s.id}`)
+                    const x = res.data as Student
+                    setForm({
+                      first_name: x.first_name ?? '',
+                      last_name: x.last_name ?? '',
+                      email: x.email ?? '',
+                      phone: x.phone ?? '',
+                      gender: x.gender ?? '',
+                      joined_at: x.joined_at ?? todayISO(),
+                      birthdate: x.birthdate ?? '',
+                      is_active: x.is_active !== false,
+                      notes: x.notes ?? '',
+                    })
+                    setEditId(s.id)
+                    setSaveError(null)
+                    setImageFile(null); setImageError(null); setImagePreview(null)
+                    setEnrollments([{ courseId:'', start: todayISO(), lessonsPerWeek:'1', end:'', planType:'monthly', amount:String(DEFAULT_MONTHLY), method:'' }])
+                    setPayMode('none'); setTotalDiscount('0'); setTotalMethod('')
+                    setShowEdit(true)
+                  }catch(e){}
+                }}
+                onDelete={async () => {
+                  if(!confirm('Eliminar alumno?')) return
+                  try{ await api.delete(`/api/pms/students/${s.id}`); await load() } catch(e){}
+                }}
+              />
+            ))}
+          </div>
+
+          {data.length === 0 && (
+            <div className="mt-6 p-6 text-center text-gray-500 border rounded-xl bg-white">
+              No se encontraron alumnos con el filtro aplicado.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ---------- MODAL ---------- */}
+      {showEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={()=>{ setShowEdit(false); setEditId(null) }} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-xl md:max-w-2xl">
+            {/* Header */}
+            <div className="px-6 py-4 border-b flex items-center justify-between">
+              <h2 className="text-lg md:text-xl font-semibold">{editId ? 'Editar alumno' : 'Agregar alumno'}</h2>
+              <button className="text-gray-500" onClick={()=>{ setShowEdit(false); setEditId(null) }}>âœ•</button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
+              {saveError && <div className="text-red-600 mb-2">{saveError}</div>}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Nombre</label>
+                  <input className="w-full border rounded px-3 py-2" value={form.first_name} onChange={(e)=>setForm(f=>({...f, first_name:e.target.value}))} />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Apellido</label>
+                  <input className="w-full border rounded px-3 py-2" value={form.last_name} onChange={(e)=>setForm(f=>({...f, last_name:e.target.value}))} />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Email</label>
+                  <input type="email" className="w-full border rounded px-3 py-2" value={form.email} onChange={(e)=>setForm(f=>({...f, email:e.target.value}))} />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">TelÃ©fono</label>
+                  <input className="w-full border rounded px-3 py-2" value={form.phone} onChange={(e)=>setForm(f=>({...f, phone:e.target.value}))} />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">GÃ©nero</label>
+                  <select className="w-full border rounded px-3 py-2" value={form.gender} onChange={(e)=>setForm(f=>({...f, gender:e.target.value}))}>
+                    <option value="">â€”</option>
+                    <option value="Femenino">Femenino</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Otro">Otro</option>
+                    <option value="Prefiero no decir">Prefiero no decir</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Ingreso</label>
+                  <input type="date" className="w-full border rounded px-3 py-2" value={form.joined_at} onChange={(e)=>setForm(f=>({...f, joined_at:e.target.value}))} />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Nacimiento</label>
+                  <input type="date" className="w-full border rounded px-3 py-2" value={form.birthdate} onChange={(e)=>setForm(f=>({...f, birthdate:e.target.value}))} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input id="is_active" type="checkbox" checked={form.is_active} onChange={(e)=>setForm(f=>({...f, is_active:e.target.checked}))} />
+                  <label htmlFor="is_active" className="text-sm text-gray-700">Activo</label>
+                </div>
+
+                {/* Foto */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-gray-600 mb-2">Foto (archivo)</label>
+                  <div className="flex gap-4 items-start">
+                    <div className="w-24 h-24 rounded border bg-gray-50 overflow-hidden flex items-center justify-center">
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="preview" className="object-cover w-full h-full" />
+                      ) : (
+                        <span className="text-xs text-gray-400 px-2 text-center">Sin vista previa</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e)=>{ 
+                          const f=e.target.files?.[0] ?? null
+                          if (f){
+                            if(!f.type.startsWith('image/')) { setImageError('Archivo no es imagen'); return }
+                            if (f.size> 2*1024*1024){ setImageError('MÃ¡ximo 2MB'); return }
+                            setImageError(null); setImageFile(f)
+                          } else { setImageFile(null) }
+                        }}
+                      />
+                      {imageError && <div className="text-xs text-red-600 mt-1">{imageError}</div>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notas */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-gray-600 mb-1">Notas</label>
+                  <textarea className="w-full border rounded px-3 py-2" rows={3} value={form.notes} onChange={(e)=>setForm(f=>({...f, notes:e.target.value}))} />
+                </div>
+
+                {/* Inscripciones */}
+                <div className="md:col-span-2">
+                  <div className="mt-2 p-3 border rounded bg-gray-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-medium">Inscripciones (opcional)</div>
+                      <button type="button" className="px-3 py-1 text-sm rounded border" onClick={addEnrollRow}>+ Agregar curso</button>
+                    </div>
+                    <div className="space-y-3">
+                      {enrollments.map((row, idx) => (
+                        <div key={idx} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end bg-white p-3 rounded border">
+                          <div className="md:col-span-2">
+                            <label className="block text-sm text-gray-600 mb-1">Curso</label>
+                            <select className="w-full border rounded px-3 py-2" value={row.courseId} onChange={(e)=>handleEnrollChange(idx, { courseId: e.target.value })}>
+                              <option value="">â€”</option>
+                              {courses.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-600 mb-1">Plan</label>
+                            <select className="w-full border rounded px-3 py-2" value={row.planType} onChange={(e)=>handleEnrollChange(idx, { planType: e.target.value as 'monthly'|'single_class' })}>
+                              <option value="monthly">Mensual</option>
+                              <option value="single_class">Clase suelta</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-600 mb-1">Inicio</label>
+                            <input type="date" className="w-full border rounded px-3 py-2" value={row.start} onChange={(e)=>handleEnrollChange(idx, { start: e.target.value })} />
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-600 mb-1">Clases/sem</label>
+                            <select className="w-full border rounded px-3 py-2" disabled={row.planType==='single_class'} value={row.lessonsPerWeek} onChange={(e)=>handleEnrollChange(idx, { lessonsPerWeek: e.target.value as '1'|'2' })}>
+                              <option value="1">1</option>
+                              <option value="2">2</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-600 mb-1">Fin</label>
+                            <input type="date" className="w-full border rounded px-3 py-2" value={row.end} onChange={(e)=>handleEnrollChange(idx, { end: e.target.value })} />
+                          </div>
+
+                          {/* Pago por curso */}
+                          {payMode === 'per_course' && (
+                            <>
+                              <div>
+                                <label className="block text-sm text-gray-600 mb-1">Monto</label>
+                                <input type="number" className="w-full border rounded px-3 py-2" value={row.amount} onChange={(e)=>handleEnrollChange(idx, { amount: e.target.value })} />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-gray-600 mb-1">MÃ©todo</label>
+                                <select className="w-full border rounded px-3 py-2" value={row.method} onChange={(e)=>handleEnrollChange(idx, { method: e.target.value as any })}>
+                                  <option value="">â€”</option>
+                                  <option value="cash">Efectivo</option>
+                                  <option value="card">Tarjeta</option>
+                                  <option value="transfer">Transferencia</option>
+                                </select>
+                              </div>
+                            </>
+                          )}
+
+                          <div className="md:col-span-6 flex items-center justify-between">
+                            <div className="text-xs text-gray-600">
+                              Sugerido: {row.planType==='single_class' ? fmtCLP(DEFAULT_SINGLE) : fmtCLP(DEFAULT_MONTHLY)}
+                            </div>
+                            {enrollments.length > 1 && (
+                              <button type="button" className="px-2 py-1 text-sm rounded border border-red-300 text-red-700" onClick={()=>removeEnrollRow(idx)}>
+                                Quitar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pago total/per-curso */}
+                <div className="md:col-span-2">
+                  <div className="mt-2 p-3 border rounded bg-gray-50">
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                      <div className="font-medium">Pago</div>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="radio" name="paymode" checked={payMode==='none'} onChange={()=>setPayMode('none')} />
+                        Sin pago ahora
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="radio" name="paymode" checked={payMode==='per_course'} onChange={()=>setPayMode('per_course')} />
+                        Pago por curso
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="radio" name="paymode" checked={payMode==='total'} onChange={()=>setPayMode('total')} />
+                        Pago total
+                      </label>
+                    </div>
+
+                    {payMode === 'total' && (
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end bg-white p-3 rounded border">
+                        <div className="md:col-span-2">
+                          <div className="text-sm text-gray-600">Subtotal</div>
+                          <div className="text-lg font-semibold">{fmtCLP(subtotal)}</div>
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Descuento</label>
+                          <input type="number" className="w-full border rounded px-3 py-2" value={totalDiscount} onChange={(e)=>setTotalDiscount(e.target.value)} />
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Total</div>
+                          <div className="text-lg font-semibold">{fmtCLP(totalToPay)}</div>
+                        </div>
+                        <div className="md:col-span-4">
+                          <label className="block text-sm text-gray-600 mb-1">MÃ©todo</label>
+                          <select className="w-full border rounded px-3 py-2" value={totalMethod} onChange={(e)=>setTotalMethod(e.target.value as any)}>
+                            <option value="">â€”</option>
+                            <option value="cash">Efectivo</option>
+                            <option value="card">Tarjeta</option>
+                            <option value="transfer">Transferencia</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {payMode === 'per_course' && (
+                      <div className="text-xs text-gray-600 mt-1">
+                        Define <strong>monto</strong> y <strong>mÃ©todo</strong> en cada fila de inscripciÃ³n.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer modal */}
+            <div className="px-6 py-4 border-t bg-white sticky bottom-0 rounded-b-2xl">
+              <div className="flex justify-end gap-2">
+                <button className="px-4 py-2 rounded border" onClick={()=>{ setShowEdit(false); setEditId(null) }}>Cancelar</button>
+                <button
+                  className="px-4 py-2 bg-emerald-600 text-white rounded disabled:opacity-50"
+                  disabled={saving || !form.first_name.trim() || !form.last_name.trim() }
+                  onClick={async ()=>{
+                    setSaving(true); setSaveError(null)
+                    try{
+                      // 1) Crear / actualizar alumno
+                      const payload:any = {
+                        first_name: form.first_name.trim(),
+                        last_name: form.last_name.trim(),
+                        email: form.email || undefined,
+                        phone: form.phone || undefined,
+                        gender: form.gender || undefined,
+                        joined_at: form.joined_at || undefined,
+                        birthdate: form.birthdate || undefined,
+                        is_active: !!form.is_active,
+                        notes: form.notes || undefined,
+                      }
+                      let studentId = editId
+                      if (editId) {
+                        const res = await api.put(`/api/pms/students/${editId}`, payload)
+                        studentId = res.data?.id ?? editId
+                      } else {
+                        const res = await api.post('/api/pms/students', payload)
+                        studentId = res.data?.id
+                      }
+
+                      // Foto
+                      if (studentId && imageFile) {
+                        const fd = new FormData()
+                        fd.append('file', imageFile)
+                        await api.post(`/api/pms/students/${studentId}/photo`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+                      }
+
+                      // 2) Inscripciones
+                      const validRows = enrollments.filter(r => r.courseId)
+                      const createdEnrollments: {course_id:number}[] = []
+                      for (const r of validRows) {
+                        const ePayload:any = {
+                          student_id: studentId,
+                          course_id: Number(r.courseId),
+                          start_date: r.start || undefined,
+                          end_date: r.end || undefined,
+                        }
+                        await api.post('/api/pms/enrollments', ePayload)
+                        createdEnrollments.push({ course_id: Number(r.courseId) })
+                      }
+
+                      // 3) Pagos
+                      if (payMode === 'per_course') {
+                        for (const r of validRows) {
+                          const amount = Number(r.amount || '0')
+                          if (!r.method || !Number.isFinite(amount) || amount <= 0) continue
+                          await api.post('/api/pms/payments', {
+                            student_id: studentId,
+                            course_id: Number(r.courseId),
+                            amount,
+                            payment_date: todayISO(),
+                            method: r.method,
+                            type: r.planType === 'single_class' ? 'single_class' : 'monthly',
+                            notes: r.planType === 'single_class' ? 'Clase suelta' : 'Mensualidad'
+                          })
+                        }
+                      } else if (payMode === 'total') {
+                        if (totalToPay > 0 && totalMethod) {
+                          const cursosTxt = createdEnrollments.map(c => `curso:${c.course_id}`).join(', ')
+                          await api.post('/api/pms/payments', {
+                            student_id: studentId,
+                            course_id: null,
+                            amount: totalToPay,
+                            payment_date: todayISO(),
+                            method: totalMethod,
+                            type: 'bundle',
+                            notes: `Pago total (${cursosTxt}) subtotal=${subtotal}, descuento=${Number(totalDiscount||'0')}`
+                          })
+                        }
+                      }
+                      setShowEdit(false)
+                      setEditId(null)
+                      await load()
+                      alert('Alumno creado/actualizado. Inscripciones y pagos registrados (si correspondÃ­a).')
+                    }catch(e:any){
+                      setSaveError(e?.response?.data?.detail || e?.message || 'Error al guardar')
+                    }finally{
+                      setSaving(false)
+                    }
+                  }}
+                >
+                  {saving ? 'Guardando...' : (editId ? 'Guardar' : 'Crear')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+

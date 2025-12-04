@@ -1,0 +1,687 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { api } from '../lib/api'
+import { useTenant } from '../lib/tenant'
+
+type Payment = {
+  id: number
+  student_id?: number | null
+  course_id?: number | null
+  amount: number
+  method: 'cash' | 'card' | 'transfer' | string
+  type: 'monthly' | 'single_class' | 'rental' | string
+  reference?: string | null
+  notes?: string | null
+  payment_date: string // YYYY-MM-DD
+}
+
+type CourseRef = { id:number; name:string; teacher_name?: string | null }
+type StudentRef = { id:number; name:string }
+type Enrollment = { id:number; student_id:number; course_id:number; start_date:string; end_date?:string|null; is_active:boolean }
+
+const CL_TZ = 'America/Santiago'
+const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' })
+
+// ---------- Utilidades de fecha ----------
+function toYMDInTZ(d: Date, tz = CL_TZ): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' })
+    .formatToParts(d)
+    .reduce<Record<string,string>>((acc, p) => {
+      if (p.type !== 'literal') acc[p.type] = p.value
+      return acc
+    }, {})
+  return `${parts.year}-${parts.month}-${parts.day}`
+}
+function toDDMMYYYY(ymd?: string) {
+  return ymd ? `${ymd.split('-')[2]}-${ymd.split('-')[1]}-${ymd.split('-')[0]}` : ''
+}
+function ymdInCL(d: Date) { return toYMDInTZ(d, CL_TZ) }
+
+function daysInMonth(year:number, month0:number) { // month0: 0-11
+  return new Date(year, month0 + 1, 0).getDate()
+}
+function monthRangeFor(date = new Date()) {
+  const y = date.getFullYear()
+  const m = date.getMonth()
+  const start = new Date(y, m, 1)
+  const end = new Date(y, m + 1, 0)
+  return { start: ymdInCL(start), end: ymdInCL(end) }
+}
+function monthRangeOffset(offsetMonths = 0) {
+  const ref = new Date()
+  ref.setMonth(ref.getMonth() + offsetMonths)
+  return monthRangeFor(ref)
+}
+function nextMonthOf(yyyy_mm: string) {
+  const [yStr, mStr] = yyyy_mm.split('-')
+  let y = parseInt(yStr, 10)
+  let m = parseInt(mStr, 10) // 1-12
+  m += 1
+  if (m === 13) { m = 1; y += 1 }
+  return `${y}-${String(m).padStart(2, '0')}`
+}
+// Ciclo D ? (D-1) del siguiente mes, basado en un mes elegido (YYYY-MM)
+function cycleFromMonth(yyyy_mm: string, anchorDay: number) {
+  const [yStr, mStr] = yyyy_mm.split('-')
+  const y = parseInt(yStr, 10)
+  const m = parseInt(mStr, 10) // 1-12
+  const maxD = Math.min(anchorDay, daysInMonth(y, m - 1))
+  const start = `${y}-${String(m).padStart(2,'0')}-${String(maxD).padStart(2,'0')}`
+  const next = nextMonthOf(yyyy_mm)
+  const [nyStr, nmStr] = next.split('-')
+  const ny = parseInt(nyStr, 10)
+  const nm = parseInt(nmStr, 10)
+  const endDay = Math.min(anchorDay - 1, daysInMonth(ny, nm - 1))
+  const end = `${ny}-${String(nm).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`
+  return { start, end }
+}
+
+// Detecta pagos que cuentan como "Convenio"
+function isAgreementPayment(p: Payment): boolean {
+  const notes = String(p.notes || '').toLowerCase()
+  const typeStr = String(p.type || '').toLowerCase()
+  const methodStr = String(p.method || '').toLowerCase()
+  const hasConvenioWord = notes.includes('convenio') || typeStr.includes('convenio') || methodStr.includes('convenio')
+  return hasConvenioWord || typeStr === 'agreement' || methodStr === 'agreement'
+}
+
+// ---------- Componente ----------
+type ViewMode = 'detalle' | 'resumen-diario'
+
+export default function PaymentsPage() {
+  const { tenantId } = useTenant()
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [courses, setCourses] = useState<Record<number, CourseRef>>({})
+  const [students, setStudents] = useState<Record<number, StudentRef>>({})
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // filtros de tabla
+  const [fMethod, setFMethod] = useState<string>("")
+  const [fType, setFType] = useState<string>("")
+  const [q, setQ] = useState<string>("")
+  const [page, setPage] = useState<number>(1)
+  const [pageSize, setPageSize] = useState<number>(20)
+
+  // rango de fechas
+  const todayYMD = toYMDInTZ(new Date(), CL_TZ)
+  const [dateFrom, setDateFrom] = useState<string>(todayYMD) // por defecto: hoy?hoy
+  const [dateTo, setDateTo] = useState<string>(todayYMD)
+
+  // selector de rango rápido
+  // dia_hoy | mes_actual | mes_elegir | ciclo_6a5 | personalizado
+  const [quickRange, setQuickRange] = useState<string>('dia_hoy')
+  const [pickMonth, setPickMonth] = useState<string>('')   // para mes_elegir (YYYY-MM)
+  const [cycleMonth, setCycleMonth] = useState<string>('') // para ciclo 6?5 (YYYY-MM fijo a día 6)
+
+  // vista
+  const [viewMode, setViewMode] = useState<ViewMode>('detalle')
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true); setError(null)
+      try {
+        const [pres, cres, sres, eres] = await Promise.all([
+          api.get('/api/pms/payments'),
+          api.get('/api/pms/courses'),
+          api.get('/api/pms/students'),
+          api.get('/api/pms/enrollments'),
+        ])
+        setPayments(pres.data || [])
+
+        const cMap: Record<number, CourseRef> = {}
+        for (const c of (cres.data as any[])) cMap[c.id] = { id:c.id, name:c.name, teacher_name:c.teacher_name }
+        setCourses(cMap)
+
+        const sMap: Record<number, StudentRef> = {}
+        for (const s of (sres.data as any[])) sMap[s.id] = { id:s.id, name:`${s.first_name} ${s.last_name}`.trim() }
+        setStudents(sMap)
+
+        setEnrollments((eres.data || []).map((e:any)=>({
+          id:e.id, student_id:e.student_id, course_id:e.course_id,
+          start_date:e.start_date, end_date:e.end_date, is_active:!!e.is_active
+        })))
+      } catch (e:any) {
+        setError(e?.message || 'Error cargando pagos')
+      } finally { setLoading(false) }
+    }
+    load()
+  }, [tenantId])
+
+  // Si se cambia manualmente el rango, marcamos personalizado
+  useEffect(() => {
+    if (quickRange !== 'mes_elegir' && quickRange !== 'ciclo_6a5') {
+      setQuickRange('personalizado')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo])
+
+  const methodLabel = (m:string) =>
+    m === 'cash' ? 'Efectivo' : m === 'card' ? 'Tarjeta' : m === 'transfer' ? 'Transferencia' : m
+  const typeLabel = (t:string) =>
+    t === 'monthly' ? 'Mensualidad' : t === 'single_class' ? 'Clase suelta' : t === 'rental' ? 'Arriendo' : t
+
+  // ---- Mes destacado (calendario completo) ----
+  const monthTotals = useMemo(() => {
+    const { start: monthStart, end: monthEnd } = monthRangeOffset(0)
+    let monthTotal = 0
+    const monthByMethod: Record<string, number> = { cash:0, card:0, transfer:0 }
+    let monthAgreement = 0
+    for (const p of payments) {
+      if (p.payment_date >= monthStart && p.payment_date <= monthEnd) {
+        const amt = Number(p.amount || 0)
+        monthTotal += amt
+        if (p.method in monthByMethod) monthByMethod[p.method] += amt
+        if (isAgreementPayment(p)) monthAgreement += amt
+      }
+    }
+    return { monthTotal, monthByMethod, monthAgreement }
+  }, [payments])
+
+  // ---- Totales del RANGO ----
+  const rangeTotals = useMemo(() => {
+    const from = dateFrom || '0000-01-01'
+    const to = dateTo || '9999-12-31'
+    let total = 0
+    const byMethod: Record<string, number> = { cash:0, card:0, transfer:0 }
+    let agreement = 0
+    for (const p of payments) {
+      if (p.payment_date >= from && p.payment_date <= to) {
+        const amt = Number(p.amount || 0)
+        total += amt
+        if (p.method in byMethod) byMethod[p.method] += amt
+        if (isAgreementPayment(p)) agreement += amt
+      }
+    }
+    return { total, byMethod, agreement }
+  }, [payments, dateFrom, dateTo])
+
+  function findPeriodForPayment(p: Payment): { start?: string, end?: string } {
+    if (!p.student_id || !p.course_id) return {}
+    const ymd = p.payment_date
+    const matches = enrollments.filter(e => e.student_id === p.student_id && e.course_id === p.course_id)
+    let best = matches.find(e => {
+      const s = e.start_date
+      const eend = e.end_date || e.start_date
+      return ymd >= s && ymd <= eend
+    })
+    if (!best) best = matches.filter(e => e.start_date <= ymd).sort((a,b)=> b.start_date.localeCompare(a.start_date))[0]
+    return best ? { start: best.start_date, end: best.end_date || best.start_date } : {}
+  }
+
+  // Filas dentro del rango
+  const rangeRows = useMemo(() => {
+    const from = dateFrom || '0000-01-01'
+    const to = dateTo || '9999-12-31'
+    const items = payments
+      .filter(p => p.payment_date >= from && p.payment_date <= to)
+      .map(p => {
+        const student = p.student_id ? (students[p.student_id!]?.name || '-') : '-'
+        const course  = p.course_id ? (courses[p.course_id!]?.name || '-') : '-'
+        const teacher = p.course_id ? (courses[p.course_id!]?.teacher_name || '-') : '-'
+        const typeStr = typeLabel(p.type)
+        const methodStr = methodLabel(p.method)
+        let periodo = ''
+        if (p.type === 'monthly') {
+          const per = findPeriodForPayment(p)
+          if (per.start && per.end) periodo = `${toDDMMYYYY(per.start)} a ${toDDMMYYYY(per.end)}`
+        } else if (p.type === 'single_class') {
+          periodo = `${toDDMMYYYY(p.payment_date)}`
+        }
+        return { p, student, course, teacher, periodo, typeStr, methodStr, dateStr: toDDMMYYYY(p.payment_date) }
+      })
+      .sort((a,b)=> b.p.id - a.p.id)
+    return items
+  }, [payments, students, courses, enrollments, dateFrom, dateTo])
+
+  const filteredRows = useMemo(() => {
+    let arr = rangeRows
+    if (fMethod) arr = arr.filter(r => r.p.method === fMethod)
+    if (fType) arr = arr.filter(r => r.p.type === fType)
+    if (q.trim()) {
+      const qq = q.toLowerCase()
+      arr = arr.filter(r =>
+        (`${r.student} ${r.course} ${r.teacher} ${r.typeStr} ${r.methodStr} ${r.periodo}`.toLowerCase().includes(qq))
+      )
+    }
+    return arr
+  }, [rangeRows, fMethod, fType, q])
+
+  const filteredTotal = useMemo(
+    () => filteredRows.reduce((acc, r) => acc + Number(r.p.amount || 0), 0),
+    [filteredRows]
+  )
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize))
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const pageRows = filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize)
+
+  useEffect(() => { setPage(1) }, [fMethod, fType, q, pageSize, dateFrom, dateTo])
+
+  // ---------- UI helpers ----------
+  function FeaturedStat({ title, value, small, icon, highlight }: { title: string; value: string; small?: string; icon?: any; highlight?: boolean }) {
+    return (
+      <div className={`rounded-2xl p-[2px] bg-gradient-to-r from-fuchsia-600 to-purple-600 ${highlight ? 'shadow-lg' : 'shadow-md'}`}>
+        <div className={`rounded-2xl ${highlight ? 'bg-gradient-to-r from-fuchsia-50 to-purple-50' : 'bg-white/95 backdrop-blur'} px-5 py-4`}>
+          <div className="flex items-center gap-2">
+            {icon ? (
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/70 text-fuchsia-700 text-sm">
+                {icon}
+              </span>
+            ) : null}
+            <div className="text-xs text-gray-600">{title}</div>
+          </div>
+          <div className={`font-bold ${highlight ? 'text-3xl' : 'text-2xl'}`}>{value}</div>
+          {small ? <div className="text-[11px] text-gray-500 mt-0.5">{small}</div> : null}
+        </div>
+      </div>
+    )
+  }
+  function GradientStat({ title, value, small, icon, highlight }: { title: string; value: string; small?: string; icon?: any; highlight?: boolean }) {
+    return (
+      <div className={`rounded-2xl ${highlight ? 'p-[2px]' : 'p-[1px]'} bg-gradient-to-r from-fuchsia-600 to-purple-600 ${highlight ? 'shadow-md' : 'shadow-sm'}`}>
+        <div className={`rounded-2xl ${highlight ? 'bg-gradient-to-r from-fuchsia-50 to-purple-50' : 'bg-white/90 backdrop-blur'} px-4 py-3`}>
+          <div className="flex items-center gap-2">
+            {icon ? (
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/70 text-fuchsia-700 text-sm">
+                {icon}
+              </span>
+            ) : null}
+            <div className="text-xs text-gray-500">{title}</div>
+          </div>
+          <div className={`font-semibold ${highlight ? 'text-2xl' : 'text-xl'}`}>{value}</div>
+          {small ? <div className="text-[11px] text-gray-500 mt-0.5">{small}</div> : null}
+        </div>
+      </div>
+    )
+  }
+
+  // ---------- Rango rápido ----------
+  function applyQuickRange(val: string) {
+    setQuickRange(val)
+    if (val === 'dia_hoy') {
+      const t = toYMDInTZ(new Date(), CL_TZ)
+      setDateFrom(t); setDateTo(t)
+      setPickMonth(''); setCycleMonth('')
+    } else if (val === 'mes_actual') {
+      const { start, end } = monthRangeOffset(0)
+      setDateFrom(start); setDateTo(end)
+      setPickMonth(''); setCycleMonth('')
+    } else if (val === 'mes_elegir') {
+      setCycleMonth('')
+    } else if (val === 'ciclo_6a5') {
+      setPickMonth('')
+    } else if (val === 'personalizado') {
+      // no modifica fechas
+    }
+  }
+
+  // Para "Por mes (elegir)"
+  function applyPickedMonth(yyyy_mm: string) {
+    setPickMonth(yyyy_mm)
+    if (!yyyy_mm) return
+    const [yStr, mStr] = yyyy_mm.split('-')
+    const y = parseInt(yStr, 10)
+    const m = parseInt(mStr, 10) // 1-12
+    const start = `${y}-${String(m).padStart(2,'0')}-01`
+    const end = monthRangeFor(new Date(y, m - 1, 1)).end
+    setDateFrom(start); setDateTo(end)
+  }
+
+  // Para "Ciclo 6?5" (fijo a día 6)
+  function applyCycle6to5(yyyy_mm: string) {
+    setCycleMonth(yyyy_mm)
+    if (!yyyy_mm) return
+    const { start, end } = cycleFromMonth(yyyy_mm, 6)
+    setDateFrom(start); setDateTo(end)
+  }
+
+  // ---------- Resumen diario (para vista tipo planilla) ----------
+  const dailySummary = useMemo(() => {
+    // Usa el rango (sin filtros de método/tipo) -> si prefieres respetar filtros, cambia a filteredRows
+    const base = rangeRows
+    const map: Record<string, {
+      fechaYMD: string
+      fechaStr: string
+      efectivo: number
+      debito: number
+      transferencia: number
+      convenio: number
+      total: number
+    }> = {}
+
+    for (const row of base) {
+      const ymd = row.p.payment_date
+      const fechaStr = row.dateStr
+      if (!map[ymd]) {
+        map[ymd] = {
+          fechaYMD: ymd,
+          fechaStr,
+          efectivo: 0, debito: 0, transferencia: 0, convenio: 0, total: 0
+        }
+      }
+      const amt = Number(row.p.amount || 0)
+
+      if (row.p.method === 'cash') map[ymd].efectivo += amt
+      else if (row.p.method === 'card') map[ymd].debito += amt
+      else if (row.p.method === 'transfer') map[ymd].transferencia += amt
+
+      // Heurística para "Convenio" (unificada con los totales)
+      const isAgreement = isAgreementPayment(row.p)
+      if (isAgreement) map[ymd].convenio += amt
+
+      map[ymd].total += amt
+    }
+
+    const rows = Object.values(map).sort((a,b) => a.fechaYMD.localeCompare(b.fechaYMD))
+    const grand = rows.reduce((acc, r) => {
+      acc.efectivo += r.efectivo
+      acc.debito += r.debito
+      acc.transferencia += r.transferencia
+      acc.convenio += r.convenio
+      acc.total += r.total
+      return acc
+    }, { efectivo:0, debito:0, transferencia:0, convenio:0, total:0 })
+
+    return { rows, grand }
+  }, [rangeRows])
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Pagos</h1>
+        <Link
+          to="/payments-teachers"
+          className="px-3 py-2 rounded-lg text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 shadow-sm"
+        >
+          Pagos por profesor
+        </Link>
+      </div>
+
+      {loading && <div>Cargando...</div>}
+      {error && <div className="text-red-600">{error}</div>}
+
+      {!loading && !error && (
+        <>
+          {/* ---- Mes destacado ---- */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="text-sm font-semibold text-gray-800">Resumen del mes (1 ? último día)</div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white">
+                Destacado
+              </span>
+              <div className="flex-1 border-t border-gray-200" />
+            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <FeaturedStat title="Mes (total)" value={fmtCLP.format(monthTotals.monthTotal)} icon={<span>??</span>} highlight />
+            <FeaturedStat title="Mes Efectivo" value={fmtCLP.format(monthTotals.monthByMethod['cash'] || 0)} icon={<span>??</span>} />
+            <FeaturedStat title="Mes Tarjeta" value={fmtCLP.format(monthTotals.monthByMethod['card'] || 0)} icon={<span>??</span>} />
+            <FeaturedStat title="Mes Transferencia" value={fmtCLP.format(monthTotals.monthByMethod['transfer'] || 0)} icon={<span>??</span>} />
+            <FeaturedStat title="Mes Convenio" value={fmtCLP.format(monthTotals.monthAgreement || 0)} icon={<span>??</span>} />
+          </div>
+          </div>
+
+          {/* ---- Filtro por fechas + Rango rápido ---- */}
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 my-2">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1">Rango rápido</label>
+                  <select
+                    className="border rounded px-3 py-2"
+                    value={quickRange}
+                    onChange={e => applyQuickRange(e.target.value)}
+                  >
+                    <option value="dia_hoy">Por día (hoy)</option>
+                    <option value="mes_actual">Por mes (mes actual)</option>
+                    <option value="mes_elegir">Por mes (elegir)</option>
+                    <option value="ciclo_6a5">Ciclo 6 ? 5</option>
+                    <option value="personalizado">Personalizado</option>
+                  </select>
+                </div>
+
+                {/* Elegir mes */}
+                {quickRange === 'mes_elegir' && (
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-600 mb-1">Mes (YYYY-MM)</label>
+                    <input
+                      type="month"
+                      className="border rounded px-3 py-2"
+                      value={pickMonth}
+                      onChange={(e)=> applyPickedMonth(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {/* Ciclo 6?5 */}
+                {quickRange === 'ciclo_6a5' && (
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-600 mb-1">Mes inicio ciclo (YYYY-MM)</label>
+                    <input
+                      type="month"
+                      className="border rounded px-3 py-2"
+                      value={cycleMonth}
+                      onChange={(e)=> applyCycle6to5(e.target.value)}
+                    />
+                    <span className="text-[10px] text-gray-500 mt-1">Rango: 06/MM ? 05/(MM+1)</span>
+                  </div>
+                )}
+
+                {/* Manual date inputs: siempre disponibles */}
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1">Desde</label>
+                  <input
+                    type="date"
+                    className="border rounded px-3 py-2"
+                    value={dateFrom}
+                    max={dateTo || undefined}
+                    onChange={e=>{ setDateFrom(e.target.value); setQuickRange('personalizado') }}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1">Hasta</label>
+                  <input
+                    type="date"
+                    className="border rounded px-3 py-2"
+                    value={dateTo}
+                    min={dateFrom || undefined}
+                    onChange={e=>{ setDateTo(e.target.value); setQuickRange('personalizado') }}
+                  />
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-700">
+                Rango seleccionado:&nbsp;
+                <span className="font-semibold">
+                  {toDDMMYYYY(dateFrom)} — {toDDMMYYYY(dateTo)}
+                </span>
+              </div>
+            </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <GradientStat title="Rango (total)" value={fmtCLP.format(rangeTotals.total)} icon={<span>??</span>} highlight />
+            <GradientStat title="Rango Efectivo" value={fmtCLP.format(rangeTotals.byMethod['cash'] || 0)} icon={<span>??</span>} />
+            <GradientStat title="Rango Tarjeta" value={fmtCLP.format(rangeTotals.byMethod['card'] || 0)} icon={<span>??</span>} />
+            <GradientStat title="Rango Transferencia" value={fmtCLP.format(rangeTotals.byMethod['transfer'] || 0)} icon={<span>??</span>} />
+            <GradientStat title="Rango Convenio" value={fmtCLP.format(rangeTotals.agreement || 0)} icon={<span>??</span>} />
+          </div>
+          </div>
+
+          {/* ---- Vista toggle + tablas ---- */}
+          <div>
+            <div className="flex items-center gap-3 my-2">
+              <div className="text-sm font-semibold text-gray-800">Pagos del rango</div>
+
+              {/* Toggle vista */}
+              <div className="ml-2 rounded-xl p-[1px] bg-gradient-to-r from-fuchsia-600 to-purple-600">
+                <div className="flex bg-white rounded-xl overflow-hidden">
+                  <button
+                    className={`px-3 py-1 text-xs ${viewMode==='detalle' ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white' : 'text-gray-700'}`}
+                    onClick={()=>setViewMode('detalle')}
+                  >
+                    Detalle
+                  </button>
+                  <button
+                    className={`px-3 py-1 text-xs ${viewMode==='resumen-diario' ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white' : 'text-gray-700'}`}
+                    onClick={()=>setViewMode('resumen-diario')}
+                  >
+                    Resumen diario
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 border-t border-gray-200" />
+              <div className="text-xs text-gray-700">
+                Total mostrado:&nbsp;<span className="font-semibold">{fmtCLP.format(filteredTotal)}</span>
+              </div>
+            </div>
+
+            {viewMode === 'detalle' ? (
+              // ======== TABLA ORIGINAL (detalle) ========
+              <div className="bg-white rounded-2xl border overflow-auto p-3">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <select className="border rounded px-3 py-2" value={fMethod} onChange={e=>setFMethod(e.target.value)} title="Método">
+                    <option value="">Método: todos</option>
+                    <option value="cash">Efectivo</option>
+                    <option value="card">Tarjeta</option>
+                    <option value="transfer">Transferencia</option>
+                  </select>
+                  <select className="border rounded px-3 py-2" value={fType} onChange={e=>setFType(e.target.value)} title="Tipo">
+                    <option value="">Tipo: todos</option>
+                    <option value="monthly">Mensualidad</option>
+                    <option value="single_class">Clase suelta</option>
+                    <option value="rental">Arriendo</option>
+                  </select>
+                  <input
+                    className="border rounded px-3 py-2 flex-1 min-w-[180px]"
+                    placeholder="Buscar (alumno/curso/profesor/nota)"
+                    value={q}
+                    onChange={e=>setQ(e.target.value)}
+                  />
+                  <select
+                    className="border rounded px-2 py-2"
+                    value={String(pageSize)}
+                    onChange={e=>setPageSize(Number(e.target.value))}
+                    title="Filas por Página"
+                  >
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                  </select>
+                </div>
+
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-50 text-left">
+                      <th className="px-3 py-2">Fecha</th>
+                      <th className="px-3 py-2">Alumno</th>
+                      <th className="px-3 py-2">Curso</th>
+                      <th className="px-3 py-2">Profesor</th>
+                      <th className="px-3 py-2">Periodo</th>
+                      <th className="px-3 py-2">Método</th>
+                      <th className="px-3 py-2 text-right">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.length === 0 ? (
+                      <tr>
+                        <td className="px-3 py-4 text-sm text-gray-500" colSpan={7}>
+                          Sin pagos en el rango seleccionado.
+                        </td>
+                      </tr>
+                    ) : pageRows.map(row => (
+                      <tr key={row.p.id} className="border-t">
+                        <td className="px-3 py-2">{row.dateStr}</td>
+                        <td className="px-3 py-2">{row.student}</td>
+                        <td className="px-3 py-2">{row.course}</td>
+                        <td className="px-3 py-2">{row.teacher}</td>
+                        <td className="px-3 py-2">{row.periodo || '-'}</td>
+                        <td className="px-3 py-2">{row.methodStr}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(Number(row.p.amount||0))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="flex items-center justify-end gap-3 mt-3 text-sm">
+                  <span>Página {safePage} de {totalPages}</span>
+                  <div className="flex gap-2">
+                    <button
+                      className="px-3 py-1 rounded border disabled:opacity-50"
+                      disabled={safePage<=1}
+                      onClick={()=>setPage(p=>Math.max(1,p-1))}
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      className="px-3 py-1 rounded border disabled:opacity-50"
+                      disabled={safePage>=totalPages}
+                      onClick={()=>setPage(p=>Math.min(totalPages,p+1))}
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // ======== NUEVA TABLA: RESUMEN DIARIO ========
+              <div className="bg-white rounded-2xl border overflow-auto p-3">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-50 text-left">
+                      <th className="px-3 py-2">Fecha</th>
+                      <th className="px-3 py-2 text-right">Efectivo</th>
+                      <th className="px-3 py-2 text-right">Débito</th>
+                      <th className="px-3 py-2 text-right">Transferencia</th>
+                      <th className="px-3 py-2 text-right">Convenio</th>
+                      <th className="px-3 py-2 text-right">Total</th>
+                      <th className="px-3 py-2">Entregado</th>
+                      <th className="px-3 py-2">Observaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dailySummary.rows.length === 0 ? (
+                      <tr>
+                        <td className="px-3 py-4 text-sm text-gray-500" colSpan={8}>
+                          Sin pagos en el rango seleccionado.
+                        </td>
+                      </tr>
+                    ) : dailySummary.rows.map((d) => (
+                      <tr key={d.fechaYMD} className="border-t">
+                        <td className="px-3 py-2">{d.fechaStr}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(d.efectivo)}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(d.debito)}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(d.transferencia)}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(d.convenio)}</td>
+                        <td className="px-3 py-2 text-right font-semibold">{fmtCLP.format(d.total)}</td>
+                        <td className="px-3 py-2">{/* editable ad-hoc si quieres */}</td>
+                        <td className="px-3 py-2">{/* editable ad-hoc si quieres */}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+
+                  {dailySummary.rows.length > 0 && (
+                    <tfoot>
+                      <tr className="border-t bg-gray-50 font-semibold">
+                        <td className="px-3 py-2">Total</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(dailySummary.grand.efectivo)}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(dailySummary.grand.debito)}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(dailySummary.grand.transferencia)}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(dailySummary.grand.convenio)}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(dailySummary.grand.total)}</td>
+                        <td className="px-3 py-2"></td>
+                        <td className="px-3 py-2"></td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+

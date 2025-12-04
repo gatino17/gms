@@ -1,0 +1,510 @@
+import { useEffect, useMemo, useState } from 'react'
+import { api } from '../lib/api'
+import { useTenant } from '../lib/tenant'
+
+type Payment = {
+  id: number
+  course_id?: number | null
+  student_id?: number | null
+  amount: number
+  method: 'cash'|'card'|'transfer'|string
+  type?: 'monthly'|'single_class'|'rental'|'agreement'|string
+  notes?: string | null
+  payment_date: string // YYYY-MM-DD
+}
+type CourseRef = { id:number; name:string; teacher_name?: string | null }
+type StudentRef = { id:number; name:string }
+type Enrollment = { id:number; student_id:number; course_id:number; start_date:string; end_date?:string|null; is_active:boolean }
+
+const CL_TZ = 'America/Santiago'
+const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' })
+
+// ---------- Utilidades de fecha ----------
+function toYMDInTZ(d: Date, tz = CL_TZ): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' })
+    .formatToParts(d)
+    .reduce<Record<string,string>>((acc, p) => { if (p.type !== 'literal') acc[p.type] = p.value; return acc }, {})
+  return `${parts.year}-${parts.month}-${parts.day}`
+}
+function toDDMMYYYY(ymd?: string) {
+  return ymd ? `${ymd.split('-')[2]}-${ymd.split('-')[1]}-${ymd.split('-')[0]}` : ''
+}
+function ymdInCL(d: Date) { return toYMDInTZ(d, CL_TZ) }
+function daysInMonth(year:number, month0:number) { return new Date(year, month0 + 1, 0).getDate() }
+function monthRangeFor(date = new Date()) {
+  const y = date.getFullYear(); const m = date.getMonth()
+  const start = new Date(y, m, 1); const end = new Date(y, m + 1, 0)
+  return { start: ymdInCL(start), end: ymdInCL(end) }
+}
+function monthRangeOffset(offsetMonths = 0) {
+  const ref = new Date(); ref.setMonth(ref.getMonth() + offsetMonths)
+  return monthRangeFor(ref)
+}
+function nextMonthOf(yyyy_mm: string) {
+  const [ys, ms] = yyyy_mm.split('-'); let y = +ys; let m = +ms; m += 1; if (m===13){m=1;y+=1}
+  return `${y}-${String(m).padStart(2,'0')}`
+}
+function cycleFromMonth(yyyy_mm: string, anchorDay: number) {
+  const [ys, ms] = yyyy_mm.split('-'); const y = +ys; const m = +ms
+  const startDay = Math.min(anchorDay, daysInMonth(y, m-1))
+  const start = `${y}-${String(m).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`
+  const next = nextMonthOf(yyyy_mm); const [nyS, nmS] = next.split('-'); const ny = +nyS; const nm = +nmS
+  const endDay = Math.min(anchorDay-1, daysInMonth(ny, nm-1))
+  const end = `${ny}-${String(nm).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`
+  return { start, end } // ancla=6 => 06/MM → 05/(MM+1)
+}
+
+// ---------- Helpers de encabezado ----------
+function fmtMonthYear(ymd: string) {
+  const d = new Date(`${ymd}T00:00:00`)
+  return new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric' }).format(d)
+}
+function fmtDayMonthYear(ymd: string) {
+  const d = new Date(`${ymd}T00:00:00`)
+  return new Intl.DateTimeFormat('es-CL', { day:'2-digit', month:'short', year:'numeric' }).format(d)
+}
+
+function methodLabel(m:string) {
+  return m==='cash' ? 'Efectivo' : m==='card' ? 'Tarjeta' : m==='transfer' ? 'Transferencia' : m
+}
+
+// ---------- UI helpers ----------
+function FeaturedStat({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="rounded-2xl p-[2px] bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-md">
+      <div className="rounded-2xl bg-white/95 backdrop-blur px-5 py-4">
+        <div className="text-xs text-gray-600">{title}</div>
+        <div className="text-2xl font-bold">{value}</div>
+      </div>
+    </div>
+  )
+}
+function GradientStat({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="rounded-2xl p-[1px] bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-sm">
+      <div className="rounded-2xl bg-white/90 backdrop-blur px-4 py-3">
+        <div className="text-xs text-gray-500">{title}</div>
+        <div className="text-xl font-semibold">{value}</div>
+      </div>
+    </div>
+  )
+}
+
+export default function PaymentsTeachers() {
+  const { tenantId } = useTenant()
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [courses, setCourses] = useState<Record<number, CourseRef>>({})
+  const [students, setStudents] = useState<Record<number, StudentRef>>({})
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string|null>(null)
+
+  // Filtro por profesor
+  const [teacher, setTeacher] = useState<string>('') // '' = Todos
+
+  // Rango de fechas
+  const todayYMD = toYMDInTZ(new Date(), CL_TZ)
+  const [dateFrom, setDateFrom] = useState<string>(todayYMD) // por día (hoy) por defecto
+  const [dateTo, setDateTo] = useState<string>(todayYMD)
+  // Rango rápido
+  // dia_hoy | mes_actual | mes_elegir | ciclo_6a5 | personalizado
+  const [quickRange, setQuickRange] = useState<string>('dia_hoy')
+  const [pickMonth, setPickMonth] = useState<string>('')   // YYYY-MM
+  const [cycleMonth, setCycleMonth] = useState<string>('') // YYYY-MM
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true); setError(null)
+      try {
+        const [pres, cres, sres, eres] = await Promise.all([
+          api.get('/api/pms/payments'),
+          api.get('/api/pms/courses'),
+          api.get('/api/pms/students'),
+          api.get('/api/pms/enrollments'),
+        ])
+        setPayments(pres.data || [])
+
+        const cMap: Record<number, CourseRef> = {}
+        for (const c of (cres.data||[])) cMap[c.id] = { id:c.id, name:c.name, teacher_name:c.teacher_name }
+        setCourses(cMap)
+
+        const sMap: Record<number, StudentRef> = {}
+        for (const s of (sres.data||[])) sMap[s.id] = { id:s.id, name:`${s.first_name} ${s.last_name}`.trim() }
+        setStudents(sMap)
+
+        setEnrollments((eres.data || []).map((e:any)=>({
+          id:e.id, student_id:e.student_id, course_id:e.course_id, start_date:e.start_date, end_date:e.end_date, is_active:!!e.is_active
+        })))
+      } catch (e:any) {
+        setError(e?.message || 'Error cargando datos')
+      } finally { setLoading(false) }
+    }
+    load()
+  }, [tenantId])
+
+  useEffect(() => {
+    if (quickRange !== 'mes_elegir' && quickRange !== 'ciclo_6a5') setQuickRange('personalizado')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo])
+
+  // Subtítulo dinámico del header
+  const headerSubtitle = useMemo(() => {
+    if (quickRange === 'mes_actual' || quickRange === 'mes_elegir') {
+      return fmtMonthYear(dateFrom)
+    }
+    if (quickRange === 'ciclo_6a5') {
+      return `Ciclo 6→5: ${fmtDayMonthYear(dateFrom)} — ${fmtDayMonthYear(dateTo)}`
+    }
+    if (dateFrom === dateTo) return fmtDayMonthYear(dateFrom)
+    return `${fmtDayMonthYear(dateFrom)} — ${fmtDayMonthYear(dateTo)}`
+  }, [quickRange, dateFrom, dateTo])
+
+  // Lista de profesores (desde cursos)
+  const teachers = useMemo(() => {
+    const set = new Set<string>()
+    Object.values(courses).forEach(c => set.add(c.teacher_name || 'Sin profesor'))
+    return Array.from(set).sort((a,b)=> a.localeCompare(b,'es'))
+  }, [courses])
+
+  // Aplicadores de rango
+  function applyQuickRange(val: string) {
+    setQuickRange(val)
+    if (val === 'dia_hoy') {
+      const t = toYMDInTZ(new Date(), CL_TZ); setDateFrom(t); setDateTo(t); setPickMonth(''); setCycleMonth('')
+    } else if (val === 'mes_actual') {
+      const { start, end } = monthRangeOffset(0); setDateFrom(start); setDateTo(end); setPickMonth(''); setCycleMonth('')
+    } else if (val === 'mes_elegir') {
+      setCycleMonth('')
+    } else if (val === 'ciclo_6a5') {
+      setPickMonth('')
+    }
+  }
+  function applyPickedMonth(yyyy_mm: string) {
+    setPickMonth(yyyy_mm)
+    if (!yyyy_mm) return
+    const [yStr, mStr] = yyyy_mm.split('-'); const y = +yStr; const m = +mStr
+    const start = `${y}-${String(m).padStart(2,'0')}-01`
+    const end = monthRangeFor(new Date(y, m-1, 1)).end
+    setDateFrom(start); setDateTo(end)
+  }
+  function applyCycle6to5(yyyy_mm: string) {
+    setCycleMonth(yyyy_mm)
+    if (!yyyy_mm) return
+    const { start, end } = cycleFromMonth(yyyy_mm, 6)
+    setDateFrom(start); setDateTo(end)
+  }
+
+  // Filtrado por RANGO
+  const rangePayments = useMemo(() => {
+    const from = dateFrom || '0000-01-01'
+    const to = dateTo || '9999-12-31'
+    return payments.filter(p => p.payment_date >= from && p.payment_date <= to)
+  }, [payments, dateFrom, dateTo])
+
+  // Enriquecer con nombres y profesor
+  const enriched = useMemo(() => {
+    return rangePayments.map(p => {
+      const c = p.course_id ? courses[p.course_id] : undefined
+      const teacherName = c?.teacher_name || 'Sin profesor'
+      const courseName = c?.name || '-'
+      const studentName = p.student_id ? (students[p.student_id]?.name || '-') : '-'
+      return { ...p, teacherName, courseName, studentName }
+    })
+  }, [rangePayments, courses, students])
+
+  // Función periodo
+  function findPeriodForPayment(p: Payment): { start?: string; end?: string } {
+    if (!p.student_id || !p.course_id) return {}
+    const ymd = p.payment_date
+    const matches = enrollments.filter(e => e.student_id === p.student_id && e.course_id === p.course_id)
+    let best = matches.find(e => {
+      const s = e.start_date
+      const eend = e.end_date || e.start_date
+      return ymd >= s && ymd <= eend
+    })
+    if (!best) best = matches.filter(e => e.start_date <= ymd).sort((a,b)=> b.start_date.localeCompare(a.start_date))[0]
+    return best ? { start: best.start_date, end: best.end_date || best.start_date } : {}
+  }
+
+  // Agregación por profesor (incluye Convenio)
+  type Agg = { teacher: string; total:number; cash:number; card:number; transfer:number; agreement:number }
+  const byTeacher: Agg[] = useMemo(() => {
+    const map = new Map<string, Agg>()
+    const accFor = (t:string) => map.get(t) || { teacher:t, total:0, cash:0, card:0, transfer:0, agreement:0 }
+    for (const p of enriched) {
+      const acc = accFor(p.teacherName)
+      const amt = Number(p.amount||0)
+      acc.total += amt
+      if (p.method==='cash') acc.cash += amt
+      else if (p.method==='card') acc.card += amt
+      else if (p.method==='transfer') acc.transfer += amt
+      const isAgreement = (String(p.type).toLowerCase() === 'agreement') || (p.notes || '').toLowerCase().includes('convenio')
+      if (isAgreement) acc.agreement += amt
+      map.set(p.teacherName, acc)
+    }
+    return Array.from(map.values()).sort((a,b)=> a.teacher.localeCompare(b.teacher,'es'))
+  }, [enriched])
+
+  const selectedAgg = useMemo(() => byTeacher.find(r => r.teacher === teacher), [byTeacher, teacher])
+
+  // Para vista del profesor: agregación por curso (incluye Convenio)
+  const byCourseForTeacher = useMemo(() => {
+    if (!teacher) return []
+    const list = enriched.filter(p => p.teacherName === teacher)
+    const map = new Map<string, { course:string; total:number; cash:number; card:number; transfer:number; agreement:number }>()
+    for (const p of list) {
+      const key = p.courseName || '-'
+      if (!map.get(key)) map.set(key, { course:key, total:0, cash:0, card:0, transfer:0, agreement:0 })
+      const acc = map.get(key)!
+      const amt = Number(p.amount||0)
+      acc.total += amt
+      if (p.method==='cash') acc.cash += amt
+      else if (p.method==='card') acc.card += amt
+      else if (p.method==='transfer') acc.transfer += amt
+      const isAgreement = (String(p.type).toLowerCase() === 'agreement') || (p.notes || '').toLowerCase().includes('convenio')
+      if (isAgreement) acc.agreement += amt
+    }
+    return Array.from(map.values()).sort((a,b)=> a.course.localeCompare(b.course,'es'))
+  }, [enriched, teacher])
+
+  // Detalle filas del profesor (lista: Fecha, Alumno, Curso, Profesor, Periodo, Método, Monto, Observación)
+  const detailedRowsForTeacher = useMemo(() => {
+    if (!teacher) return []
+    return enriched
+      .filter(p => p.teacherName === teacher)
+      .map(p => {
+        let periodo = ''
+        if (p.type === 'monthly') {
+          const per = findPeriodForPayment(p)
+          if (per.start && per.end) periodo = `${toDDMMYYYY(per.start)} a ${toDDMMYYYY(per.end)}`
+        } else if (p.type === 'single_class') {
+          periodo = toDDMMYYYY(p.payment_date)
+        }
+        return {
+          id: p.id,
+          fecha: toDDMMYYYY(p.payment_date),
+          alumno: p.studentName,
+          curso: p.courseName,
+          profesor: p.teacherName,
+          periodo,
+          metodo: methodLabel(p.method),
+          monto: fmtCLP.format(Number(p.amount||0)),
+          obs: p.notes || ''
+        }
+      })
+      .sort((a,b)=> b.id - a.id)
+  }, [enriched, teacher])
+
+  return (
+    <div className="space-y-6">
+      {/* Header y filtros */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-semibold">Pagos por profesor</h1>
+            <div className="text-sm text-gray-600">{headerSubtitle}</div>
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3">
+            {/* Rango rápido */}
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-600 mb-1">Rango rápido</label>
+              <select
+                className="border rounded px-3 py-2"
+                value={quickRange}
+                onChange={e => applyQuickRange(e.target.value)}
+              >
+                <option value="dia_hoy">Por día (hoy)</option>
+                <option value="mes_actual">Por mes (mes actual)</option>
+                <option value="mes_elegir">Por mes (elegir)</option>
+                <option value="ciclo_6a5">Ciclo 6 → 5</option>
+                <option value="personalizado">Personalizado</option>
+              </select>
+            </div>
+
+            {/* Elegir mes */}
+            {quickRange === 'mes_elegir' && (
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">Mes (YYYY-MM)</label>
+                <input
+                  type="month"
+                  className="border rounded px-3 py-2"
+                  value={pickMonth}
+                  onChange={(e)=> applyPickedMonth(e.target.value)}
+                />
+              </div>
+            )}
+
+            {/* Ciclo 6→5 */}
+            {quickRange === 'ciclo_6a5' && (
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">Mes inicio ciclo</label>
+                <input
+                  type="month"
+                  className="border rounded px-3 py-2"
+                  value={cycleMonth}
+                  onChange={(e)=> applyCycle6to5(e.target.value)}
+                />
+                <span className="text-[10px] text-gray-500 mt-1">Rango: 06/MM → 05/(MM+1)</span>
+              </div>
+            )}
+
+            {/* Fechas manuales */}
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-600 mb-1">Desde</label>
+              <input
+                type="date"
+                className="border rounded px-3 py-2"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={e=>{ setDateFrom(e.target.value); setQuickRange('personalizado') }}
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-600 mb-1">Hasta</label>
+              <input
+                type="date"
+                className="border rounded px-3 py-2"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={e=>{ setDateTo(e.target.value); setQuickRange('personalizado') }}
+              />
+            </div>
+
+            {/* Profesor */}
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-600 mb-1">Profesor</label>
+              <select className="border rounded px-3 py-2" value={teacher} onChange={e=>setTeacher(e.target.value)}>
+                <option value="">Todos</option>
+                {teachers.map(t => (<option key={t} value={t}>{t}</option>))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Rango seleccionado */}
+        <div className="text-xs text-gray-700">
+          Rango: <span className="font-semibold">{toDDMMYYYY(dateFrom)} — {toDDMMYYYY(dateTo)}</span>
+        </div>
+      </div>
+
+      {loading && <div>Cargando...</div>}
+      {error && <div className="text-red-600">{error}</div>}
+
+      {!loading && !error && (
+        <>
+          {/* Tarjetas resumen */}
+          {teacher ? (
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+              <FeaturedStat title={`Total ${teacher}`} value={fmtCLP.format(selectedAgg?.total || 0)} />
+              <GradientStat title="Efectivo" value={fmtCLP.format(selectedAgg?.cash || 0)} />
+              <GradientStat title="Tarjeta/Débito" value={fmtCLP.format(selectedAgg?.card || 0)} />
+              <GradientStat title="Transferencia" value={fmtCLP.format(selectedAgg?.transfer || 0)} />
+              <GradientStat title="Convenio" value={fmtCLP.format(selectedAgg?.agreement || 0)} />
+            </div>
+          ) : (
+            <div className="rounded-2xl p-[2px] bg-gradient-to-r from-fuchsia-600 to-purple-600">
+              <div className="rounded-2xl bg-white/95 px-5 py-4">
+                <div className="text-sm text-gray-700">
+                  Profesores en el rango seleccionado: <span className="font-semibold">{byTeacher.length}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Vista */}
+          {teacher ? (
+            <>
+              {/* -------- Tabla por curso -------- */}
+              <div className="bg-white rounded-2xl border overflow-auto p-3">
+                <div className="text-sm font-semibold mb-2">Detalle por curso</div>
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-50 text-left">
+                      <th className="px-3 py-2">Curso</th>
+                      <th className="px-3 py-2 text-right">Efectivo</th>
+                      <th className="px-3 py-2 text-right">Tarjeta</th>
+                      <th className="px-3 py-2 text-right">Transferencia</th>
+                      <th className="px-3 py-2 text-right">Convenio</th>
+                      <th className="px-3 py-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {byCourseForTeacher.length === 0 ? (
+                      <tr><td className="px-3 py-4 text-sm text-gray-500" colSpan={6}>Sin pagos en el rango.</td></tr>
+                    ) : byCourseForTeacher.map(r => (
+                      <tr key={r.course} className="border-t">
+                        <td className="px-3 py-2">{r.course}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(r.cash)}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(r.card)}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(r.transfer)}</td>
+                        <td className="px-3 py-2 text-right">{fmtCLP.format(r.agreement)}</td>
+                        <td className="px-3 py-2 text-right font-semibold">{fmtCLP.format(r.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* -------- Lista detallada -------- */}
+              <div className="bg-white rounded-2xl border overflow-auto p-3">
+                <div className="text-sm font-semibold mb-2">Listado detallado</div>
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-50 text-left">
+                      <th className="px-3 py-2">Fecha</th>
+                      <th className="px-3 py-2">Alumno</th>
+                      <th className="px-3 py-2">Curso</th>
+                      <th className="px-3 py-2">Profesor</th>
+                      <th className="px-3 py-2">Periodo</th>
+                      <th className="px-3 py-2">Método</th>
+                      <th className="px-3 py-2 text-right">Monto</th>
+                      <th className="px-3 py-2">Observación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailedRowsForTeacher.length === 0 ? (
+                      <tr><td className="px-3 py-4 text-sm text-gray-500" colSpan={8}>Sin pagos en el rango.</td></tr>
+                    ) : detailedRowsForTeacher.map(r => (
+                      <tr key={r.id} className="border-t">
+                        <td className="px-3 py-2">{r.fecha}</td>
+                        <td className="px-3 py-2">{r.alumno}</td>
+                        <td className="px-3 py-2">{r.curso}</td>
+                        <td className="px-3 py-2">{r.profesor}</td>
+                        <td className="px-3 py-2">{r.periodo || '-'}</td>
+                        <td className="px-3 py-2">{r.metodo}</td>
+                        <td className="px-3 py-2 text-right">{r.monto}</td>
+                        <td className="px-3 py-2">{r.obs}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            // -------- Vista TODOS: grilla por profesor --------
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {byTeacher.map(r => (
+                <div key={r.teacher} className="rounded-2xl p-[1px] bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-sm">
+                  <div className="rounded-2xl bg-white/90 backdrop-blur px-4 py-3">
+                    <div className="text-sm font-semibold mb-1">{r.teacher}</div>
+                    <div className="text-xs text-gray-500 mb-2">
+                      Total: <span className="font-semibold">{fmtCLP.format(r.total)}</span>
+                    </div>
+                    <div className="text-xs text-gray-600 space-y-0.5">
+                      <div>Efectivo: <span className="font-medium">{fmtCLP.format(r.cash)}</span></div>
+                      <div>Tarjeta/Débito: <span className="font-medium">{fmtCLP.format(r.card)}</span></div>
+                      <div>Transferencia: <span className="font-medium">{fmtCLP.format(r.transfer)}</span></div>
+                      <div>Convenio: <span className="font-medium">{fmtCLP.format(r.agreement)}</span></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+

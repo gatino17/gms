@@ -214,6 +214,9 @@ async def student_portal_summary(
                 "start_time_5": c.start_time_5.isoformat() if c.start_time_5 else None,
                 "end_time_5": c.end_time_5.isoformat() if c.end_time_5 else None,
                 "teacher_id": c.teacher_id,
+                "teacher_name": getattr(c.teacher, "name", None),
+                "image_url": c.image_url,
+                "room_name": getattr(c.room, "name", None),
             }
         })
 

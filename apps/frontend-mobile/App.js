@@ -322,6 +322,7 @@ export default function App() {
               <FlatList
                 data={portal.enrollments}
                 keyExtractor={(it) => String(it.id)}
+                scrollEnabled={false}
                 renderItem={({ item }) => (
                   <View style={[styles.listItem, { paddingVertical: 8 }]}>
                     {makeAbsolute(item.course?.image_url) ? (
@@ -356,6 +357,7 @@ export default function App() {
               <FlatList
                 data={portal.attendance.recent}
                 keyExtractor={(it, idx) => `${it.course}-${idx}`}
+                scrollEnabled={false}
                 renderItem={({ item }) => (
                   <View style={styles.listItem}>
                     <Text style={styles.itemTitle}>{item.course}</Text>
@@ -375,6 +377,7 @@ export default function App() {
               <FlatList
                 data={portal.payments.recent}
                 keyExtractor={(it) => String(it.id)}
+                scrollEnabled={false}
                 renderItem={({ item }) => (
                   <View style={styles.listItem}>
                     <View>
@@ -514,6 +517,7 @@ const makeStyles = (t) =>
       borderRadius: 14,
       borderWidth: 1,
       borderColor: t.border,
+      resizeMode: 'cover',
     },
     courseImagePlaceholder: {
       width: 60,
@@ -532,6 +536,7 @@ const makeStyles = (t) =>
       borderRadius: 12,
       borderWidth: 1,
       borderColor: t.border,
+      resizeMode: 'cover',
     },
     courseThumbPlaceholder: {
       width: 46,

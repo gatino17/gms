@@ -15,6 +15,8 @@ import {
   Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { LinearGradient } from 'expo-linear-gradient'
+import { Ionicons } from '@expo/vector-icons'
 
 const hostFromExpo = Constants.expoConfig?.hostUri?.split(':')?.[0]
 const fallbackBase = hostFromExpo ? `http://${hostFromExpo}:8002` : 'http://127.0.0.1:8002'
@@ -81,6 +83,22 @@ const makeAbsolute = (pathOrUrl) => {
 const initials = (s1 = '', s2 = '') =>
   `${(s1[0] || '').toUpperCase()}${(s2[0] || '').toUpperCase()}` || 'A'
 
+const formatDate = (iso) => {
+  if (!iso || typeof iso !== 'string') return '-'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) {
+    const parts = iso.split('-')
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
+    return iso
+  }
+  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const day = days[d.getDay()]
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${day} ${dd}/${mm}/${yyyy}`
+}
+
 export default function App() {
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
@@ -118,8 +136,11 @@ export default function App() {
   const totalHours = (portal?.attendance?.recent?.length || 0) * 1
   const firstEnrollment = portal?.enrollments?.[0]
   const nextClassName = firstEnrollment?.course?.name || 'Sin curso asignado'
-  const nextClassDate = firstEnrollment?.start_date || '-'
-  const nextClassRoom = firstEnrollment?.course?.room_name || 'Sala'
+  const nextClassDate = formatDate(firstEnrollment?.start_date || '')
+  const nextClassTeacher = firstEnrollment?.course?.teacher_name || 'Profesor'
+  const nextClassTime = firstEnrollment?.course?.start_time
+    ? String(firstEnrollment.course.start_time).slice(0, 5)
+    : null
   const nextClassImg = makeAbsolute(firstEnrollment?.course?.image_url)
 
   const handleRequestCode = async () => {
@@ -264,11 +285,22 @@ export default function App() {
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Próxima clase</Text>
-            <View style={styles.nextClass}>
+            <LinearGradient
+              colors={['#ec4899', '#8b5cf6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.nextClass}
+            >
+              <View style={[styles.row, { alignItems: 'center' }]}>
+                <Ionicons name="sparkles-outline" size={16} color="#fff" />
+                <Text style={[styles.nextLabel, { marginLeft: 6 }]}>Próxima clase</Text>
+              </View>
               <Text style={styles.nextTitle}>{nextClassName}</Text>
-              <Text style={styles.nextSub}>Fecha inicio: {nextClassDate}</Text>
-              <Text style={styles.nextSub}>{nextClassRoom}</Text>
-            </View>
+              <Text style={styles.nextSub}>
+                Inicio: <Text style={styles.nextStrong}>{nextClassDate}{nextClassTime ? ` · ${nextClassTime}` : ''}</Text>
+              </Text>
+              <Text style={styles.nextSub}>{nextClassTeacher}</Text>
+            </LinearGradient>
           </View>
 
           <View style={styles.card}>
@@ -300,7 +332,7 @@ export default function App() {
                 )}
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.itemTitle}>{portal.enrollments[0]?.course?.name || '-'}</Text>
-                  <Text style={styles.itemSub}>Fin: {portal.enrollments[0]?.end_date || '-'}</Text>
+                  <Text style={styles.itemSub}>Fin: {formatDate(portal.enrollments[0]?.end_date || '')}</Text>
                 </View>
               </View>
             </View>
@@ -335,7 +367,7 @@ export default function App() {
                     <View style={{ flex: 1, marginLeft: 10 }}>
                       <Text style={styles.itemTitle}>{item.course?.name}</Text>
                       <Text style={styles.itemSub}>
-                        {item.start_date ?? '-'} · {item.end_date ?? '-'}
+                        {formatDate(item.start_date ?? '')} · {formatDate(item.end_date ?? '')}
                       </Text>
                     </View>
                     <View style={[styles.badge, item.is_active ? styles.badgeOk : styles.badgeAlert]}>
@@ -564,8 +596,9 @@ const makeStyles = (t) =>
       marginTop: 8,
       padding: 12,
       borderRadius: 12,
-      backgroundColor: t.primary,
     },
+    nextLabel: { color: '#f8fafc', fontWeight: '700', fontSize: 12 },
     nextTitle: { color: '#fff', fontWeight: '800', fontSize: 16 },
     nextSub: { color: '#e9d5ff', fontSize: 12, marginTop: 2 },
+    nextStrong: { fontWeight: '800' },
   })

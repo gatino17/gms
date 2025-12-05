@@ -228,7 +228,7 @@ export default function HomeTab({
                 </View>
                 <Text style={styles.itemSub}>{item.method}</Text>
               </View>
-            ))}
+            )}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
           />
         ) : (

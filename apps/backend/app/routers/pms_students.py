@@ -5,6 +5,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, timedelta
 from sqlalchemy import select, func, case
+from sqlalchemy.orm import selectinload
 import secrets
 from datetime import datetime
 
@@ -182,6 +183,10 @@ async def student_portal_summary(
     eres = await db.execute(
         select(Enrollment, Course)
         .join(Course, Course.id == Enrollment.course_id)
+        .options(
+            selectinload(Course.teacher),
+            selectinload(Course.room),
+        )
         .where(Enrollment.tenant_id == tenant_id, Enrollment.student_id == student_id)
         .order_by(Enrollment.start_date.desc())
     )

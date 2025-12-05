@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import { FaMedal } from 'react-icons/fa'
@@ -18,6 +18,7 @@ type StudentRow = {
 }
 
 export default function CourseDetailPage() {
+  const navigate = useNavigate()
   const { id } = useParams()
   const { tenantId } = useTenant()
   const [data, setData] = useState<any | null>(null)
@@ -411,6 +412,7 @@ export default function CourseDetailPage() {
                           <th className="px-3 py-2.5 font-medium">Renovación</th>
                           <th className="px-3 py-2.5 font-medium">Asistencia</th>
                           <th className="px-3 py-2.5 font-medium">Marcar</th>
+                          <th className="px-3 py-2.5 font-medium text-center">Ver</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -502,8 +504,16 @@ export default function CourseDetailPage() {
                                     {attLoadingId === s.id ? 'Marcando...' : '✔ Asistencia'}
                                   </button>
                                 ) : (
-                                  <span className="text-xs text-gray-400">—</span>
+                                  <span className="text-xs text-gray-400">-</span>
                                 )}
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                <button
+                                  className="px-3 py-1.5 rounded border text-xs bg-white hover:bg-gray-50"
+                                  onClick={() => navigate(`/students/${s.id}`)}
+                                >
+                                  Ver
+                                </button>
                               </td>
                             </tr>
                           )

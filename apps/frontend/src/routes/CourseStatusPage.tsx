@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { MdEmail, MdClose } from 'react-icons/md'
 import { FaWhatsapp, FaBirthdayCake } from 'react-icons/fa'
 import { useTenant } from '../lib/tenant'
@@ -29,6 +29,7 @@ type CourseRow = {
 }
 
 export default function CourseStatusPage() {
+  const navigate = useNavigate()
   const { tenantId } = useTenant()
   const [data, setData] = useState<CourseRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -498,6 +499,9 @@ export default function CourseStatusPage() {
                                 <th className="px-2.5 py-2 text-center">
                                   Renovar
                                 </th>
+                                <th className="px-3 py-2 text-center">
+                                  Acciones
+                                </th>
                                 <th className="px-3 py-2 text-left">Obs</th>
                               </tr>
                             </thead>
@@ -648,6 +652,14 @@ export default function CourseStatusPage() {
                                         <span className="w-6 h-6 rounded-full bg-emerald-500 text-white grid place-items-center text-xs font-bold">
                                           $
                                         </span>
+                                      </button>
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      <button
+                                        className="px-3 py-1.5 rounded border text-xs bg-white hover:bg-fuchsia-50"
+                                        onClick={() => navigate(`/students/${s.id}`)}
+                                      >
+                                        Ver
                                       </button>
                                     </td>
                                     <td className="px-3 py-2">

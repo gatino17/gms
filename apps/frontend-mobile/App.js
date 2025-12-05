@@ -1,38 +1,105 @@
 import { useState } from 'react'
 import { StatusBar } from 'expo-status-bar'
-import { SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View, FlatList } from 'react-native'
+import {
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  FlatList,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native'
 
-// TODO: reusar la API del backend (login, asistencia, pagos). Esto es un cascar�n offline para probar UX.
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8002'
 
-const MOCK_CLASSES = [
-  { id: 'c1', name: 'Salsa Intermedio', day: 'Lunes', time: '19:00 - 20:00', nextDate: '2025-12-08', attendance: '3/4' },
-  { id: 'c2', name: 'Bachata Coreo', day: 'Miércoles', time: '20:00 - 21:00', nextDate: '2025-12-10', attendance: '5/4' },
-]
+async function loginRequest(email, password) {
+  const body = new URLSearchParams()
+  body.append('username', email)
+  body.append('password', password)
+  const res = await fetch(`${BASE_URL}/login/access-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  })
+  if (!res.ok) {
+    const msg = await res.text()
+    throw new Error(msg || `Login falló (${res.status})`)
+  }
+  return res.json()
+}
 
-const MOCK_PAYMENTS = [
-  { id: 'p1', concept: 'Mensualidad Salsa', amount: '$25.000', date: '2025-12-02', status: 'Pagado' },
-  { id: 'p2', concept: 'Clase suelta Bachata', amount: '$7.000', date: '2025-12-03', status: 'Pendiente' },
-]
+async function fetchPortal(studentId, token, tenantId) {
+  const res = await fetch(`${BASE_URL}/api/pms/students/${studentId}/portal`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'X-Tenant-ID': String(tenantId ?? ''),
+    },
+  })
+  if (!res.ok) {
+    const msg = await res.text()
+    throw new Error(msg || `Error portal (${res.status})`)
+  }
+  return res.json()
+}
 
 export default function App() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loggedIn, setLoggedIn] = useState(false)
+  const [studentId, setStudentId] = useState('')
+  const [token, setToken] = useState('')
+  const [tenantId, setTenantId] = useState(null)
+  const [userEmail, setUserEmail] = useState('')
+  const [portal, setPortal] = useState(null)
+  const [loading, setLoading] = useState(false)
 
-  const handleLogin = () => {
-    // TODO: llamar a /login/access-token y guardar token/tenantId
-    setLoggedIn(true)
+  const handleLogin = async () => {
+    try {
+      setLoading(true)
+      const data = await loginRequest(email.trim(), password)
+      setToken(data.access_token)
+      setUserEmail(data.user?.email || email)
+      setTenantId(data.user?.tenant_id ?? null)
+      Alert.alert('OK', 'Sesión iniciada')
+    } catch (e) {
+      Alert.alert('Error', e?.message || 'No se pudo iniciar sesión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLoadPortal = async () => {
+    if (!token) {
+      Alert.alert('Login requerido', 'Inicia sesión primero')
+      return
+    }
+    if (!studentId.trim()) {
+      Alert.alert('Dato requerido', 'Ingresa el ID de alumno')
+      return
+    }
+    try {
+      setLoading(true)
+      const data = await fetchPortal(studentId.trim(), token, tenantId)
+      setPortal(data)
+    } catch (e) {
+      Alert.alert('Error', e?.message || 'No se pudo cargar portal')
+      setPortal(null)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      <View style={styles.header}>
-        <Text style={styles.title}>Mi Estudio</Text>
-        <Text style={styles.subtitle}>Portal alumno · versión móvil</Text>
-      </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Mi Estudio</Text>
+          <Text style={styles.subtitle}>Portal alumno · versión móvil</Text>
+        </View>
 
-      {!loggedIn ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Iniciar sesión</Text>
           <TextInput
@@ -50,57 +117,110 @@ export default function App() {
             onChangeText={setPassword}
             secureTextEntry
           />
-          <TouchableOpacity style={styles.primaryButton} onPress={handleLogin}>
-            <Text style={styles.primaryButtonText}>Entrar</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleLogin} disabled={loading}>
+            <Text style={styles.primaryButtonText}>{loading ? '...' : 'Entrar'}</Text>
+          </TouchableOpacity>
+          {token ? <Text style={styles.hint}>Sesión de {userEmail}</Text> : null}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Cargar portal alumno</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="ID de alumno"
+            value={studentId}
+            onChangeText={setStudentId}
+            keyboardType="number-pad"
+          />
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleLoadPortal} disabled={loading}>
+            <Text style={styles.secondaryButtonText}>{loading ? 'Cargando...' : 'Ver información'}</Text>
           </TouchableOpacity>
         </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Próximas clases</Text>
-            <FlatList
-              data={MOCK_CLASSES}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.listItem}>
-                  <View>
-                    <Text style={styles.itemTitle}>{item.name}</Text>
-                    <Text style={styles.itemSub}>{item.day} · {item.time}</Text>
-                    <Text style={styles.itemSub}>Próxima: {item.nextDate}</Text>
-                  </View>
-                  <View style={[styles.badge, item.attendance.includes('5/4') ? styles.badgeAlert : styles.badgeOk]}>
-                    <Text style={styles.badgeText}>{item.attendance}</Text>
-                  </View>
-                </View>
-              )}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-            />
-          </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Pagos</Text>
-            <FlatList
-              data={MOCK_PAYMENTS}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.listItem}>
-                  <View>
-                    <Text style={styles.itemTitle}>{item.concept}</Text>
-                    <Text style={styles.itemSub}>Fecha: {item.date}</Text>
-                  </View>
-                  <View>
-                    <Text style={styles.itemAmount}>{item.amount}</Text>
-                    <Text style={[styles.itemStatus, item.status === 'Pagado' ? styles.statusOk : styles.statusPending]}>
-                      {item.status}
-                    </Text>
-                  </View>
-                </View>
-              )}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-            />
+        {loading && (
+          <View style={{ paddingVertical: 12 }}>
+            <ActivityIndicator size="small" color="#8b5cf6" />
           </View>
-        </View>
-      )}
+        )}
+
+        {portal && (
+          <>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Perfil</Text>
+              <Text style={styles.itemTitle}>{portal.student?.first_name} {portal.student?.last_name}</Text>
+              <Text style={styles.itemSub}>{portal.student?.email || 'Sin correo'}</Text>
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Clases activas: {portal.classes_active ?? 0}</Text>
+              {portal.enrollments?.length ? (
+                <FlatList
+                  data={portal.enrollments}
+                  keyExtractor={(it) => String(it.id)}
+                  renderItem={({ item }) => (
+                    <View style={styles.listItem}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.itemTitle}>{item.course?.name}</Text>
+                        <Text style={styles.itemSub}>
+                          Inicio: {item.start_date ?? '-'} · Fin: {item.end_date ?? '-'}
+                        </Text>
+                      </View>
+                      <View style={[styles.badge, item.is_active ? styles.badgeOk : styles.badgeAlert]}>
+                        <Text style={styles.badgeText}>{item.is_active ? 'Activa' : 'Inactiva'}</Text>
+                      </View>
+                    </View>
+                  )}
+                  ItemSeparatorComponent={() => <View style={styles.separator} />}
+                />
+              ) : (
+                <Text style={styles.itemSub}>Sin inscripciones</Text>
+              )}
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Asistencia reciente</Text>
+              <Text style={styles.itemSub}>Progreso: {portal.attendance?.percent ?? 0}%</Text>
+              {portal.attendance?.recent?.length ? (
+                <FlatList
+                  data={portal.attendance.recent}
+                  keyExtractor={(it, idx) => `${it.course}-${idx}`}
+                  renderItem={({ item }) => (
+                    <View style={styles.listItem}>
+                      <Text style={styles.itemTitle}>{item.course}</Text>
+                      <Text style={styles.itemSub}>{item.attended_at}</Text>
+                    </View>
+                  )}
+                  ItemSeparatorComponent={() => <View style={styles.separator} />}
+                />
+              ) : (
+                <Text style={styles.itemSub}>Sin registros</Text>
+              )}
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Pagos recientes</Text>
+              {portal.payments?.recent?.length ? (
+                <FlatList
+                  data={portal.payments.recent}
+                  keyExtractor={(it) => String(it.id)}
+                  renderItem={({ item }) => (
+                    <View style={styles.listItem}>
+                      <View>
+                        <Text style={styles.itemTitle}>${item.amount}</Text>
+                        <Text style={styles.itemSub}>{item.payment_date}</Text>
+                      </View>
+                      <Text style={styles.itemSub}>{item.method}</Text>
+                    </View>
+                  )}
+                  ItemSeparatorComponent={() => <View style={styles.separator} />}
+                />
+              ) : (
+                <Text style={styles.itemSub}>Sin pagos</Text>
+              )}
+            </View>
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -144,6 +264,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  secondaryButton: {
+    backgroundColor: '#eef2ff',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+  },
+  secondaryButtonText: { color: '#4f46e5', fontWeight: '700', fontSize: 15 },
   listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   itemTitle: { fontSize: 15, fontWeight: '600', color: '#111827' },
   itemSub: { fontSize: 12, color: '#6b7280' },

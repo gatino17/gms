@@ -7,6 +7,7 @@ export default function ProfileTab({ portal, styles, theme, formatDate, initials
   const student = portal.student || {}
   const joined = student.joined_at ? formatDate(student.joined_at) : '--'
   const birth = student.birthdate ? formatDate(student.birthdate) : '--'
+  const emergency = student.emergency_contact || student.emergency_phone || ''
 
   return (
     <>
@@ -54,6 +55,22 @@ export default function ProfileTab({ portal, styles, theme, formatDate, initials
           value={joined}
           styles={styles}
         />
+        {student.gender ? (
+          <InfoRow
+            icon="body-outline"
+            label="Genero"
+            value={student.gender}
+            styles={styles}
+          />
+        ) : null}
+        {emergency ? (
+          <InfoRow
+            icon="alert-circle-outline"
+            label="Contacto de emergencia"
+            value={emergency}
+            styles={styles}
+          />
+        ) : null}
       </View>
 
       <View style={styles.profileCard}>

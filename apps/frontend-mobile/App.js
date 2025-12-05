@@ -36,7 +36,7 @@ async function requestCode(email, tenantId) {
   })
   if (!res.ok) {
     const msg = await res.text()
-    throw new Error(msg || `No se pudo enviar código (${res.status})`)
+    throw new Error(msg || `No se pudo enviar codigo (${res.status})`)
   }
   return res.json()
 }
@@ -49,7 +49,7 @@ async function loginWithCode(email, code, tenantId) {
   })
   if (!res.ok) {
     const msg = await res.text()
-    throw new Error(msg || `Login falló (${res.status})`)
+    throw new Error(msg || `Login fallo (${res.status})`)
   }
   return res.json()
 }
@@ -91,12 +91,45 @@ const formatDate = (iso) => {
     if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
     return iso
   }
-  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const days = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
   const day = days[d.getDay()]
   const dd = String(d.getDate()).padStart(2, '0')
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const yyyy = d.getFullYear()
   return `${day} ${dd}/${mm}/${yyyy}`
+}
+
+const dayName = (value) => {
+  if (value === undefined || value === null) return ''
+  const map = {
+    0: 'Dom',
+    1: 'Lun',
+    2: 'Mar',
+    3: 'Mie',
+    4: 'Jue',
+    5: 'Vie',
+    6: 'Sab',
+    Domingo: 'Dom',
+    Lunes: 'Lun',
+    Martes: 'Mar',
+    Miercoles: 'Mie',
+    Jueves: 'Jue',
+    Viernes: 'Vie',
+    Sabado: 'Sab',
+  }
+  if (map[value] !== undefined) return map[value]
+  const num = Number(value)
+  if (!Number.isNaN(num) && map[num] !== undefined) return map[num]
+  return String(value)
+}
+
+const formatSchedule = (course) => {
+  if (!course) return ''
+  const day = dayName(course.day_of_week)
+  const start = course.start_time ? String(course.start_time).slice(0, 5) : ''
+  const end = course.end_time ? String(course.end_time).slice(0, 5) : ''
+  if (day && start && end) return `${day} ${start} - ${end}`
+  return [day, start, end].filter(Boolean).join(' ')
 }
 
 export default function App() {
@@ -137,10 +170,9 @@ export default function App() {
   const firstEnrollment = portal?.enrollments?.[0]
   const nextClassName = firstEnrollment?.course?.name || 'Sin curso asignado'
   const nextClassDate = formatDate(firstEnrollment?.start_date || '')
-  const nextClassTeacher = firstEnrollment?.course?.teacher_name || 'Profesor'
   const nextClassTime = firstEnrollment?.course?.start_time
     ? String(firstEnrollment.course.start_time).slice(0, 5)
-    : null
+    : ''
   const nextClassImg = makeAbsolute(firstEnrollment?.course?.image_url)
 
   const handleRequestCode = async () => {
@@ -153,13 +185,13 @@ export default function App() {
       const resp = await requestCode(email.trim(), tenantId)
       if (resp?.code) {
         setCode(resp.code)
-        Alert.alert('Código generado', `Código: ${resp.code}`)
+        Alert.alert('Codigo generado', `Codigo: ${resp.code}`)
       } else {
-        Alert.alert('Código enviado', 'Revisa tu correo')
+        Alert.alert('Codigo enviado', 'Revisa tu correo')
       }
       setCodeSent(true)
     } catch (e) {
-      Alert.alert('Error', e?.message || 'No se pudo enviar código')
+      Alert.alert('Error', e?.message || 'No se pudo enviar codigo')
     } finally {
       setLoading(false)
     }
@@ -167,7 +199,7 @@ export default function App() {
 
   const handleLogin = async () => {
     if (!email.trim() || !code.trim()) {
-      Alert.alert('Datos requeridos', 'Ingresa correo y código')
+      Alert.alert('Datos requeridos', 'Ingresa correo y codigo')
       return
     }
     try {
@@ -177,9 +209,9 @@ export default function App() {
       setUserEmail(data.student?.email || email)
       setTenantId(data.student?.tenant_id ?? null)
       await handleLoadPortal(data.access_token, data.student?.tenant_id ?? null)
-      Alert.alert('OK', 'Sesión iniciada')
+      Alert.alert('OK', 'Sesion iniciada')
     } catch (e) {
-      Alert.alert('Error', e?.message || 'No se pudo iniciar sesión')
+      Alert.alert('Error', e?.message || 'No se pudo iniciar sesion')
     } finally {
       setLoading(false)
     }
@@ -189,7 +221,7 @@ export default function App() {
     const tok = tokenOverride || token
     const tid = tenantOverride ?? tenantId
     if (!tok) {
-      Alert.alert('Login requerido', 'Inicia sesión primero')
+      Alert.alert('Login requerido', 'Inicia sesion primero')
       return
     }
     try {
@@ -212,11 +244,11 @@ export default function App() {
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={styles.header}>
             <Text style={styles.title}>Mi Estudio</Text>
-            <Text style={styles.subtitle}>Portal alumno · versión móvil</Text>
+            <Text style={styles.subtitle}>Portal alumno - version movil</Text>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Iniciar sesión</Text>
+            <Text style={styles.cardTitle}>Iniciar sesion</Text>
             <TextInput
               style={styles.input}
               placeholder="Email"
@@ -228,7 +260,7 @@ export default function App() {
             />
             <View style={styles.row}>
               <TouchableOpacity style={[styles.secondaryButton, styles.flex1]} onPress={handleRequestCode} disabled={loading}>
-                <Text style={styles.secondaryButtonText}>{loading ? '...' : 'Enviar código'}</Text>
+                <Text style={styles.secondaryButtonText}>{loading ? '...' : 'Enviar codigo'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.primaryButton, styles.flex1]} onPress={handleLogin} disabled={loading || !codeSent}>
                 <Text style={styles.primaryButtonText}>{loading ? '...' : 'Entrar'}</Text>
@@ -236,13 +268,13 @@ export default function App() {
             </View>
             <TextInput
               style={styles.input}
-              placeholder="Código recibido"
+              placeholder="Codigo recibido"
               placeholderTextColor={theme.sub}
               value={code}
               onChangeText={setCode}
               keyboardType="number-pad"
             />
-            {token ? <Text style={styles.hint}>Sesión de {userEmail}</Text> : null}
+            {token ? <Text style={styles.hint}>Sesion de {userEmail}</Text> : null}
           </View>
 
           {loading && (
@@ -261,7 +293,15 @@ export default function App() {
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={styles.itemTitle}>{portal.student?.first_name} {portal.student?.last_name}</Text>
-              <Text style={styles.itemSub}>{portal.student?.email || 'Sin correo'}</Text>
+              <LinearGradient
+                colors={['#8b5cf6', '#ec4899']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.emailPill}
+              >
+                <Ionicons name="mail-outline" size={14} color="#fff" />
+                <Text style={styles.emailText}>{portal.student?.email || 'Sin correo'}</Text>
+              </LinearGradient>
             </View>
             <View style={[styles.badge, portal.classes_active > 0 ? styles.badgeOk : styles.badgeAlert]}>
               <Text style={styles.badgeText}>{portal.classes_active > 0 ? 'Activo' : 'Inactivo'}</Text>
@@ -284,7 +324,7 @@ export default function App() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Próxima clase</Text>
+            <Text style={styles.cardTitle}>Proxima clase</Text>
             <LinearGradient
               colors={['#ec4899', '#8b5cf6']}
               start={{ x: 0, y: 0 }}
@@ -293,13 +333,12 @@ export default function App() {
             >
               <View style={[styles.row, { alignItems: 'center' }]}>
                 <Ionicons name="sparkles-outline" size={16} color="#fff" />
-                <Text style={[styles.nextLabel, { marginLeft: 6 }]}>Próxima clase</Text>
+                <Text style={[styles.nextLabel, { marginLeft: 6 }]}>Proxima clase</Text>
               </View>
               <Text style={styles.nextTitle}>{nextClassName}</Text>
               <Text style={styles.nextSub}>
-                Inicio: <Text style={styles.nextStrong}>{nextClassDate}{nextClassTime ? ` · ${nextClassTime}` : ''}</Text>
+                Inicio: <Text style={styles.nextStrong}>{nextClassDate}{nextClassTime ? ` a las ${nextClassTime}` : ''}</Text>
               </Text>
-              <Text style={styles.nextSub}>{nextClassTeacher}</Text>
             </LinearGradient>
           </View>
 
@@ -355,26 +394,52 @@ export default function App() {
                 data={portal.enrollments}
                 keyExtractor={(it) => String(it.id)}
                 scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <View style={[styles.listItem, { paddingVertical: 8 }]}>
-                    {makeAbsolute(item.course?.image_url) ? (
-                      <Image source={{ uri: makeAbsolute(item.course?.image_url) }} style={styles.courseThumb} />
-                    ) : (
-                      <View style={styles.courseThumbPlaceholder}>
-                        <Text style={styles.courseImageText}>{(item.course?.name || 'C')[0]}</Text>
+                renderItem={({ item }) => {
+                  const progress = Math.max(0, Math.min(100, Number(item.progress_percent ?? item.attendance_percent ?? 0)))
+                  return (
+                    <View style={styles.activeCard}>
+                      <View style={styles.activeRow}>
+                        {makeAbsolute(item.course?.image_url) ? (
+                          <Image source={{ uri: makeAbsolute(item.course?.image_url) }} style={styles.courseThumb} />
+                        ) : (
+                          <View style={styles.courseThumbPlaceholder}>
+                            <Text style={styles.courseImageText}>{(item.course?.name || 'C')[0]}</Text>
+                          </View>
+                        )}
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <View style={styles.rowBetween}>
+                            <Text style={styles.itemTitle}>{item.course?.name}</Text>
+                            <View style={[styles.badge, item.is_active ? styles.badgeOk : styles.badgeAlert]}>
+                              <Text style={styles.badgeText}>{item.is_active ? 'Activo' : 'Inactivo'}</Text>
+                            </View>
+                          </View>
+                          <View style={[styles.row, { alignItems: 'center', marginTop: 4 }]}>
+                            <Ionicons name="person-outline" size={14} color={theme.sub} />
+                            <Text style={[styles.itemSub, { marginLeft: 6 }]}>{item.course?.teacher_name || 'Profesor'}</Text>
+                          </View>
+                          <View style={[styles.row, { alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }]}>
+                            {item.course?.level ? (
+                              <View style={styles.levelPill}>
+                                <Text style={styles.levelText}>{item.course.level}</Text>
+                              </View>
+                            ) : null}
+                            <View style={[styles.row, { alignItems: 'center', marginLeft: item.course?.level ? 8 : 0 }]}>
+                              <Ionicons name="time-outline" size={14} color={theme.sub} />
+                              <Text style={[styles.itemSub, { marginLeft: 4 }]}>{formatSchedule(item.course)}</Text>
+                            </View>
+                          </View>
+                        </View>
                       </View>
-                    )}
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={styles.itemTitle}>{item.course?.name}</Text>
-                      <Text style={styles.itemSub}>
-                        {formatDate(item.start_date ?? '')} · {formatDate(item.end_date ?? '')}
-                      </Text>
+                      <View style={[styles.rowBetween, { marginTop: 10, alignItems: 'center' }]}>
+                        <Text style={styles.itemSub}>Progreso</Text>
+                        <Text style={styles.itemSub}>{progress ? `${progress}%` : '--%'}</Text>
+                      </View>
+                      <View style={styles.progressTrack}>
+                        <View style={[styles.progressBar, { width: `${progress || 0}%` }]} />
+                      </View>
                     </View>
-                    <View style={[styles.badge, item.is_active ? styles.badgeOk : styles.badgeAlert]}>
-                      <Text style={styles.badgeText}>{item.is_active ? 'Activa' : 'Inactiva'}</Text>
-                    </View>
-                  </View>
-                )}
+                  )
+                }}
                 ItemSeparatorComponent={() => <View style={styles.separator} />}
               />
             ) : (
@@ -539,6 +604,16 @@ const makeStyles = (t) =>
       borderColor: t.border,
     },
     avatarText: { color: t.text, fontWeight: '800', fontSize: 18 },
+    emailPill: {
+      marginTop: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      gap: 6,
+    },
+    emailText: { color: '#fff', fontSize: 12, fontWeight: '600' },
     courseCard: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -598,7 +673,34 @@ const makeStyles = (t) =>
       borderRadius: 12,
     },
     nextLabel: { color: '#f8fafc', fontWeight: '700', fontSize: 12 },
-    nextTitle: { color: '#fff', fontWeight: '800', fontSize: 16 },
+    nextTitle: { color: '#fff', fontWeight: '800', fontSize: 16, marginTop: 4 },
     nextSub: { color: '#e9d5ff', fontSize: 12, marginTop: 2 },
     nextStrong: { fontWeight: '800' },
+    activeCard: {
+      backgroundColor: t.secondary,
+      borderRadius: 16,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    activeRow: { flexDirection: 'row', alignItems: 'center' },
+    levelPill: {
+      backgroundColor: '#ffe8b5',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+    },
+    levelText: { color: '#8a5200', fontWeight: '700', fontSize: 12 },
+    progressTrack: {
+      marginTop: 8,
+      height: 8,
+      borderRadius: 999,
+      backgroundColor: t.isDark ? '#1f2937' : '#e5e7eb',
+      overflow: 'hidden',
+    },
+    progressBar: {
+      height: '100%',
+      backgroundColor: '#ec4899',
+      borderRadius: 999,
+    },
   })

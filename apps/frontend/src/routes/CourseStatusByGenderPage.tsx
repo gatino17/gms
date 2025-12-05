@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { MdEmail } from 'react-icons/md'
 import { FaWhatsapp, FaBirthdayCake } from 'react-icons/fa'
 import { api } from '../lib/api'
@@ -43,6 +43,7 @@ function normalizeGender(gRaw?: string | null): GenderKey {
 }
 
 export default function CourseStatusByGenderPage() {
+  const navigate = useNavigate()
   const { tenantId } = useTenant()
   const [data, setData] = useState<CourseRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -115,6 +116,10 @@ export default function CourseStatusByGenderPage() {
       return { row, expectedAttendance, female, male, other, counts }
     })
   }, [data, sortBy])
+
+  const handleViewStudent = (studentId: number) => {
+    navigate(`/students/${studentId}`)
+  }
 
   return (
     <div className="space-y-4">
@@ -259,12 +264,12 @@ export default function CourseStatusByGenderPage() {
 
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <GenderTable title="Mujeres" students={female} expectedAttendance={expectedAttendance} />
-                <GenderTable title="Hombres" students={male} expectedAttendance={expectedAttendance} />
+                <GenderTable title="Mujeres" students={female} expectedAttendance={expectedAttendance} onView={handleViewStudent} />
+                <GenderTable title="Hombres" students={male} expectedAttendance={expectedAttendance} onView={handleViewStudent} />
               </div>
               {other.length > 0 && (
                 <div className="grid grid-cols-1">
-                  <GenderTable title="Otro / Sin dato" students={other} expectedAttendance={expectedAttendance} />
+                  <GenderTable title="Otro / Sin dato" students={other} expectedAttendance={expectedAttendance} onView={handleViewStudent} />
                 </div>
               )}
             </div>
@@ -279,9 +284,10 @@ type GenderTableProps = {
   title: string
   students: CourseRow['students']
   expectedAttendance: number
+  onView: (id: number) => void
 }
 
-function GenderTable({ title, students, expectedAttendance }: GenderTableProps) {
+function GenderTable({ title, students, expectedAttendance, onView }: GenderTableProps) {
   return (
     <div className="rounded-2xl border border-fuchsia-200/60 bg-white shadow-sm overflow-hidden">
       <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50">{title}</div>
@@ -300,7 +306,8 @@ function GenderTable({ title, students, expectedAttendance }: GenderTableProps) 
                 <th className="px-3 py-2 text-center w-28">Renovacion</th>
                 <th className="px-3 py-2 text-center w-20">Pago</th>
                 <th className="px-3 py-2 text-center w-24">Asist.</th>
-                <th className="px-3 py-2 text-left w-16">Obs</th>
+                <th className="px-3 py-2 text-center w-24">Ver</th>
+                <th className="px-3 py-2 text-left w-24">Obs</th>
               </tr>
             </thead>
             <tbody>
@@ -360,6 +367,14 @@ function GenderTable({ title, students, expectedAttendance }: GenderTableProps) 
                       <span className="text-[12px] text-gray-700">
                         {att} / {expectedAttendance} ({attPct}%)
                       </span>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <button
+                        className="px-3 py-1.5 rounded border text-xs bg-white hover:bg-fuchsia-50"
+                        onClick={() => onView(s.id)}
+                      >
+                        Ver
+                      </button>
                     </td>
                     <td className="px-3 py-2">{s.notes ?? '-'}</td>
                   </tr>

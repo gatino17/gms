@@ -519,6 +519,7 @@ export default function CourseStatusPage() {
                                     (att / expectedAttendance) * 100,
                                   ),
                                 )
+                                const over = att > expectedAttendance
                                 const isSingleClass =
                                   !!(
                                     s.enrolled_since &&
@@ -625,11 +626,22 @@ export default function CourseStatusPage() {
                                     </td>
                                     <td className="px-3 py-2 text-center">
                                       <div
-                                        className="inline-flex flex-col items-center text-[12px] text-gray-700"
-                                        title={`Asistencias: ${att} de ${expectedAttendance}`}
+                                        className={`inline-flex flex-col items-center text-[12px] ${
+                                          over ? 'text-rose-600 font-semibold' : 'text-gray-700'
+                                        }`}
+                                        title={
+                                          over
+                                            ? 'Excedió lo contratado'
+                                            : `Asistencias: ${att} de ${expectedAttendance}`
+                                        }
                                       >
-                                        <span className="font-medium">
+                                        <span className="font-medium flex items-center gap-1">
                                           {att} / {expectedAttendance}
+                                          {over && (
+                                            <span className="px-1 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] border border-rose-200">
+                                              +extra
+                                            </span>
+                                          )}
                                         </span>
                                         <span className="text-gray-500">
                                           ({attPct}%)

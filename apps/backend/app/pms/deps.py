@@ -73,3 +73,32 @@ async def get_tenant_id(
     if x_tenant_id != current_user.tenant_id:
         raise HTTPException(status_code=403, detail="Tenant no permitido")
     return x_tenant_id
+
+# ======== Portal alumno (auth por token de alumno) ========
+async def get_current_student(
+    db: AsyncSession = Depends(get_db), token: str = Depends(reusable_oauth2)
+) -> models.Student:
+    try:
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.algorithm]
+        )
+        # reuse TokenPayload but requires "sub" as str/int; role and tenant_id are optional extras
+        token_data = token_schema.TokenPayload(**payload)
+    except (JWTError, ValidationError):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Could not validate credentials",
+        )
+    if payload.get("role") != "student":
+        raise HTTPException(status_code=403, detail="Token no es de alumno")
+    tenant_id = payload.get("tenant_id")
+    student_q = select(models.Student).where(models.Student.id == token_data.sub)
+    if tenant_id is not None:
+        student_q = student_q.where(models.Student.tenant_id == tenant_id)
+    res = await db.execute(student_q)
+    student = res.scalars().first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Alumno no encontrado")
+    if student.is_active is False:
+        raise HTTPException(status_code=400, detail="Alumno inactivo")
+    return student

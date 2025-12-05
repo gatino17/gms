@@ -35,6 +35,7 @@ async def course_status(
     date_from = date.today() - timedelta(days=attendance_days)
     from apps.backend.app.pms.models import Attendance as AModel
     a = AModel
+    # Conteo base de asistencias en ventana (luego se filtran por rango de inscripci�n)
     att_sq = (
         select(a.student_id.label("stu_id"), a.course_id.label("cou_id"), func.count().label("att_count"))
         .where(a.tenant_id == tenant_id, a.attended_at >= date_from)
@@ -227,6 +228,7 @@ async def course_status(
                 "renewal_date": end_date.isoformat() if end_date else None,
                 "email_ok": bool((email or "").strip()),
                 "payment_status": "activo" if is_paid else "pendiente",
+                # Ajustado luego con att_dates filtradas
                 "attendance_count": int(att_count or 0),
                 "birthday_today": is_birthday_today,
             }
@@ -242,7 +244,7 @@ async def course_status(
             elif g in ("m", "male", "masculino", "hombre") or g.startswith("masc") or g.startswith("hom"):
                 counts["male"] += 1
 
-    # Build per-student attendance date list within the window
+    # Build per-student attendance date list within the window, filtered por rango de inscripci�n
     if course_ids and student_ids:
         ares = await db.execute(
             select(Attendance.student_id, Attendance.course_id, Attendance.attended_at)
@@ -260,6 +262,27 @@ async def course_status(
         for cid, bundle in grouped.items():
             for st in bundle.get("students", []):
                 key = (cid, st["id"])  # type: ignore
-                st["att_dates"] = att_map.get(key, [])
+                raw_dates = att_map.get(key, [])
+                # Filtrar por rango de inscripci�n (si no hay fechas, se usa ventana base)
+                def parse_date(val: str | None):
+                    try:
+                        return date.fromisoformat(val) if val else None
+                    except Exception:
+                        return None
+                start_d = parse_date(st.get("enrolled_since"))
+                end_d = parse_date(st.get("renewal_date")) or date.today()
+                filtered = []
+                for d in raw_dates:
+                    try:
+                        dd = date.fromisoformat(d)
+                    except Exception:
+                        continue
+                    if start_d and dd < start_d:
+                        continue
+                    if end_d and dd > end_d:
+                        continue
+                    filtered.append(d)
+                st["att_dates"] = filtered
+                st["attendance_count"] = len(filtered)
 
     return list(grouped.values())

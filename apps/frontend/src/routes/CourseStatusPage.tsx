@@ -47,7 +47,7 @@ export default function CourseStatusPage() {
     course_id: 0,
     student_id: 0,
     enrollment_id: 0,
-    mode: "monthly" as "monthly" | "custom",
+    mode: "monthly" as "monthly" | "custom" | "single_class",
     start_date: "",
     end_date: "",
     amount: "",
@@ -72,6 +72,21 @@ export default function CourseStatusPage() {
     if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
     return iso
   }
+  const toDate = (iso?: string | null) => {
+    if (!iso) return null
+    const parts = iso.split('-').map(Number)
+    if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) return null
+    return new Date(parts[0], parts[1] - 1, parts[2])
+  }
+  const weeksBetween = (start?: Date | null, end?: Date | null): number | null => {
+    if (!start || !end) return null
+    const s = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+    const e = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+    const diffMs = e.getTime() - s.getTime()
+    if (diffMs < 0) return 0
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1
+    return Math.max(1, Math.ceil(days / 7))
+  }
 
   async function openRenew(courseId: number, studentId: number, start: string, end: string, price?: number | null) {
     try {
@@ -80,11 +95,12 @@ export default function CourseStatusPage() {
       const enr = (res.data || [])[0]
       const start_date = start || (enr?.start_date || '')
       const end_date = end || (enr?.end_date || '')
+      const isSingle = !!start_date && !!end_date && start_date === end_date
       setRenewForm({
         course_id: courseId,
         student_id: studentId,
         enrollment_id: enr?.id || 0,
-        mode: 'monthly',
+        mode: isSingle ? 'single_class' : 'monthly',
         start_date,
         end_date: end_date || (start_date ? addDays(start_date, 28) : ''),
         amount: price != null ? String(Number(price)) : '',
@@ -513,13 +529,19 @@ export default function CourseStatusPage() {
                                 const emailTitle = s.email ?? 'Sin correo'
                                 const paid = s.payment_status === 'activo'
                                 const att = s.attendance_count ?? 0
-                                const attPct = Math.min(
-                                  100,
-                                  Math.round(
-                                    (att / expectedAttendance) * 100,
-                                  ),
-                                )
-                                const over = att > expectedAttendance
+                                const stuStart = toDate(s.enrolled_since)
+                                const stuEnd = toDate(s.renewal_date)
+                                const weeks = weeksBetween(stuStart, stuEnd)
+                                const expected = stuStart && stuEnd && stuStart.getTime() === stuEnd.getTime()
+                                  ? 1
+                                  : weeks != null
+                                    ? Math.max(1, ((row.course as any).classes_per_week ?? 1) * weeks)
+                                    : expectedAttendance
+                                const attPct = expected > 0
+                                  ? Math.min(100, Math.round((att / expected) * 100))
+                                  : 0
+                                const over = att > expected
+                                const extra = over ? att - expected : 0
                                 const isSingleClass =
                                   !!(
                                     s.enrolled_since &&
@@ -626,19 +648,17 @@ export default function CourseStatusPage() {
                                     </td>
                                     <td className="px-3 py-2 text-center">
                                       <div
-                                        className={`inline-flex flex-col items-center text-[12px] ${
-                                          over ? 'text-rose-600 font-semibold' : 'text-gray-700'
-                                        }`}
+                                        className={`inline-flex flex-col items-center text-[12px] ${over ? 'text-rose-600 font-semibold' : 'text-gray-700'}`}
                                         title={
                                           over
                                             ? 'Excedió lo contratado'
-                                            : `Asistencias: ${att} de ${expectedAttendance}`
+                                            : `Asistencias: ${att} de ${expected}`
                                         }
                                       >
                                         <span className="font-medium flex items-center gap-1">
-                                          {att} / {expectedAttendance}
+                                          {att} / {expected}
                                           {over && (
-                                            <span className="px-1 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] border border-rose-200">
+                                            <span className="px-1 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] border border-rose-200" title={`Clases extra: ${extra}`}>
                                               +extra
                                             </span>
                                           )}
@@ -1016,7 +1036,7 @@ export default function CourseStatusPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-3">
                 <div className="text-xs text-gray-600 mb-1">Modo</div>
-                <div className="flex items-center gap-3 text-sm">
+                <div className="flex flex-col gap-2 text-sm">
                   <label className="inline-flex items-center gap-2">
                     <input
                       type="radio"
@@ -1031,8 +1051,23 @@ export default function CourseStatusPage() {
                             : f.end_date,
                         }))
                       }
-                    />{' '}
+                    />
                     Mensual (4 semanas)
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="mode"
+                      checked={renewForm.mode === 'single_class'}
+                      onChange={() =>
+                        setRenewForm((f) => ({
+                          ...f,
+                          mode: 'single_class',
+                          end_date: f.start_date || f.end_date,
+                        }))
+                      }
+                    />
+                    Clase suelta (1 día)
                   </label>
                   <label className="inline-flex items-center gap-2">
                     <input
@@ -1045,8 +1080,8 @@ export default function CourseStatusPage() {
                           mode: 'custom',
                         }))
                       }
-                    />{' '}
-                    Personalizada
+                    />
+                    Personalizada (elige rango)
                   </label>
                 </div>
               </div>
@@ -1063,7 +1098,9 @@ export default function CourseStatusPage() {
                       end_date:
                         f.mode === 'monthly' && e.target.value
                           ? addDays(e.target.value, 28)
-                          : f.end_date,
+                          : f.mode === 'single_class'
+                            ? e.target.value
+                            : f.end_date,
                     }))
                   }
                 />
@@ -1080,7 +1117,7 @@ export default function CourseStatusPage() {
                       end_date: e.target.value,
                     }))
                   }
-                  disabled={renewForm.mode === 'monthly'}
+                  disabled={renewForm.mode === 'monthly' || renewForm.mode === 'single_class'}
                 />
               </div>
               <div>
@@ -1161,12 +1198,15 @@ export default function CourseStatusPage() {
                       !renewForm.end_date
                     )
                       throw new Error('Fechas incompletas')
+                    const payload: any = {
+                      start_date: renewForm.start_date,
+                      end_date: renewForm.mode === 'single_class'
+                        ? renewForm.start_date
+                        : renewForm.end_date,
+                    }
                     await api.put(
                       `/api/pms/enrollments/${renewForm.enrollment_id}`,
-                      {
-                        start_date: renewForm.start_date,
-                        end_date: renewForm.end_date,
-                      },
+                      payload,
                     )
                     await load()
                     setShowRenew(false)

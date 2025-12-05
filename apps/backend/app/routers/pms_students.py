@@ -5,13 +5,20 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, timedelta
 from sqlalchemy import select, func, case
+import secrets
+from datetime import datetime
+
+from apps.backend.app.core import security
 
 from apps.backend.app.pms.models import Student
 from apps.backend.app.pms.models import Course, Enrollment, Attendance, Payment
 from apps.backend.app.pms.schemas import StudentOut, StudentCreate, StudentUpdate, StudentListResponse, StudentStats
-from apps.backend.app.pms.deps import get_tenant_id, get_db_session
+from apps.backend.app.pms.deps import get_tenant_id, get_db_session, get_current_student
 
 router = APIRouter(prefix="/api/pms/students", tags=["pms-students"])
+
+# Almacen simple en memoria para codigos de portal (en un entorno real usar DB + email)
+_portal_codes: dict[tuple[str, int | None], dict[str, object]] = {}
 
 
 @router.get("/", response_model=StudentListResponse)
@@ -267,8 +274,106 @@ async def student_portal_summary(
         "attendance": { "percent": att_percent, "recent": attendance_recent },
         "enrollments": enrollments,
         "classes_active": sum(1 for e in enrollments if e.get("is_active")),
-        "payments": { "recent": payments_recent, "total_last_90": total_paid_recent },
+            "payments": { "recent": payments_recent, "total_last_90": total_paid_recent },
+        }
+
+# ====== Portal alumno: login passwordless con código corto ======
+class PortalRequestPayload(StudentUpdate):
+    email: str
+    tenant_id: int | None = None
+
+@router.post("/portal/request_code")
+async def request_portal_code(payload: dict, db: AsyncSession = Depends(get_db_session)):
+    # payload esperado: {"email": "...", "tenant_id": optional}
+    email = (payload.get("email") or "").strip().lower()
+    tenant_id = payload.get("tenant_id")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email requerido")
+    query = select(Student).where(func.lower(Student.email) == email)
+    if tenant_id is not None:
+        query = query.where(Student.tenant_id == tenant_id)
+    res = await db.execute(query)
+    student = res.scalars().first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Alumno no encontrado para ese email")
+    key = (email, tenant_id or student.tenant_id)
+    code = f"{secrets.randbelow(1000000):06d}"
+    _portal_codes[key] = {
+        "code": code,
+        "expires": datetime.utcnow() + timedelta(minutes=10),
+        "student_id": student.id,
+        "tenant_id": tenant_id or student.tenant_id,
     }
+    # En un entorno real se enviaría por correo. Para pruebas devolvemos el código.
+    return {"ok": True, "code": code, "expires_in_minutes": 10}
+
+@router.post("/portal/login")
+async def portal_login(payload: dict, db: AsyncSession = Depends(get_db_session)):
+    email = (payload.get("email") or "").strip().lower()
+    code = (payload.get("code") or "").strip()
+    tenant_id = payload.get("tenant_id")
+    if not email or not code:
+        raise HTTPException(status_code=400, detail="Email y codigo requeridos")
+    # buscar código considerando que tenant_id puede no venir en la app
+    entry = None
+    # primer intento: clave exacta enviada
+    key = (email, tenant_id)
+    if key in _portal_codes and _portal_codes[key].get("code") == code:
+        entry = _portal_codes[key]
+    else:
+        # intentar con tenant None
+        key2 = (email, None)
+        if key2 in _portal_codes and _portal_codes[key2].get("code") == code:
+            entry = _portal_codes[key2]
+        else:
+            # buscar cualquier entry por email con ese código
+            for (em, tidv), val in list(_portal_codes.items()):
+                if em == email and val.get("code") == code:
+                    entry = val
+                    tenant_id = tidv
+                    break
+    if not entry or entry.get("code") != code:
+        raise HTTPException(status_code=400, detail="Codigo invalido")
+    if entry["expires"] < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Codigo expirado")
+    student_id = entry["student_id"]
+    tid = entry["tenant_id"]
+    sres = await db.execute(select(Student).where(Student.id == student_id, Student.tenant_id == tid))
+    student = sres.scalar_one_or_none()
+    if not student:
+        raise HTTPException(status_code=404, detail="Alumno no encontrado")
+    token = security.create_access_token(
+        student.id,
+        extra={"role": "student", "tenant_id": tid}
+    )
+    # invalidar
+    _portal_codes.pop((email, tenant_id), None)
+    _portal_codes.pop((email, tid), None)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "student": {
+            "id": student.id,
+            "email": student.email,
+            "first_name": student.first_name,
+            "last_name": student.last_name,
+            "tenant_id": tid,
+        },
+    }
+
+@router.get("/portal/me")
+async def portal_me(
+    current_student: Student = Depends(get_current_student),
+    db: AsyncSession = Depends(get_db_session),
+):
+    if current_student.tenant_id is None:
+        raise HTTPException(status_code=400, detail="Alumno sin tenant asignado")
+    # reutilizar el resumen del portal existente con el tenant real del alumno
+    return await student_portal_summary(
+        current_student.id,
+        tenant_id=current_student.tenant_id,
+        db=db,
+    )
 
 @router.get("/{student_id}/attendance_calendar")
 async def attendance_calendar(

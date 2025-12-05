@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { StatusBar } from 'expo-status-bar'
+import Constants from 'expo-constants'
 import {
   SafeAreaView,
   StyleSheet,
@@ -13,16 +14,37 @@ import {
   Alert,
 } from 'react-native'
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8002'
+const hostFromExpo = Constants.expoConfig?.hostUri?.split(':')?.[0]
+const fallbackBase = hostFromExpo ? `http://${hostFromExpo}:8002` : 'http://127.0.0.1:8002'
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || fallbackBase
 
-async function loginRequest(email, password) {
-  const body = new URLSearchParams()
-  body.append('username', email)
-  body.append('password', password)
-  const res = await fetch(`${BASE_URL}/login/access-token`, {
+async function requestCode(email, tenantId) {
+  const res = await fetch(`${BASE_URL}/api/pms/students/portal/request_code`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, tenant_id: tenantId }),
+  })
+  let text = ''
+  if (!res.ok) {
+    const msg = await res.text()
+    throw new Error(msg || `No se pudo enviar código (${res.status})`)
+  }
+  try {
+    const data = await res.json()
+    console.log('[request_code] response', data)
+    return data
+  } catch {
+    text = await res.text()
+    console.log('[request_code] raw', text)
+    return { ok: true, raw: text }
+  }
+}
+
+async function loginWithCode(email, code, tenantId) {
+  const res = await fetch(`${BASE_URL}/api/pms/students/portal/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code, tenant_id: tenantId }),
   })
   if (!res.ok) {
     const msg = await res.text()
@@ -32,7 +54,7 @@ async function loginRequest(email, password) {
 }
 
 async function fetchPortal(studentId, token, tenantId) {
-  const res = await fetch(`${BASE_URL}/api/pms/students/${studentId}/portal`, {
+  const res = await fetch(`${BASE_URL}/api/pms/students/portal/me`, {
     headers: {
       Authorization: `Bearer ${token}`,
       'X-Tenant-ID': String(tenantId ?? ''),
@@ -47,21 +69,49 @@ async function fetchPortal(studentId, token, tenantId) {
 
 export default function App() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [studentId, setStudentId] = useState('')
+  const [code, setCode] = useState('')
   const [token, setToken] = useState('')
   const [tenantId, setTenantId] = useState(null)
   const [userEmail, setUserEmail] = useState('')
+  const [studentId, setStudentId] = useState(null)
   const [portal, setPortal] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
 
-  const handleLogin = async () => {
+  const handleRequestCode = async () => {
+    if (!email.trim()) {
+      Alert.alert('Dato requerido', 'Ingresa el correo')
+      return
+    }
     try {
       setLoading(true)
-      const data = await loginRequest(email.trim(), password)
+      const resp = await requestCode(email.trim(), tenantId)
+      if (resp?.code) {
+        setCode(resp.code)
+        Alert.alert('Código generado', `Código: ${resp.code}`)
+      } else {
+        Alert.alert('Código enviado', 'Revisa tu correo')
+      }
+      setCodeSent(true)
+    } catch (e) {
+      Alert.alert('Error', e?.message || 'No se pudo enviar código')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLogin = async () => {
+    if (!email.trim() || !code.trim()) {
+      Alert.alert('Datos requeridos', 'Ingresa correo y código')
+      return
+    }
+    try {
+      setLoading(true)
+      const data = await loginWithCode(email.trim(), code.trim(), tenantId)
       setToken(data.access_token)
-      setUserEmail(data.user?.email || email)
-      setTenantId(data.user?.tenant_id ?? null)
+      setUserEmail(data.student?.email || email)
+      setTenantId(data.student?.tenant_id ?? null)
+      setStudentId(data.student?.id || null)
       Alert.alert('OK', 'Sesión iniciada')
     } catch (e) {
       Alert.alert('Error', e?.message || 'No se pudo iniciar sesión')
@@ -75,16 +125,13 @@ export default function App() {
       Alert.alert('Login requerido', 'Inicia sesión primero')
       return
     }
-    if (!studentId.trim()) {
-      Alert.alert('Dato requerido', 'Ingresa el ID de alumno')
-      return
-    }
     try {
       setLoading(true)
-      const data = await fetchPortal(studentId.trim(), token, tenantId)
+      const data = await fetchPortal(studentId, token, tenantId)
       setPortal(data)
     } catch (e) {
       Alert.alert('Error', e?.message || 'No se pudo cargar portal')
+      console.log('[portal] error', e)
       setPortal(null)
     } finally {
       setLoading(false)
@@ -110,29 +157,27 @@ export default function App() {
             autoCapitalize="none"
             keyboardType="email-address"
           />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={[styles.secondaryButton, { flex: 1 }]} onPress={handleRequestCode} disabled={loading}>
+              <Text style={styles.secondaryButtonText}>{loading ? '...' : 'Enviar código'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={handleLogin} disabled={loading || !codeSent}>
+              <Text style={styles.primaryButtonText}>{loading ? '...' : 'Entrar'}</Text>
+            </TouchableOpacity>
+          </View>
           <TextInput
             style={styles.input}
-            placeholder="Contraseña"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
+            placeholder="Código recibido"
+            value={code}
+            onChangeText={setCode}
+            keyboardType="number-pad"
           />
-          <TouchableOpacity style={styles.primaryButton} onPress={handleLogin} disabled={loading}>
-            <Text style={styles.primaryButtonText}>{loading ? '...' : 'Entrar'}</Text>
-          </TouchableOpacity>
           {token ? <Text style={styles.hint}>Sesión de {userEmail}</Text> : null}
         </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Cargar portal alumno</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="ID de alumno"
-            value={studentId}
-            onChangeText={setStudentId}
-            keyboardType="number-pad"
-          />
-          <TouchableOpacity style={styles.secondaryButton} onPress={handleLoadPortal} disabled={loading}>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleLoadPortal} disabled={loading || !token}>
             <Text style={styles.secondaryButtonText}>{loading ? 'Cargando...' : 'Ver información'}</Text>
           </TouchableOpacity>
         </View>

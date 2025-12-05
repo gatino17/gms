@@ -1,18 +1,19 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import Constants from 'expo-constants'
 import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  FlatList,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
+  useColorScheme,
+  Image,
 } from 'react-native'
-import { Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 const hostFromExpo = Constants.expoConfig?.hostUri?.split(':')?.[0]
@@ -31,20 +32,11 @@ async function requestCode(email, tenantId) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, tenant_id: tenantId }),
   })
-  let text = ''
   if (!res.ok) {
     const msg = await res.text()
     throw new Error(msg || `No se pudo enviar código (${res.status})`)
   }
-  try {
-    const data = await res.json()
-    console.log('[request_code] response', data)
-    return data
-  } catch {
-    text = await res.text()
-    console.log('[request_code] raw', text)
-    return { ok: true, raw: text }
-  }
+  return res.json()
 }
 
 async function loginWithCode(email, code, tenantId) {
@@ -60,7 +52,7 @@ async function loginWithCode(email, code, tenantId) {
   return res.json()
 }
 
-async function fetchPortal(studentId, token, tenantId) {
+async function fetchPortal(token, tenantId) {
   const res = await fetch(`${BASE_URL}/api/pms/students/portal/me`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -74,17 +66,61 @@ async function fetchPortal(studentId, token, tenantId) {
   return res.json()
 }
 
+const makeAbsolute = (pathOrUrl) => {
+  if (!pathOrUrl) return null
+  try {
+    const u = new URL(pathOrUrl)
+    return u.toString()
+  } catch {
+    const left = BASE_URL.replace(/\/+$/, '')
+    const right = String(pathOrUrl).replace(/^\/+/, '')
+    return `${left}/${right}`
+  }
+}
+
+const initials = (s1 = '', s2 = '') =>
+  `${(s1[0] || '').toUpperCase()}${(s2[0] || '').toUpperCase()}` || 'A'
+
 export default function App() {
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [token, setToken] = useState('')
   const [tenantId, setTenantId] = useState(null)
   const [userEmail, setUserEmail] = useState('')
-  const [studentId, setStudentId] = useState(null)
   const [portal, setPortal] = useState(null)
   const [loading, setLoading] = useState(false)
   const [codeSent, setCodeSent] = useState(false)
   const [loadingPortal, setLoadingPortal] = useState(false)
+
+  const colorScheme = useColorScheme()
+  const theme = useMemo(() => {
+    const dark = colorScheme !== 'light'
+    return {
+      isDark: dark,
+      bg: dark ? '#0f172a' : '#f8fafc',
+      card: dark ? '#0b1224' : '#ffffff',
+      text: dark ? '#e2e8f0' : '#0f172a',
+      sub: dark ? '#94a3b8' : '#475569',
+      border: dark ? '#1f2937' : '#e2e8f0',
+      primary: dark ? '#7c3aed' : '#8b5cf6',
+      secondary: dark ? '#111827' : '#eef2ff',
+      badgeOkBg: dark ? '#052e16' : '#ecfdf3',
+      badgeOkBorder: dark ? '#16a34a' : '#bbf7d0',
+      badgeAlertBg: dark ? '#3f1d2e' : '#fef2f2',
+      badgeAlertBorder: dark ? '#fca5a5' : '#fecdd3',
+    }
+  }, [colorScheme])
+  const styles = useMemo(() => makeStyles(theme), [theme])
+
+  const loggedIn = token && portal
+  const activeCount = portal?.classes_active || 0
+  const completedCount = 0
+  const totalHours = (portal?.attendance?.recent?.length || 0) * 1
+  const firstEnrollment = portal?.enrollments?.[0]
+  const nextClassName = firstEnrollment?.course?.name || 'Sin curso asignado'
+  const nextClassDate = firstEnrollment?.start_date || '-'
+  const nextClassRoom = firstEnrollment?.course?.room_name || 'Sala'
+  const nextClassImg = makeAbsolute(firstEnrollment?.course?.image_url)
 
   const handleRequestCode = async () => {
     if (!email.trim()) {
@@ -119,9 +155,8 @@ export default function App() {
       setToken(data.access_token)
       setUserEmail(data.student?.email || email)
       setTenantId(data.student?.tenant_id ?? null)
-      setStudentId(data.student?.id || null)
+      await handleLoadPortal(data.access_token, data.student?.tenant_id ?? null)
       Alert.alert('OK', 'Sesión iniciada')
-      await handleLoadPortal(data.access_token, data.student?.tenant_id ?? null, data.student?.id || null)
     } catch (e) {
       Alert.alert('Error', e?.message || 'No se pudo iniciar sesión')
     } finally {
@@ -129,17 +164,16 @@ export default function App() {
     }
   }
 
-  const handleLoadPortal = async (tokenOverride, tenantOverride, studentOverride) => {
+  const handleLoadPortal = async (tokenOverride, tenantOverride) => {
     const tok = tokenOverride || token
     const tid = tenantOverride ?? tenantId
-    const sid = studentOverride ?? studentId
     if (!tok) {
       Alert.alert('Login requerido', 'Inicia sesión primero')
       return
     }
     try {
       setLoadingPortal(true)
-      const data = await fetchPortal(sid, tok, tid)
+      const data = await fetchPortal(tok, tid)
       setPortal(data)
     } catch (e) {
       Alert.alert('Error', e?.message || 'No se pudo cargar portal')
@@ -149,16 +183,6 @@ export default function App() {
       setLoadingPortal(false)
     }
   }
-
-  const loggedIn = token && portal
-
-  const activeCount = portal?.classes_active || 0
-  const completedCount = 0
-  const totalHours = (portal?.attendance?.recent?.length || 0) * 1
-  const firstEnrollment = portal?.enrollments?.[0]
-  const nextClassName = firstEnrollment?.course?.name || 'Sin curso asignado'
-  const nextClassDate = firstEnrollment?.start_date || '-'
-  const nextClassRoom = firstEnrollment?.course?.room_name || 'Sala'
 
   return (
     <SafeAreaView style={styles.container}>
@@ -175,7 +199,7 @@ export default function App() {
             <TextInput
               style={styles.input}
               placeholder="Email"
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={theme.sub}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -192,7 +216,7 @@ export default function App() {
             <TextInput
               style={styles.input}
               placeholder="Código recibido"
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={theme.sub}
               value={code}
               onChangeText={setCode}
               keyboardType="number-pad"
@@ -202,7 +226,7 @@ export default function App() {
 
           {loading && (
             <View style={{ paddingVertical: 12 }}>
-              <ActivityIndicator size="small" color="#7c3aed" />
+              <ActivityIndicator size="small" color={theme.primary} />
             </View>
           )}
         </ScrollView>
@@ -211,8 +235,7 @@ export default function App() {
           <View style={[styles.card, styles.rowBetween, { alignItems: 'center' }]}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {((portal.student?.first_name || '')[0] || '').toUpperCase()}
-                {((portal.student?.last_name || '')[0] || '').toUpperCase()}
+                {initials(portal.student?.first_name, portal.student?.last_name)}
               </Text>
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
@@ -225,15 +248,15 @@ export default function App() {
           </View>
 
           <View style={[styles.rowBetween, { marginBottom: 12 }]}>
-            <View style={[styles.statCard]}>
+            <View style={styles.statCard}>
               <Text style={styles.statNumber}>{activeCount}</Text>
               <Text style={styles.statLabel}>Cursos activos</Text>
             </View>
-            <View style={[styles.statCard]}>
+            <View style={styles.statCard}>
               <Text style={styles.statNumber}>{completedCount}</Text>
               <Text style={styles.statLabel}>Completados</Text>
             </View>
-            <View style={[styles.statCard]}>
+            <View style={styles.statCard}>
               <Text style={styles.statNumber}>{totalHours}h</Text>
               <Text style={styles.statLabel}>Horas de baile</Text>
             </View>
@@ -266,11 +289,15 @@ export default function App() {
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Curso actual</Text>
               <View style={styles.courseCard}>
-                <View style={styles.courseImage}>
-                  <Text style={styles.courseImageText}>
-                    {(portal.enrollments[0]?.course?.name || 'C')[0]}
-                  </Text>
-                </View>
+                {nextClassImg ? (
+                  <Image source={{ uri: nextClassImg }} style={styles.courseImage} />
+                ) : (
+                  <View style={styles.courseImagePlaceholder}>
+                    <Text style={styles.courseImageText}>
+                      {(portal.enrollments[0]?.course?.name || 'C')[0]}
+                    </Text>
+                  </View>
+                )}
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.itemTitle}>{portal.enrollments[0]?.course?.name || '-'}</Text>
                   <Text style={styles.itemSub}>Fin: {portal.enrollments[0]?.end_date || '-'}</Text>
@@ -286,13 +313,25 @@ export default function App() {
                 <Text style={styles.badgeText}>{portal.classes_active || 0}</Text>
               </View>
             </View>
-            {portal.enrollments?.length ? (
+            {loadingPortal && (
+              <View style={{ paddingVertical: 12 }}>
+                <ActivityIndicator size="small" color={theme.primary} />
+              </View>
+            )}
+            {!loadingPortal && (portal.enrollments?.length ? (
               <FlatList
                 data={portal.enrollments}
                 keyExtractor={(it) => String(it.id)}
                 renderItem={({ item }) => (
                   <View style={[styles.listItem, { paddingVertical: 8 }]}>
-                    <View style={{ flex: 1 }}>
+                    {makeAbsolute(item.course?.image_url) ? (
+                      <Image source={{ uri: makeAbsolute(item.course?.image_url) }} style={styles.courseThumb} />
+                    ) : (
+                      <View style={styles.courseThumbPlaceholder}>
+                        <Text style={styles.courseImageText}>{(item.course?.name || 'C')[0]}</Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1, marginLeft: 10 }}>
                       <Text style={styles.itemTitle}>{item.course?.name}</Text>
                       <Text style={styles.itemSub}>
                         {item.start_date ?? '-'} · {item.end_date ?? '-'}
@@ -307,7 +346,7 @@ export default function App() {
               />
             ) : (
               <Text style={styles.itemSub}>Sin inscripciones</Text>
-            )}
+            ))}
           </View>
 
           <View style={styles.card}>
@@ -357,147 +396,171 @@ export default function App() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  header: { marginBottom: 12 },
-  title: { fontSize: 26, fontWeight: '800', color: '#e2e8f0' },
-  subtitle: { fontSize: 14, color: '#94a3b8' },
-  card: {
-    backgroundColor: '#0b1224',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#e5e7eb', marginBottom: 8 },
-  input: {
-    backgroundColor: '#111827',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    color: '#e5e7eb',
-  },
-  primaryButton: {
-    backgroundColor: '#7c3aed',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    shadowColor: '#7c3aed',
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  primaryButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  secondaryButton: {
-    backgroundColor: '#111827',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1f2937',
-  },
-  secondaryButtonText: { color: '#cbd5f5', fontWeight: '700', fontSize: 15 },
-  listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  itemTitle: { fontSize: 15, fontWeight: '600', color: '#e2e8f0' },
-  itemSub: { fontSize: 12, color: '#94a3b8' },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  badgeOk: { backgroundColor: '#052e16', borderColor: '#16a34a' },
-  badgeAlert: { backgroundColor: '#3f1d2e', borderColor: '#fca5a5' },
-  badgeText: { fontSize: 12, fontWeight: '700', color: '#f8fafc' },
-  separator: { height: 10 },
-  itemAmount: { fontSize: 14, fontWeight: '700', color: '#e2e8f0', textAlign: 'right' },
-  itemStatus: { fontSize: 12, textAlign: 'right' },
-  statusOk: { color: '#4ade80' },
-  statusPending: { color: '#f87171' },
-  banner: {
-    width: 220,
-    height: 110,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-  },
-  bannerImg: { width: '100%', height: '100%' },
-  bannerLabel: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 8,
-    backgroundColor: 'rgba(15,23,42,0.45)',
-  },
-  bannerText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  row: { flexDirection: 'row', gap: 8 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  flex1: { flex: 1 },
-  hint: { marginTop: 6, fontSize: 12, color: '#9ca3af' },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
-    backgroundColor: '#1f2937',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  avatarText: { color: '#e2e8f0', fontWeight: '800', fontSize: 18 },
-  courseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  courseImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 14,
-    backgroundColor: '#1d1b2f',
-    borderWidth: 1,
-    borderColor: '#312e81',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  courseImageText: { color: '#a5b4fc', fontWeight: '800', fontSize: 18 },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#111827',
-    paddingVertical: 12,
-    marginRight: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    alignItems: 'center',
-  },
-  statNumber: { color: '#e0f2fe', fontWeight: '800', fontSize: 18 },
-  statLabel: { color: '#94a3b8', fontSize: 12, marginTop: 4 },
-  nextClass: {
-    marginTop: 8,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: '#7c3aed',
-  },
-  nextTitle: { color: '#fff', fontWeight: '800', fontSize: 16 },
-  nextSub: { color: '#e9d5ff', fontSize: 12, marginTop: 2 },
-})
-
+const makeStyles = (t) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.bg,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+    },
+    header: { marginBottom: 12 },
+    title: { fontSize: 26, fontWeight: '800', color: t.text },
+    subtitle: { fontSize: 14, color: t.sub },
+    card: {
+      backgroundColor: t.card,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: t.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.15,
+      shadowRadius: 10,
+      elevation: 4,
+    },
+    cardTitle: { fontSize: 16, fontWeight: '700', color: t.text, marginBottom: 8 },
+    input: {
+      backgroundColor: t.secondary,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: t.border,
+      color: t.text,
+    },
+    primaryButton: {
+      backgroundColor: t.primary,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: 'center',
+      shadowColor: t.primary,
+      shadowOpacity: 0.4,
+      shadowOffset: { width: 0, height: 6 },
+      shadowRadius: 10,
+      elevation: 3,
+    },
+    primaryButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    secondaryButton: {
+      backgroundColor: t.secondary,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    secondaryButtonText: { color: t.text, fontWeight: '700', fontSize: 15 },
+    listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    itemTitle: { fontSize: 15, fontWeight: '600', color: t.text },
+    itemSub: { fontSize: 12, color: t.sub },
+    badge: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    badgeOk: { backgroundColor: t.badgeOkBg, borderColor: t.badgeOkBorder },
+    badgeAlert: { backgroundColor: t.badgeAlertBg, borderColor: t.badgeAlertBorder },
+    badgeText: { fontSize: 12, fontWeight: '700', color: t.text },
+    separator: { height: 10 },
+    itemAmount: { fontSize: 14, fontWeight: '700', color: t.text, textAlign: 'right' },
+    itemStatus: { fontSize: 12, textAlign: 'right' },
+    statusOk: { color: '#4ade80' },
+    statusPending: { color: '#f87171' },
+    banner: {
+      width: 220,
+      height: 110,
+      borderRadius: 12,
+      overflow: 'hidden',
+      marginRight: 10,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    bannerImg: { width: '100%', height: '100%' },
+    bannerLabel: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: 8,
+      backgroundColor: t.isDark ? 'rgba(15,23,42,0.45)' : 'rgba(255,255,255,0.55)',
+    },
+    bannerText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    row: { flexDirection: 'row', gap: 8 },
+    rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    flex1: { flex: 1 },
+    hint: { marginTop: 6, fontSize: 12, color: t.sub },
+    avatar: {
+      width: 52,
+      height: 52,
+      borderRadius: 12,
+      backgroundColor: t.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    avatarText: { color: t.text, fontWeight: '800', fontSize: 18 },
+    courseCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    courseImage: {
+      width: 60,
+      height: 60,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    courseImagePlaceholder: {
+      width: 60,
+      height: 60,
+      borderRadius: 14,
+      backgroundColor: t.secondary,
+      borderWidth: 1,
+      borderColor: t.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    courseImageText: { color: t.text, fontWeight: '800', fontSize: 18 },
+    courseThumb: {
+      width: 46,
+      height: 46,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    courseThumbPlaceholder: {
+      width: 46,
+      height: 46,
+      borderRadius: 12,
+      backgroundColor: t.secondary,
+      borderWidth: 1,
+      borderColor: t.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    statCard: {
+      flex: 1,
+      backgroundColor: t.secondary,
+      paddingVertical: 12,
+      marginRight: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: t.border,
+      alignItems: 'center',
+    },
+    statNumber: { color: t.text, fontWeight: '800', fontSize: 18 },
+    statLabel: { color: t.sub, fontSize: 12, marginTop: 4 },
+    nextClass: {
+      marginTop: 8,
+      padding: 12,
+      borderRadius: 12,
+      backgroundColor: t.primary,
+    },
+    nextTitle: { color: '#fff', fontWeight: '800', fontSize: 16 },
+    nextSub: { color: '#e9d5ff', fontSize: 12, marginTop: 2 },
+  })

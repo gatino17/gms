@@ -10,6 +10,61 @@ import {
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 
+const jsDayFromCourse = (dow) => {
+  if (dow === undefined || dow === null) return null
+  const num = Number(dow)
+  if (Number.isNaN(num)) return null
+  // app usa 0=Lun...6=Dom, JS usa 0=Dom
+  return (num + 1) % 7
+}
+
+const getNextClassDateTime = (enrollment) => {
+  if (!enrollment?.course?.day_of_week || !enrollment.course.start_time) return null
+  const target = jsDayFromCourse(enrollment.course.day_of_week)
+  if (target === null) return null
+  const now = new Date()
+  let d = new Date(now)
+  while (d.getDay() !== target) {
+    d.setDate(d.getDate() + 1)
+  }
+  const [h, m] = String(enrollment.course.start_time).slice(0, 5).split(':').map(Number)
+  const next = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h || 0, m || 0)
+  if (next <= now) {
+    next.setDate(next.getDate() + 7)
+  }
+  return next
+}
+
+const formatCountdown = (date) => {
+  const now = new Date()
+  const diff = date - now
+  if (diff <= 0) return 'en breve'
+  const mins = Math.floor(diff / 60000)
+  const hours = Math.floor(mins / 60)
+  const remMins = mins % 60
+  if (hours === 0) return `${remMins} min`
+  return `${hours}h ${remMins}m`
+}
+
+const computeStreak = (recent = []) => {
+  if (!recent.length) return 0
+  const dates = [...new Set(recent.map((r) => r.attended_at?.slice(0, 10)).filter(Boolean))].sort().reverse()
+  if (!dates.length) return 0
+  let streak = 1
+  let prev = new Date(dates[0])
+  for (let i = 1; i < dates.length; i++) {
+    const cur = new Date(dates[i])
+    const diffDays = Math.round((prev - cur) / 86400000)
+    if (diffDays === 1) {
+      streak += 1
+      prev = cur
+    } else {
+      break
+    }
+  }
+  return streak
+}
+
 export default function HomeTab({
   portal,
   styles,
@@ -28,6 +83,11 @@ export default function HomeTab({
   initials,
   banners,
 }) {
+  const nextClassDateTime = getNextClassDateTime(firstEnrollment)
+  const countdown = nextClassDateTime ? formatCountdown(nextClassDateTime) : null
+  const streak = computeStreak(portal.attendance?.recent || [])
+  const attendancePercent = portal.attendance?.percent ?? 0
+
   return (
     <>
       <View style={[styles.card, styles.rowBetween, { alignItems: 'center' }]}>
@@ -76,6 +136,33 @@ export default function HomeTab({
             Inicio: <Text style={styles.nextStrong}>{nextClassDate}{nextClassTime ? ` a las ${nextClassTime}` : ''}</Text>
           </Text>
         </LinearGradient>
+        {countdown ? (
+          <View style={styles.countdownRow}>
+            <View style={styles.countdownBadge}>
+              <Ionicons name="time-outline" size={16} color="#f59e0b" />
+              <Text style={styles.countdownText}>Comienza en {countdown}</Text>
+            </View>
+            <View style={styles.confirmBtn}>
+              <Text style={styles.confirmBtnText}>Confirmar asistencia</Text>
+            </View>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Racha de asistencia</Text>
+        <View style={styles.rowBetween}>
+          <View>
+            <Text style={styles.itemTitle}>{streak} dias seguidos</Text>
+            <Text style={styles.itemSub}>Asistencia acumulada: {attendancePercent}%</Text>
+          </View>
+          <View style={[styles.badge, streak > 0 ? styles.badgeOk : styles.badgeAlert]}>
+            <Text style={styles.badgeText}>{streak > 0 ? 'En racha' : 'Sin racha'}</Text>
+          </View>
+        </View>
+        <View style={styles.courseProgressTrack}>
+          <View style={[styles.courseProgressBar, { width: `${Math.min(100, attendancePercent)}%` }]} />
+        </View>
       </View>
 
       <View style={styles.card}>

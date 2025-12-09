@@ -15,6 +15,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Linking from 'expo-linking'
 
 const INSTAGRAM_URL = 'https://www.instagram.com/puertomonttsalsa_oficial/'
+const TIKTOK_URL = 'https://www.tiktok.com/@puertomonttsalsa'
+const FACEBOOK_URL = 'https://www.facebook.com/puertomonttsalsa'
 
 const jsDayFromCourse = (dow) => {
   if (dow === undefined || dow === null) return null
@@ -203,10 +205,6 @@ export default function HomeTab({
             <View style={styles.confirmBtn}>
               <Text style={styles.confirmBtnText}>Confirmar asistencia</Text>
             </View>
-            <TouchableOpacity style={styles.socialBtn} onPress={() => Linking.openURL(INSTAGRAM_URL)}>
-              <Ionicons name="logo-instagram" size={16} color="#fff" />
-              <Text style={styles.socialBtnText}>Instagram</Text>
-            </TouchableOpacity>
           </View>
         ) : null}
       </View>
@@ -239,6 +237,24 @@ export default function HomeTab({
             </View>
           ))}
         </ScrollView>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Redes</Text>
+        <View style={[styles.row, { justifyContent: 'space-between', marginTop: 6 }]}>
+          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#fdf2f8' }]} onPress={() => Linking.openURL(INSTAGRAM_URL)}>
+            <Ionicons name="logo-instagram" size={18} color="#ec4899" />
+            <Text style={styles.socialPillText}>Instagram</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#f0f9ff' }]} onPress={() => Linking.openURL(TIKTOK_URL)}>
+            <Ionicons name="logo-tiktok" size={18} color="#0ea5e9" />
+            <Text style={styles.socialPillText}>TikTok</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#eff6ff' }]} onPress={() => Linking.openURL(FACEBOOK_URL)}>
+            <Ionicons name="logo-facebook" size={18} color="#2563eb" />
+            <Text style={styles.socialPillText}>Facebook</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {portal.enrollments?.length ? (

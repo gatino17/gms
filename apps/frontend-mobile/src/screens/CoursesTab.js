@@ -18,7 +18,10 @@ export default function CoursesTab({ portal, styles, theme, formatSchedule, form
           keyExtractor={(it) => String(it.id)}
           scrollEnabled={false}
           renderItem={({ item }) => {
-            const progress = Math.max(0, Math.min(100, Number(item.progress_percent ?? item.attendance_percent ?? 0)))
+            const progress = Math.max(
+              0,
+              Math.min(100, Number(item.progress_percent ?? item.attendance_percent ?? portal.attendance?.percent ?? 0)),
+            )
             return (
               <View style={[styles.activeCard, { marginBottom: 10 }]}>
                 <View style={styles.activeRow}>

@@ -105,13 +105,13 @@ const formatDate = (iso) => {
 const dayName = (value) => {
   if (value === undefined || value === null) return ''
   const map = {
-    0: 'Dom',
-    1: 'Lun',
-    2: 'Mar',
-    3: 'Mie',
-    4: 'Jue',
-    5: 'Vie',
-    6: 'Sab',
+    0: 'Lun',
+    1: 'Mar',
+    2: 'Mie',
+    3: 'Jue',
+    4: 'Vie',
+    5: 'Sab',
+    6: 'Dom',
     Domingo: 'Dom',
     Lunes: 'Lun',
     Martes: 'Mar',

@@ -140,7 +140,10 @@ export default function HomeTab({
             keyExtractor={(it) => String(it.id)}
             scrollEnabled={false}
             renderItem={({ item }) => {
-              const progress = Math.max(0, Math.min(100, Number(item.progress_percent ?? item.attendance_percent ?? 0)))
+              const progress = Math.max(
+                0,
+                Math.min(100, Number(item.progress_percent ?? item.attendance_percent ?? portal.attendance?.percent ?? 0)),
+              )
               return (
                 <View style={styles.activeCard}>
                   <View style={styles.activeRow}>

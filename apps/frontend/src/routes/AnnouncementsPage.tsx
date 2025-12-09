@@ -14,9 +14,19 @@ type Announcement = {
 export default function AnnouncementsPage() {
   const [items, setItems] = useState<Announcement[]>([])
   const [draft, setDraft] = useState<Partial<Announcement>>({})
+  const [error, setError] = useState<string | null>(null)
+  const MAX_ITEMS = 4
 
   const handleSave = () => {
-    if (!draft.title) return
+    setError(null)
+    if (!draft.title) {
+      setError('El título es obligatorio')
+      return
+    }
+    if (items.length >= MAX_ITEMS) {
+      setError(`Solo se permiten ${MAX_ITEMS} avisos. Elimina uno para agregar otro.`)
+      return
+    }
     const next: Announcement = {
       id: Date.now(),
       title: draft.title,
@@ -31,6 +41,10 @@ export default function AnnouncementsPage() {
     setDraft({})
   }
 
+  const handleDelete = (id: number) => {
+    setItems((prev) => prev.filter((a) => a.id !== id))
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -40,6 +54,8 @@ export default function AnnouncementsPage() {
         </div>
         <span className="text-xs text-gray-500">Futuro: conectar a API</span>
       </div>
+
+      {error && <div className="px-3 py-2 rounded bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
 
       <div className="bg-white rounded-lg border shadow p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-2">
@@ -110,9 +126,10 @@ export default function AnnouncementsPage() {
           <button
             type="button"
             onClick={handleSave}
-            className="px-4 py-2 rounded bg-fuchsia-600 text-white font-semibold shadow hover:bg-fuchsia-700"
+            className="px-4 py-2 rounded bg-fuchsia-600 text-white font-semibold shadow hover:bg-fuchsia-700 disabled:opacity-60"
+            disabled={items.length >= MAX_ITEMS}
           >
-            Guardar en borrador
+            Guardar en borrador ({items.length}/{MAX_ITEMS})
           </button>
         </div>
       </div>
@@ -138,6 +155,15 @@ export default function AnnouncementsPage() {
                 </div>
                 {a.body && <p className="text-sm text-gray-700">{a.body}</p>}
                 {a.link_url && <p className="text-xs text-fuchsia-700 truncate mt-1">{a.link_url}</p>}
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(a.id)}
+                    className="px-3 py-1 text-sm rounded border border-red-200 text-red-600 hover:bg-red-50"
+                  >
+                    Eliminar
+                  </button>
+                </div>
               </div>
             ))}
           </div>

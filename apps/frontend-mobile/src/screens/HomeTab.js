@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -9,6 +9,10 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as Linking from 'expo-linking'
+
+const INSTAGRAM_URL = 'https://www.instagram.com/puertomonttsalsa_oficial/'
 
 const jsDayFromCourse = (dow) => {
   if (dow === undefined || dow === null) return null
@@ -86,6 +90,45 @@ export default function HomeTab({
   lastSync,
   t,
 }) {
+  const [notes, setNotes] = useState({})
+  const [drafts, setDrafts] = useState({})
+  const [editingId, setEditingId] = useState(null)
+
+  useEffect(() => {
+    const loadNotes = async () => {
+      try {
+        if (!portal.enrollments?.length) return
+        const entries = await Promise.all(
+          portal.enrollments.map(async (e) => {
+            const val = await AsyncStorage.getItem(`course_note_${e.id}`)
+            return [e.id, val || '']
+          })
+        )
+        setNotes(Object.fromEntries(entries))
+        setDrafts(Object.fromEntries(entries))
+      } catch (e) {
+        console.log('[notes] load error', e)
+      }
+    }
+    loadNotes()
+  }, [portal.enrollments])
+
+  const saveNote = async (courseId) => {
+    try {
+      const txt = drafts[courseId] || ''
+      await AsyncStorage.setItem(`course_note_${courseId}`, txt)
+      setNotes((prev) => ({ ...prev, [courseId]: txt }))
+      setEditingId(null)
+    } catch (e) {
+      console.log('[notes] save error', e)
+    }
+  }
+
+  const openResource = (course) => {
+    const url = course?.playlist_url || course?.resource_url || INSTAGRAM_URL
+    Linking.openURL(url).catch((err) => console.log('open url error', err))
+  }
+
   const nextClassDateTime = getNextClassDateTime(portal.enrollments?.[0])
   const countdown = nextClassDateTime ? formatCountdown(nextClassDateTime) : null
   const streak = computeStreak(portal.attendance?.recent || [])
@@ -158,6 +201,10 @@ export default function HomeTab({
             <View style={styles.confirmBtn}>
               <Text style={styles.confirmBtnText}>Confirmar asistencia</Text>
             </View>
+            <TouchableOpacity style={styles.socialBtn} onPress={() => Linking.openURL(INSTAGRAM_URL)}>
+              <Ionicons name="logo-instagram" size={16} color="#fff" />
+              <Text style={styles.socialBtnText}>Instagram</Text>
+            </TouchableOpacity>
           </View>
         ) : null}
       </View>
@@ -279,6 +326,40 @@ export default function HomeTab({
                     <View style={styles.courseProgressTrack}>
                       <View style={[styles.courseProgressBar, { width: `${progress || 0}%` }]} />
                     </View>
+                    <View style={[styles.rowBetween, { marginTop: 8 }]}>
+                      <TouchableOpacity
+                        style={styles.resourceBtn}
+                        onPress={() => openResource(item.course)}
+                      >
+                        <Ionicons name="musical-notes-outline" size={14} color="#8b5cf6" />
+                        <Text style={styles.resourceBtnText}>Recursos</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.resourceBtn, styles.noteBtn]}
+                        onPress={() => setEditingId(editingId === item.id ? null : item.id)}
+                      >
+                        <Ionicons name="create-outline" size={14} color="#0f172a" />
+                        <Text style={styles.resourceBtnText}>Notas</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {editingId === item.id ? (
+                      <View style={{ marginTop: 8 }}>
+                        <TextInput
+                          style={styles.noteInput}
+                          placeholder="Escribe tu nota..."
+                          placeholderTextColor={theme.sub}
+                          value={drafts[item.id] || ''}
+                          onChangeText={(txt) => setDrafts((prev) => ({ ...prev, [item.id]: txt }))}
+                          multiline
+                        />
+                        <TouchableOpacity style={styles.saveNoteBtn} onPress={() => saveNote(item.id)}>
+                          <Text style={styles.saveNoteText}>Guardar nota</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
+                    {notes[item.id] ? (
+                      <Text style={[styles.itemSub, { marginTop: 6 }]}>Nota: {notes[item.id]}</Text>
+                    ) : null}
                   </View>
                 </View>
               )

@@ -102,8 +102,20 @@ function SummaryPill({ label, amount, icon, styles, variant }) {
   )
 }
 
+const periodLabel = (period, date) => {
+  if (period) return period
+  if (!date) return null
+  // Construir algo tipo "Periodo: MM/YYYY"
+  const d = new Date(date)
+  if (Number.isNaN(d.getTime())) return null
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${mm}/${yyyy}`
+}
+
 function PaymentCard({ title, amount, date, status, statusVariant, method, reference, period, styles, formatDate }) {
   const isPending = statusVariant === 'pending'
+  const periodText = periodLabel(period, date)
   return (
     <View style={styles.payCard}>
       <View style={[styles.rowBetween, { alignItems: 'center' }]}>
@@ -127,9 +139,9 @@ function PaymentCard({ title, amount, date, status, statusVariant, method, refer
           </View>
         </View>
       </View>
-      {period ? (
+      {periodText ? (
         <Text style={[styles.itemSub, { marginTop: 6 }]}>
-          Periodo: {period}
+          Periodo: {periodText}
         </Text>
       ) : null}
       {method || reference ? (

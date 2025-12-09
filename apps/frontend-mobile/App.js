@@ -125,10 +125,11 @@ async function fetchPortal(token, tenantId) {
   return res.json()
 }
 
-async function fetchAnnouncementsApi(tenantId) {
+async function fetchAnnouncementsApi(tenantId, token) {
   const res = await fetch(`${BASE_URL}/api/pms/announcements`, {
     headers: {
       'X-Tenant-ID': String(tenantId ?? ''),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   })
   if (!res.ok) {
@@ -379,7 +380,7 @@ export default function App() {
       await AsyncStorage.setItem('portal_cache', JSON.stringify({ data, lastSync: syncNow }))
       setRetryCount(0)
       try {
-        const anns = await fetchAnnouncementsApi(data.student?.tenant_id ?? tid)
+        const anns = await fetchAnnouncementsApi(data.student?.tenant_id ?? tid, tok)
         setAnnouncements(Array.isArray(anns) ? anns : [])
       } catch (e) {
         console.log('[announcements] fetch error', e)

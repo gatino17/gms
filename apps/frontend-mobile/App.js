@@ -18,6 +18,7 @@ import HomeTab from './src/screens/HomeTab'
 import ProfileTab from './src/screens/ProfileTab'
 import PlaceholderTab from './src/screens/PlaceholderTab'
 import CoursesTab from './src/screens/CoursesTab'
+import PaymentsTab from './src/screens/PaymentsTab'
 import NavBar from './src/components/NavBar'
 
 const hostFromExpo = Constants.expoConfig?.hostUri?.split(':')?.[0]
@@ -266,7 +267,13 @@ export default function App() {
       )
     }
     if (activeTab === 'payments') {
-      return <PlaceholderTab title="Pagos" description="Seccion de pagos en construccion." styles={styles} />
+      return (
+        <PaymentsTab
+          portal={portal}
+          styles={styles}
+          formatDate={formatDate}
+        />
+      )
     }
     return (
       <HomeTab

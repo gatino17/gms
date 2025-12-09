@@ -137,6 +137,10 @@ export default function HomeTab({
   const countdown = nextClassDateTime ? formatCountdown(nextClassDateTime) : null
   const streak = computeStreak(portal.attendance?.recent || [])
   const attendancePercent = portal.attendance?.percent ?? 0
+  const streakRecord = Math.max(streak, portal.attendance?.record ?? streak)
+  const progress30 = Math.min(100, Math.round((streak / 30) * 100))
+  const monthClasses = portal.attendance?.recent?.length ?? 0
+  const totalClasses = portal.attendance?.total ?? monthClasses
 
   return (
     <>
@@ -209,20 +213,46 @@ export default function HomeTab({
         ) : null}
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Racha de asistencia</Text>
+      <View style={styles.streakCard}>
         <View style={styles.rowBetween}>
-          <View>
-            <Text style={styles.itemTitle}>{streak} dias seguidos</Text>
-            <Text style={styles.itemSub}>Asistencia acumulada: {attendancePercent}%</Text>
+          <View style={styles.streakBadge}>
+            <Ionicons name="flame-outline" size={18} color="#ea580c" />
+            <Text style={styles.streakBadgeText}>Racha actual</Text>
           </View>
-          <View style={[styles.badge, streak > 0 ? styles.badgeOk : styles.badgeAlert]}>
-            <Text style={styles.badgeText}>{streak > 0 ? 'En racha' : 'Sin racha'}</Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.itemSub}>R\u00e9cord</Text>
+            <Text style={[styles.itemTitle, { color: '#ef4444' }]}>{streakRecord} d\u00edas</Text>
           </View>
         </View>
-        <View style={styles.courseProgressTrack}>
-          <View style={[styles.courseProgressBar, { width: `${Math.min(100, attendancePercent)}%` }]} />
+        <View style={styles.rowBetween}>
+          <Text style={styles.streakNumber}>{streak} d\u00edas</Text>
+          <Text style={styles.itemSub}>{attendancePercent}% asistencia</Text>
         </View>
+        <View style={styles.streakProgressTrack}>
+          <View style={[styles.streakProgressBar, { width: `${progress30}%` }]} />
+        </View>
+        <View style={[styles.rowBetween, { marginTop: 8 }]}>
+          <View style={{ flex: 1, alignItems: 'flex-start' }}>
+            <Text style={styles.itemSub}>Este mes</Text>
+            <Text style={styles.streakStat}>{monthClasses} clases</Text>
+          </View>
+          <View style={{ width: 1, height: 32, backgroundColor: '#e5e7eb' }} />
+          <View style={{ flex: 1, alignItems: 'flex-end' }}>
+            <Text style={styles.itemSub}>Total</Text>
+            <Text style={styles.streakStat}>{totalClasses} clases</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.tipCard}>
+        <View style={styles.tipHeader}>
+          <Ionicons name="bulb-outline" size={18} color="#f43f5e" />
+          <Text style={styles.tipTitle}>Tip del d\u00eda</Text>
+        </View>
+        <Text style={styles.tipText}>
+          \u201cLa conexi\u00f3n con tu pareja comienza con la escucha. El baile es una conversaci\u00f3n sin palabras.\u201d
+        </Text>
+        <Text style={styles.tipAuthor}>— Equipo GMS</Text>
       </View>
 
       <View style={styles.card}>

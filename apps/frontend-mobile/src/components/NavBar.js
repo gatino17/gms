@@ -2,17 +2,17 @@ import React from 'react'
 import { Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
-const TABS = [
-  { key: 'home', label: 'Inicio', icon: 'home-outline' },
-  { key: 'courses', label: 'Cursos', icon: 'book-outline' },
-  { key: 'payments', label: 'Pagos', icon: 'wallet-outline' },
-  { key: 'profile', label: 'Perfil', icon: 'person-circle-outline' },
+const BASE_TABS = [
+  { key: 'home', label: 'Inicio', icon: 'home-outline', tKey: 'home' },
+  { key: 'courses', label: 'Cursos', icon: 'book-outline', tKey: 'courses' },
+  { key: 'payments', label: 'Pagos', icon: 'wallet-outline', tKey: 'payments' },
+  { key: 'profile', label: 'Perfil', icon: 'person-circle-outline', tKey: 'profile' },
 ]
 
-export default function NavBar({ activeTab, onChange, styles, theme }) {
+export default function NavBar({ activeTab, onChange, styles, theme, t }) {
   return (
     <View style={styles.navBar}>
-      {TABS.map((tab) => {
+      {BASE_TABS.map((tab) => {
         const active = activeTab === tab.key
         return (
           <TouchableOpacity
@@ -27,7 +27,7 @@ export default function NavBar({ activeTab, onChange, styles, theme }) {
                 color={active ? '#ec4899' : theme.text}
               />
             </View>
-            <Text style={[styles.navLabel, active && styles.navLabelActive]}>{tab.label}</Text>
+            <Text style={[styles.navLabel, active && styles.navLabelActive]}>{t ? t(tab.tKey) : tab.label}</Text>
           </TouchableOpacity>
         )
       })}

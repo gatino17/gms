@@ -12,7 +12,7 @@ const methodLabel = (method) => {
   return method
 }
 
-export default function PaymentsTab({ portal, styles, formatDate }) {
+export default function PaymentsTab({ portal, styles, formatDate, t }) {
   const payments = portal.payments?.recent || []
   const pending = portal.payments?.pending || []
   const pendingTotal = pending.reduce((s, p) => s + Number(p.amount || 0), 0)
@@ -22,7 +22,7 @@ export default function PaymentsTab({ portal, styles, formatDate }) {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>Mis Pagos</Text>
+      <Text style={styles.cardTitle}>{t ? t('pay_title') : 'Mis Pagos'}</Text>
 
       <View style={styles.rowBetween}>
         <SummaryPill

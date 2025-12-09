@@ -3,12 +3,12 @@ import { FlatList, Image, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 
-export default function CoursesTab({ portal, styles, theme, formatSchedule, formatDate, makeAbsolute }) {
+export default function CoursesTab({ portal, styles, theme, formatSchedule, formatDate, makeAbsolute, t }) {
   const data = portal.enrollments || []
   return (
     <View style={styles.card}>
       <View style={styles.rowBetween}>
-        <Text style={styles.cardTitle}>Cursos</Text>
+        <Text style={styles.cardTitle}>{t ? t('courses_title') : 'Cursos'}</Text>
         <View style={[styles.badge, data.length ? styles.badgeOk : styles.badgeAlert]}>
           <Text style={styles.badgeText}>{data.length || 0}</Text>
         </View>

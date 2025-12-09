@@ -25,6 +25,63 @@ const hostFromExpo = Constants.expoConfig?.hostUri?.split(':')?.[0]
 const fallbackBase = hostFromExpo ? `http://${hostFromExpo}:8002` : 'http://127.0.0.1:8002'
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || fallbackBase
 
+const STRINGS = {
+  es: {
+    home: 'Inicio',
+    courses: 'Cursos',
+    payments: 'Pagos',
+    profile: 'Perfil',
+    home_title: 'Mi Estudio',
+    login_title: 'Iniciar sesión',
+    send_code: 'Enviar código',
+    enter: 'Entrar',
+    code_received: 'Código recibido',
+    next_class: 'Próxima clase',
+    news: 'Novedades',
+    current_course: 'Curso actual',
+    active_classes: 'Clases activas',
+    attendance_recent: 'Asistencia reciente',
+    payments_recent: 'Pagos recientes',
+    confirm_attendance: 'Confirmar asistencia',
+    starts_in: 'Comienza en',
+    attendance_streak: 'Racha de asistencia',
+    streak_on: 'En racha',
+    streak_off: 'Sin racha',
+    quick_feedback: 'Tu feedback',
+    offline: 'Modo sin conexión',
+    last_sync: 'Última sincronización',
+    pay_title: 'Mis Pagos',
+    courses_title: 'Mis Cursos',
+  },
+  en: {
+    home: 'Home',
+    courses: 'Courses',
+    payments: 'Payments',
+    profile: 'Profile',
+    home_title: 'My Studio',
+    login_title: 'Sign in',
+    send_code: 'Send code',
+    enter: 'Enter',
+    code_received: 'Code received',
+    next_class: 'Next class',
+    news: 'News',
+    current_course: 'Current course',
+    active_classes: 'Active classes',
+    attendance_recent: 'Recent attendance',
+    payments_recent: 'Recent payments',
+    confirm_attendance: 'Confirm attendance',
+    starts_in: 'Starts in',
+    attendance_streak: 'Attendance streak',
+    streak_on: 'On streak',
+    streak_off: 'No streak',
+    quick_feedback: 'Your feedback',
+    offline: 'Offline mode',
+    last_sync: 'Last sync',
+    pay_title: 'My Payments',
+    courses_title: 'My Courses',
+  },
+}
+
 const BANNERS = [
   { id: 'b1', title: 'Salsa Night', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=60' },
   { id: 'b2', title: 'Bachata Weekend', img: 'https://images.unsplash.com/photo-1531259683007-016a7b628fc3?auto=format&fit=crop&w=800&q=60' },
@@ -146,10 +203,15 @@ export default function App() {
   const [codeSent, setCodeSent] = useState(false)
   const [loadingPortal, setLoadingPortal] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
+  const [themeMode, setThemeMode] = useState('auto') // auto | light | dark
+  const [lang, setLang] = useState('es')
+  const [isOffline, setIsOffline] = useState(false)
+  const [lastSync, setLastSync] = useState(null)
+  const [feedback, setFeedback] = useState(null)
 
   const colorScheme = useColorScheme()
   const theme = useMemo(() => {
-    const dark = colorScheme !== 'light'
+    const dark = themeMode === 'auto' ? colorScheme !== 'light' : themeMode === 'dark'
     return {
       isDark: dark,
       bg: dark ? '#0f172a' : '#f8fafc',
@@ -164,8 +226,9 @@ export default function App() {
       badgeAlertBg: dark ? '#3f1d2e' : '#fef2f2',
       badgeAlertBorder: dark ? '#fca5a5' : '#fecdd3',
     }
-  }, [colorScheme])
+  }, [colorScheme, themeMode])
   const styles = useMemo(() => makeStyles(theme), [theme])
+  const t = (key) => STRINGS[lang]?.[key] || STRINGS.es[key] || key
 
   const loggedIn = token && portal
   const activeCount = portal?.classes_active || 0
@@ -232,10 +295,12 @@ export default function App() {
       setLoadingPortal(true)
       const data = await fetchPortal(tok, tid)
       setPortal(data)
+      setIsOffline(false)
+      setLastSync(new Date().toISOString())
     } catch (e) {
       Alert.alert('Error', e?.message || 'No se pudo cargar portal')
       console.log('[portal] error', e)
-      setPortal(null)
+      setIsOffline(true)
     } finally {
       setLoadingPortal(false)
     }
@@ -251,6 +316,11 @@ export default function App() {
           theme={theme}
           formatDate={formatDate}
           initials={initials}
+          themeMode={themeMode}
+          setThemeMode={setThemeMode}
+          lang={lang}
+          setLang={setLang}
+          t={t}
         />
       )
     }
@@ -263,6 +333,7 @@ export default function App() {
           formatSchedule={formatSchedule}
           formatDate={formatDate}
           makeAbsolute={makeAbsolute}
+          t={t}
         />
       )
     }
@@ -272,6 +343,7 @@ export default function App() {
           portal={portal}
           styles={styles}
           formatDate={formatDate}
+          t={t}
         />
       )
     }
@@ -293,6 +365,11 @@ export default function App() {
         formatDate={formatDate}
         initials={initials}
         banners={BANNERS}
+        isOffline={isOffline}
+        lastSync={lastSync}
+        t={t}
+        feedback={feedback}
+        setFeedback={setFeedback}
       />
     )
   }
@@ -303,12 +380,12 @@ export default function App() {
       {!loggedIn ? (
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={styles.header}>
-            <Text style={styles.title}>Mi Estudio</Text>
+            <Text style={styles.title}>{t('home_title')}</Text>
             <Text style={styles.subtitle}>Portal alumno - version movil</Text>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Iniciar sesion</Text>
+            <Text style={styles.cardTitle}>{t('login_title')}</Text>
             <TextInput
               style={styles.input}
               placeholder="Email"
@@ -320,15 +397,15 @@ export default function App() {
             />
             <View style={styles.row}>
               <TouchableOpacity style={[styles.secondaryButton, styles.flex1]} onPress={handleRequestCode} disabled={loading}>
-                <Text style={styles.secondaryButtonText}>{loading ? '...' : 'Enviar codigo'}</Text>
+                <Text style={styles.secondaryButtonText}>{loading ? '...' : t('send_code')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.primaryButton, styles.flex1]} onPress={handleLogin} disabled={loading || !codeSent}>
-                <Text style={styles.primaryButtonText}>{loading ? '...' : 'Entrar'}</Text>
+                <Text style={styles.primaryButtonText}>{loading ? '...' : t('enter')}</Text>
               </TouchableOpacity>
             </View>
             <TextInput
               style={styles.input}
-              placeholder="Codigo recibido"
+              placeholder={t('code_received')}
               placeholderTextColor={theme.sub}
               value={code}
               onChangeText={setCode}
@@ -349,7 +426,7 @@ export default function App() {
             {renderTab()}
           </ScrollView>
 
-          <NavBar activeTab={activeTab} onChange={setActiveTab} styles={styles} theme={theme} />
+          <NavBar activeTab={activeTab} onChange={setActiveTab} styles={styles} theme={theme} t={t} />
         </View>
       )}
     </SafeAreaView>
@@ -835,4 +912,32 @@ const makeStyles = (t) =>
     payStatusDotPending: { backgroundColor: '#f59e0b' },
     payStatusDotPaid: { backgroundColor: '#22c55e' },
     payStatusText: { fontSize: 12, fontWeight: '700', color: '#0f172a' },
+    offlineRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    offlineBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: '#fef3c7',
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderWidth: 1,
+      borderColor: '#fcd34d',
+    },
+    offlineText: { color: '#b45309', fontWeight: '700', fontSize: 12 },
+    feedbackBtn: {
+      flex: 1,
+      backgroundColor: t.secondary,
+      paddingVertical: 12,
+      borderRadius: 12,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: t.border,
+      marginHorizontal: 4,
+    },
+    feedbackBtnActive: {
+      borderColor: '#8b5cf6',
+      backgroundColor: t.isDark ? '#1e1b4b' : '#f3e8ff',
+    },
+    feedbackEmoji: { fontSize: 22 },
   })

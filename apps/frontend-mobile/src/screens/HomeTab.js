@@ -5,6 +5,7 @@ import {
   Image,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -82,8 +83,13 @@ export default function HomeTab({
   formatDate,
   initials,
   banners,
+  isOffline,
+  lastSync,
+  t,
+  feedback,
+  setFeedback,
 }) {
-  const nextClassDateTime = getNextClassDateTime(firstEnrollment)
+  const nextClassDateTime = getNextClassDateTime(portal.enrollments?.[0])
   const countdown = nextClassDateTime ? formatCountdown(nextClassDateTime) : null
   const streak = computeStreak(portal.attendance?.recent || [])
   const attendancePercent = portal.attendance?.percent ?? 0
@@ -118,6 +124,16 @@ export default function HomeTab({
           <Text style={styles.statLabel}>Horas de baile</Text>
         </View>
       </View>
+
+      {isOffline ? (
+        <View style={styles.offlineRow}>
+          <View style={styles.offlineBadge}>
+            <Ionicons name="cloud-offline-outline" size={16} color="#b45309" />
+            <Text style={styles.offlineText}>{t('offline')}</Text>
+          </View>
+          {lastSync ? <Text style={styles.itemSub}>{t('last_sync')}: {formatDate(lastSync)}</Text> : null}
+        </View>
+      ) : null}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Proxima clase</Text>
@@ -163,6 +179,22 @@ export default function HomeTab({
         <View style={styles.courseProgressTrack}>
           <View style={[styles.courseProgressBar, { width: `${Math.min(100, attendancePercent)}%` }]} />
         </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('quick_feedback')}</Text>
+        <View style={styles.rowBetween}>
+          {['👍', '😐', '👎'].map((emoji) => (
+            <TouchableOpacity
+              key={emoji}
+              style={[styles.feedbackBtn, feedback === emoji && styles.feedbackBtnActive]}
+              onPress={() => setFeedback(emoji)}
+            >
+              <Text style={styles.feedbackEmoji}>{emoji}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {feedback ? <Text style={[styles.itemSub, { marginTop: 8 }]}>Guardado: {feedback}</Text> : null}
       </View>
 
       <View style={styles.card}>

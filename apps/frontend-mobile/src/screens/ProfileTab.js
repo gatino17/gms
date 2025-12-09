@@ -3,7 +3,7 @@ import { Text, TouchableOpacity, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 
-export default function ProfileTab({ portal, styles, theme, formatDate, initials }) {
+export default function ProfileTab({ portal, styles, theme, formatDate, initials, themeMode, setThemeMode, lang, setLang, t }) {
   const student = portal.student || {}
   const joined = student.joined_at ? formatDate(student.joined_at) : '--'
   const birth = student.birthdate ? formatDate(student.birthdate) : '--'
@@ -74,14 +74,22 @@ export default function ProfileTab({ portal, styles, theme, formatDate, initials
       </View>
 
       <View style={styles.profileCard}>
-        <Text style={styles.cardTitle}>Cuenta</Text>
-        <TouchableOpacity style={styles.accountRow} activeOpacity={0.8}>
-          <Ionicons name="mail-outline" size={18} color={theme.sub} />
-          <Text style={styles.accountText}>Cambiar correo electronico</Text>
+        <Text style={styles.cardTitle}>Preferencias</Text>
+        <TouchableOpacity
+          style={styles.accountRow}
+          activeOpacity={0.8}
+          onPress={() => setThemeMode(themeMode === 'light' ? 'dark' : themeMode === 'dark' ? 'auto' : 'light')}
+        >
+          <Ionicons name="moon-outline" size={18} color={theme.sub} />
+          <Text style={styles.accountText}>Tema: {themeMode}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.accountRow} activeOpacity={0.8}>
-          <Ionicons name="call-outline" size={18} color={theme.sub} />
-          <Text style={styles.accountText}>Actualizar telefono</Text>
+        <TouchableOpacity
+          style={styles.accountRow}
+          activeOpacity={0.8}
+          onPress={() => setLang(lang === 'es' ? 'en' : 'es')}
+        >
+          <Ionicons name="language-outline" size={18} color={theme.sub} />
+          <Text style={styles.accountText}>Idioma: {lang === 'es' ? 'Español' : 'English'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.logoutButton} activeOpacity={0.9}>
           <Ionicons name="log-out-outline" size={18} color="#fff" />

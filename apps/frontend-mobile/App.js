@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Notifications from 'expo-notifications'
+import { LinearGradient } from 'expo-linear-gradient'
 
 import HomeTab from './src/screens/HomeTab'
 import ProfileTab from './src/screens/ProfileTab'

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import Constants from 'expo-constants'
 import {
@@ -13,6 +13,7 @@ import {
   useColorScheme,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import HomeTab from './src/screens/HomeTab'
 import ProfileTab from './src/screens/ProfileTab'
@@ -208,6 +209,7 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false)
   const [lastSync, setLastSync] = useState(null)
   const [feedback, setFeedback] = useState(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   const colorScheme = useColorScheme()
   const theme = useMemo(() => {
@@ -284,6 +286,24 @@ export default function App() {
     }
   }
 
+  // Cargar cache inicial
+  useEffect(() => {
+    const loadCache = async () => {
+      try {
+        const cached = await AsyncStorage.getItem('portal_cache')
+        if (cached) {
+          const { data, lastSync: cachedSync } = JSON.parse(cached)
+          setPortal(data)
+          setLastSync(cachedSync || null)
+          setIsOffline(true)
+        }
+      } catch (err) {
+        console.log('[cache] read error', err)
+      }
+    }
+    loadCache()
+  }, [])
+
   const handleLoadPortal = async (tokenOverride, tenantOverride) => {
     const tok = tokenOverride || token
     const tid = tenantOverride ?? tenantId
@@ -296,11 +316,19 @@ export default function App() {
       const data = await fetchPortal(tok, tid)
       setPortal(data)
       setIsOffline(false)
-      setLastSync(new Date().toISOString())
+      const syncNow = new Date().toISOString()
+      setLastSync(syncNow)
+      await AsyncStorage.setItem('portal_cache', JSON.stringify({ data, lastSync: syncNow }))
+      setRetryCount(0)
     } catch (e) {
       Alert.alert('Error', e?.message || 'No se pudo cargar portal')
       console.log('[portal] error', e)
       setIsOffline(true)
+      // reintento simple
+      if (retryCount < 2) {
+        setRetryCount((c) => c + 1)
+        setTimeout(() => handleLoadPortal(tok, tid), 3000 * (retryCount + 1))
+      }
     } finally {
       setLoadingPortal(false)
     }

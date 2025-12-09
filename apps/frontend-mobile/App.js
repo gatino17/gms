@@ -268,7 +268,6 @@ export default function App() {
   const [lastSync, setLastSync] = useState(null)
   const [retryCount, setRetryCount] = useState(0)
   const [announcements, setAnnouncements] = useState([])
-  const [announcements, setAnnouncements] = useState([])
 
   const colorScheme = useColorScheme()
   const theme = useMemo(() => {

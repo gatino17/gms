@@ -4,62 +4,122 @@ import { Ionicons } from '@expo/vector-icons'
 
 export default function PaymentsTab({ portal, styles, formatDate }) {
   const payments = portal.payments?.recent || []
-  const total90 = portal.payments?.total_last_90 ?? 0
   const pending = portal.payments?.pending || []
+  const pendingTotal = pending.reduce((s, p) => s + Number(p.amount || 0), 0)
+  const paidTotal = payments.reduce((s, p) => s + Number(p.amount || 0), 0)
 
   return (
     <View style={styles.card}>
+      <Text style={styles.cardTitle}>Mis Pagos</Text>
+
       <View style={styles.rowBetween}>
-        <Text style={styles.cardTitle}>Pagos</Text>
-        <View style={[styles.badge, payments.length ? styles.badgeOk : styles.badgeAlert]}>
-          <Text style={styles.badgeText}>{payments.length || 0}</Text>
-        </View>
+        <SummaryPill
+          label="Pendiente"
+          amount={pendingTotal}
+          icon="alert-circle-outline"
+          styles={styles}
+          variant="pending"
+        />
+        <SummaryPill
+          label="Pagado"
+          amount={paidTotal}
+          icon="trending-up-outline"
+          styles={styles}
+          variant="paid"
+        />
       </View>
 
-      <View style={{ marginTop: 8, marginBottom: 6 }}>
-        <Text style={styles.itemSub}>Últimos 90 días: ${total90}</Text>
-      </View>
+      <Text style={styles.sectionLabel}>Pendientes</Text>
+      {pending.length ? (
+        pending.map((p, idx) => (
+          <PaymentCard
+            key={idx}
+            title={p.label || 'Pendiente'}
+            amount={p.amount}
+            date={p.due_date || p.payment_date}
+            status="Pendiente"
+            statusVariant="pending"
+            styles={styles}
+            formatDate={formatDate}
+          />
+        ))
+      ) : (
+        <Text style={styles.itemSub}>Sin pendientes</Text>
+      )}
 
-      <Text style={[styles.itemTitle, { marginBottom: 6 }]}>Historial</Text>
+      <Text style={styles.sectionLabel}>Historial de pagos</Text>
       {payments.length ? (
         <FlatList
           data={payments}
           keyExtractor={(it) => String(it.id)}
           scrollEnabled={false}
           renderItem={({ item }) => (
-            <View style={[styles.listItem, { alignItems: 'flex-start' }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemTitle}>${item.amount}</Text>
-                <Text style={styles.itemSub}>{formatDate(item.payment_date || '')}</Text>
-                {item.reference ? <Text style={styles.itemSub}>Ref: {item.reference}</Text> : null}
-              </View>
-              <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                <View style={[styles.badge, styles.badgeOk]}>
-                  <Text style={styles.badgeText}>{item.method || 'Pago'}</Text>
-                </View>
-                {item.type ? <Text style={styles.itemSub}>{item.type}</Text> : null}
-              </View>
-            </View>
+            <PaymentCard
+              title={item.label || item.type || 'Pago'}
+              amount={item.amount}
+              date={item.payment_date}
+              status="Pagado"
+              statusVariant="paid"
+              method={item.method}
+              reference={item.reference}
+              styles={styles}
+              formatDate={formatDate}
+            />
           )}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       ) : (
         <Text style={styles.itemSub}>Sin pagos registrados</Text>
       )}
+    </View>
+  )
+}
 
-      <View style={{ marginTop: 14 }}>
-        <Text style={[styles.itemTitle, { marginBottom: 6 }]}>Pendientes</Text>
-        {pending.length ? (
-          pending.map((p, idx) => (
-            <View key={idx} style={[styles.listItem, { alignItems: 'center' }]}>
-              <Text style={styles.itemTitle}>${p.amount}</Text>
-              <Text style={styles.itemSub}>{p.label || 'Pendiente'}</Text>
-            </View>
-          ))
-        ) : (
-          <Text style={styles.itemSub}>Sin pendientes</Text>
-        )}
+function SummaryPill({ label, amount, icon, styles, variant }) {
+  const isPending = variant === 'pending'
+  const pillStyle = isPending ? styles.payPillPending : styles.payPillPaid
+  const iconColor = isPending ? '#f59e0b' : '#16a34a'
+  return (
+    <View style={[styles.payPill, pillStyle]}>
+      <View style={styles.row}>
+        <Ionicons name={icon} size={16} color={iconColor} />
+        <Text style={[styles.itemTitle, { color: '#0f172a' }]}>{label}</Text>
       </View>
+      <Text style={styles.payAmount}>${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}</Text>
+    </View>
+  )
+}
+
+function PaymentCard({ title, amount, date, status, statusVariant, method, reference, styles, formatDate }) {
+  const isPending = statusVariant === 'pending'
+  return (
+    <View style={styles.payCard}>
+      <View style={[styles.rowBetween, { alignItems: 'center' }]}>
+        <View style={[styles.payIcon, isPending ? styles.payIconPending : styles.payIconPaid]}>
+          <Ionicons name="card-outline" size={18} color={isPending ? '#f59e0b' : '#16a34a'} />
+        </View>
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text style={styles.itemTitle}>{title}</Text>
+          {date ? (
+            <View style={[styles.row, { alignItems: 'center', marginTop: 4 }]}>
+              <Ionicons name="calendar-outline" size={14} color={styles.itemSub.color} />
+              <Text style={[styles.itemSub, { marginLeft: 4 }]}>{formatDate(date || '')}</Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={[styles.itemTitle, { color: isPending ? '#f59e0b' : '#16a34a' }]}>${amount}</Text>
+          <View style={[styles.payStatus, isPending ? styles.payStatusPending : styles.payStatusPaid]}>
+            <View style={[styles.payStatusDot, isPending ? styles.payStatusDotPending : styles.payStatusDotPaid]} />
+            <Text style={styles.payStatusText}>{status}</Text>
+          </View>
+        </View>
+      </View>
+      {method || reference ? (
+        <Text style={[styles.itemSub, { marginTop: 6 }]}>
+          Pagado con: {method || 'n/d'}{reference ? ` · Ref: ${reference}` : ''}
+        </Text>
+      ) : null}
     </View>
   )
 }

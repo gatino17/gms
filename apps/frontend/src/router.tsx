@@ -14,6 +14,7 @@ import CalendarPage from './routes/CalendarPage'
 import CourseDetailPage from './routes/CourseDetailPage'
 import StudiosPage from './routes/StudiosPage'
 import SettingsPage from './routes/SettingsPage'
+import AnnouncementsPage from './routes/AnnouncementsPage'
 import { PrivateRoute } from './components/PrivateRoute'
 import { RequireSuperuser } from './components/RequireSuperuser'
 import { LoginPage } from './routes/LoginPage'
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
           { path: 'payments', element: <PaymentsPage /> },
           { path: 'payments-teachers', element: <PaymentsTeachers /> },
           { path: 'studios', element: <RequireSuperuser><StudiosPage /></RequireSuperuser> },
+          { path: 'announcements', element: <AnnouncementsPage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
       },

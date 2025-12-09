@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useTenant } from '../lib/tenant'
 import { api } from '../lib/api'
-import { HiOutlineHome, HiOutlineUserGroup, HiOutlineBookOpen, HiOutlineViewList, HiOutlineCalendar, HiOutlineCurrencyDollar, HiOutlineLogout, HiOutlineOfficeBuilding, HiOutlineCog } from 'react-icons/hi'
+import { HiOutlineHome, HiOutlineUserGroup, HiOutlineBookOpen, HiOutlineViewList, HiOutlineCalendar, HiOutlineCurrencyDollar, HiOutlineLogout, HiOutlineOfficeBuilding, HiOutlineCog, HiOutlineSpeakerphone } from 'react-icons/hi'
 import { useAuth } from '../context/AuthContext'
 
 type TenantOption = {
@@ -96,6 +96,7 @@ export default function AppLayout() {
     { to: '/payments', label: 'Pagos', icon: <HiOutlineCurrencyDollar /> },
     { to: '/calendar', label: 'Calendario', icon: <HiOutlineCalendar /> },
     { to: '/teachers', label: 'Profesores', icon: <HiOutlineUserGroup /> },
+    { to: '/announcements', label: 'Novedades', icon: <HiOutlineSpeakerphone /> },
     { to: '/settings', label: 'Configuración', icon: <HiOutlineCog /> },
   ]
   const navBottom = user?.is_superuser ? [

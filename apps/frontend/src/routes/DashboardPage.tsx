@@ -1,8 +1,16 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import { FaBirthdayCake } from 'react-icons/fa'
+import {
+  HiExclamationCircle,
+  HiCalendar,
+  HiRefresh,
+  HiUserGroup,
+  HiBookOpen,
+  HiClock,
+} from 'react-icons/hi'
 
 type CourseListItem = {
   id: number
@@ -232,11 +240,11 @@ export default function DashboardPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <KpiCard label="Alumnos activos" value={uniqueActiveStudents} />
-        <KpiCard label="Cursos activos" value={activeCourses} />
-        <KpiCard label="Clases de hoy" value={classesToday} />
-        <KpiCard label="Ingresos hoy" value={fmtCLP.format(revenue.todayTotal)} />
-        <KpiCard label="Ingresos mes" value={fmtCLP.format(revenue.monthTotal)} />
+        <KpiCard label="Alumnos activos" value={uniqueActiveStudents} icon={<HiUserGroup className="text-fuchsia-600" />} />
+        <KpiCard label="Cursos activos" value={activeCourses} icon={<HiBookOpen className="text-blue-600" />} />
+        <KpiCard label="Clases de hoy" value={classesToday} icon={<HiClock className="text-emerald-600" />} />
+        <KpiCard label="Ingresos hoy" value={fmtCLP.format(revenue.todayTotal)} icon={<HiCalendar className="text-amber-600" />} />
+        <KpiCard label="Ingresos mes" value={fmtCLP.format(revenue.monthTotal)} icon={<HiRefresh className="text-purple-600" />} />
       </div>
 
       {error && <div className="text-red-600">{error}</div>}
@@ -255,7 +263,7 @@ export default function DashboardPage() {
             {Object.keys(pendingByDay).length > 0 && (
               <section className="rounded-2xl border-2 border-rose-400 bg-gradient-to-br from-rose-50 to-white p-6 shadow-lg">
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="text-2xl">⚡</span>
+                  <span className="text-2xl">?</span>
                   <h2 className="text-lg font-semibold text-gray-900">Renovaciones pendientes</h2>
                   <span className="ml-auto px-3 py-1 rounded-full bg-rose-500 text-white text-sm font-semibold">
                     {Object.values(pendingByDay).flat().length}
@@ -280,7 +288,7 @@ export default function DashboardPage() {
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-semibold text-gray-900">{it.student}</div>
-                                <div className="text-xs text-gray-600">{it.course} · {dayNames[d]}{it.timeLabel ? `, ${it.timeLabel}` : ''}</div>
+                                <div className="text-xs text-gray-600">{it.course} ï¿½ {dayNames[d]}{it.timeLabel ? `, ${it.timeLabel}` : ''}</div>
                               </div>
                               {it.overdue > 0 && (
                                 <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500 text-white text-xs font-semibold">
@@ -298,7 +306,7 @@ export default function DashboardPage() {
               </section>
             )}
 
-            <section className="rounded-2xl border p-5 bg-gradient-to-b from-sky-50 to-white">
+            <section className="rounded-2xl border-2 border-sky-100 p-5 bg-gradient-to-br from-sky-50 via-white to-indigo-50 shadow-md">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base font-semibold text-gray-900">Clases de hoy</h2>
                 <Link to="/courses" className="text-sm text-fuchsia-600 hover:text-fuchsia-700 font-medium">Ver cursos</Link>
@@ -307,14 +315,41 @@ export default function DashboardPage() {
                 <div className="text-gray-500 text-sm">No hay clases programadas para hoy.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {classesTodayList.map(c => (
-                    <Link key={c.id} to={`/courses/${c.id}`} className="rounded-xl border p-3 hover:shadow-md transition bg-white">
-                      <div className="text-sm font-semibold text-gray-900 truncate">{c.name}</div>
-                      {c.level && <div className="text-xs text-gray-500 mt-0.5">{c.level}</div>}
-                      <div className="mt-2 text-xs text-gray-600">
-                        <div>{c.start_time?.slice(0,5) || '--:--'} - {c.end_time?.slice(0,5) || '--:--'}</div>
-                        {c.teacher_name && <div className="mt-0.5">👩‍🏫 {c.teacher_name}</div>}
-                        {c.room_name && <div className="mt-0.5">📍 {c.room_name}</div>}
+                  {classesTodayList.map((c) => (
+                    <Link
+                      key={c.id}
+                      to={`/courses/${c.id}`}
+                      className="rounded-xl border border-sky-100 bg-white p-4 hover:shadow-lg transition flex flex-col gap-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-semibold">
+                          {(c.name || '').slice(0, 2).toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-gray-900 truncate">{c.name}</div>
+                          {c.level && <div className="text-xs text-gray-500">{c.level}</div>}
+                        </div>
+                        <span className="ml-auto px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-semibold">
+                          Activo
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-600 space-y-1">
+                        <div className="flex items-center gap-1">
+                          <HiClock className="text-sky-500" />
+                          <span>{c.start_time?.slice(0, 5) || '--:--'} - {c.end_time?.slice(0, 5) || '--:--'}</span>
+                        </div>
+                        {c.teacher_name && (
+                          <div className="flex items-center gap-1">
+                            <HiUserGroup className="text-fuchsia-500" />
+                            <span>{c.teacher_name}</span>
+                          </div>
+                        )}
+                        {c.room_name && (
+                          <div className="flex items-center gap-1">
+                            <HiCalendar className="text-amber-500" />
+                            <span>{c.room_name}</span>
+                          </div>
+                        )}
                       </div>
                     </Link>
                   ))}
@@ -322,24 +357,33 @@ export default function DashboardPage() {
               )}
             </section>
 
-            <section className="rounded-2xl border p-5 bg-gradient-to-b from-emerald-50 to-white">
+                        <section className="rounded-2xl border-2 border-emerald-100 p-5 bg-gradient-to-br from-emerald-50 via-white to-teal-50 shadow-md">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-gray-900">Pagos de hoy</h2>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 items-center justify-center text-sm font-semibold">$</span>
+                  <h2 className="text-base font-semibold text-gray-900">Pagos de hoy</h2>
+                </div>
                 <Link to="/payments" className="text-sm text-fuchsia-600 hover:text-fuchsia-700 font-medium">Ver todos</Link>
               </div>
               {paymentsToday.length === 0 ? (
                 <div className="text-gray-500 text-sm">Aun no hay pagos registrados hoy.</div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {paymentsToday.slice(0, 6).map(p => (
-                    <div key={p.id} className="flex items-center justify-between rounded-xl border bg-white p-3">
+                    <div key={p.id} className="flex items-center justify-between rounded-xl border border-emerald-100 bg-white p-3 shadow-sm">
                       <div className="text-sm">
-                        <div className="font-semibold text-gray-900">
-                          {p.type === 'monthly' ? 'Mensualidad' : p.type === 'single_class' ? 'Clase suelta' : 'Otro'}
+                        <div className="font-semibold text-gray-900 flex items-center gap-2">
+                          <span className="inline-flex w-8 h-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold">
+                            {p.type === 'monthly' ? 'M' : p.type === 'single_class' ? 'C' : 'O'}
+                          </span>
+                          <span>{p.type === 'monthly' ? 'Mensualidad' : p.type === 'single_class' ? 'Clase suelta' : 'Otro'}</span>
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5">{methodLabel(p.method)}</div>
                       </div>
-                      <div className="font-semibold text-emerald-600">{fmtCLP.format(Number(p.amount || 0))}</div>
+                      <div className="text-right">
+                        <div className="font-semibold text-emerald-600">{fmtCLP.format(Number(p.amount || 0))}</div>
+                        <div className="text-[10px] text-gray-500">{p.payment_date}</div>
+                      </div>
                     </div>
                   ))}
                   {paymentsToday.length > 6 && (
@@ -366,14 +410,20 @@ export default function DashboardPage() {
 
           {/* Columna lateral */}
           <div className="space-y-6">
-            <section className="rounded-2xl border p-5 bg-gradient-to-b from-amber-50 to-white">
-              <h2 className="text-base font-semibold text-gray-900 mb-3">Alertas</h2>
+            <section className="rounded-2xl border border-rose-200 p-5 bg-gradient-to-br from-rose-100 via-rose-50 to-white shadow-lg">
+              <div className="flex items-center gap-2 mb-3 text-rose-700">
+                <HiExclamationCircle className="text-xl" />
+                <h2 className="text-base font-semibold text-gray-900">Alertas</h2>
+              </div>
               <div className="space-y-3 text-sm">
                 {/* Pagos pendientes */}
-                <div className="p-3 rounded-lg border bg-white">
+                <div className="p-3 rounded-xl border border-rose-100 bg-white/95 shadow-sm">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-gray-900">Pagos pendientes</span>
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-orange-500 text-white font-semibold">
+                    <div className="flex items-center gap-2 text-gray-900 font-medium">
+                      <HiUserGroup className="text-rose-500" />
+                      <span>Pagos pendientes</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-xs bg-gradient-to-r from-rose-500 to-rose-600 text-white font-semibold shadow-sm">
                       {alerts.pendingCount}
                     </span>
                   </div>
@@ -381,18 +431,21 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Renovaciones proximas */}
-                <div className="p-3 rounded-lg border bg-white">
-                  <div className="font-medium text-gray-900 mb-2">Renovaciones proximas (7 dias)</div>
+                <div className="p-3 rounded-xl border border-rose-100 bg-white/95 shadow-sm">
+                  <div className="flex items-center gap-2 font-medium text-gray-900 mb-2">
+                    <HiRefresh className="text-rose-500" />
+                    <span>Renovaciones proximas (7 dias)</span>
+                  </div>
                   {alerts.soonEnd.length === 0 ? (
                     <div className="text-xs text-gray-500">Sin vencimientos proximos.</div>
                   ) : (
                     <ul className="space-y-2">
                       {alerts.soonEnd.slice(0, 4).map((r, i) => (
-                        <li key={i} className="text-xs">
+                        <li key={i} className="text-xs rounded-lg bg-rose-50/80 border border-rose-100 p-2">
                           <div className="font-medium text-gray-900 truncate">{r.student}</div>
-                          <div className="flex items-center justify-between mt-0.5">
+                          <div className="flex items-center justify-between mt-0.5 gap-2">
                             <span className="text-gray-600 truncate">{r.course}</span>
-                            <span className="ml-2 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-medium whitespace-nowrap">
+                            <span className="ml-2 px-2 py-0.5 rounded bg-white text-rose-700 text-[10px] font-semibold shadow-sm border border-rose-200 whitespace-nowrap">
                               {r.renewal_date}
                             </span>
                           </div>
@@ -406,8 +459,11 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Cumpleanos */}
-                <div className="p-3 rounded-lg border bg-white">
-                  <div className="font-medium text-gray-900 mb-2">Cumpleaños hoy</div>
+                <div className="p-3 rounded-xl border border-rose-100 bg-white/95 shadow-sm">
+                  <div className="flex items-center gap-2 font-medium text-gray-900 mb-2">
+                    <HiCalendar className="text-rose-500" />
+                    <span>Cumpleaños hoy</span>
+                  </div>
                   {alerts.birthdays.length === 0 ? (
                     <div className="text-xs text-gray-500">-</div>
                   ) : (
@@ -415,15 +471,15 @@ export default function DashboardPage() {
                       {alerts.birthdays.slice(0,3).map((name, idx) => (
                         <span
                           key={idx}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-pink-50 text-pink-700 border border-pink-200"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm"
                         >
-                          <FaBirthdayCake className="text-pink-500" />
+                          <FaBirthdayCake className="text-rose-500" />
                           <span className="truncate max-w-[120px]">{name}</span>
                         </span>
                       ))}
                       {alerts.birthdays.length > 3 && (
-                        <span className="text-[11px] text-pink-600 font-medium">
-                          +{alerts.birthdays.length - 3} más
+                        <span className="text-[11px] text-rose-600 font-medium">
+                          +{alerts.birthdays.length - 3} mï¿½s
                         </span>
                       )}
                     </div>
@@ -432,10 +488,16 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border p-5 bg-gradient-to-b from-violet-50 to-white">
-              <h2 className="text-base font-semibold text-gray-900">Asistencias (30 dias)</h2>
-              <div className="mt-2 text-3xl font-semibold text-gray-900">{attendances30d}</div>
-              <div className="text-xs text-gray-500 mt-1">Suma de asistencias registradas</div>
+                        <section className="rounded-2xl border-2 border-violet-100 p-5 bg-gradient-to-br from-violet-50 via-white to-indigo-50 shadow-md">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-flex w-8 h-8 items-center justify-center rounded-full bg-violet-100 text-violet-600 text-sm font-semibold">A</span>
+                <h2 className="text-base font-semibold text-gray-900">Asistencias (30 dias)</h2>
+              </div>
+              <div className="mt-1 text-3xl font-semibold text-gray-900">{attendances30d}</div>
+              <div className="text-xs text-gray-500">Suma de asistencias registradas</div>
+              <div className="mt-4 h-2 rounded-full bg-violet-100 overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500" style={{ width: `${Math.min(100, attendances30d)}%` }} />
+              </div>
             </section>
           </div>
         </div>
@@ -444,12 +506,27 @@ export default function DashboardPage() {
   )
 }
 
-function KpiCard({ label, value }: { label: string; value: string | number }) {
+function KpiCard({ label, value, icon }: { label: string; value: string | number; icon?: ReactNode }) {
   return (
-    <div className="rounded-2xl border p-4 bg-gradient-to-b from-gray-50 to-white">
-      <div className="text-sm text-gray-600">{label}</div>
+    <div className="rounded-2xl border p-4 bg-gradient-to-b from-gray-50 to-white shadow-sm">
+      <div className="text-sm text-gray-600 flex items-center gap-2">
+        {icon && (
+          <span className="inline-flex w-8 h-8 items-center justify-center rounded-full bg-gray-100 text-lg text-gray-700">
+            {icon}
+          </span>
+        )}
+        <span>{label}</span>
+      </div>
       <div className="mt-2 text-2xl font-semibold text-gray-900">{value}</div>
     </div>
   )
 }
+
+
+
+
+
+
+
+
 

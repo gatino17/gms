@@ -95,8 +95,8 @@ export default function AppLayout() {
   const navBottomBase = [
     { to: '/payments', label: 'Pagos', icon: <HiOutlineCurrencyDollar /> },
     { to: '/calendar', label: 'Calendario', icon: <HiOutlineCalendar /> },
-    { to: '/teachers', label: 'Profesores', icon: <HiOutlineUserGroup /> },
     { to: '/announcements', label: 'Novedades', icon: <HiOutlineSpeakerphone /> },
+    { to: '/teachers', label: 'Profesores', icon: <HiOutlineUserGroup /> },
     { to: '/settings', label: 'Configuración', icon: <HiOutlineCog /> },
   ]
   const navBottom = user?.is_superuser ? [

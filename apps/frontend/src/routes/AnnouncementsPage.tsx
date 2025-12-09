@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../lib/api'
 
 type Announcement = {
   id: number
@@ -17,7 +18,21 @@ export default function AnnouncementsPage() {
   const [error, setError] = useState<string | null>(null)
   const MAX_ITEMS = 4
 
-  const handleSave = () => {
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const load = async () => {
+    try {
+      const res = await api.get<Announcement[]>('/api/pms/announcements')
+      setItems(res.data)
+    } catch (e: any) {
+      setError(e?.message || 'Error al cargar anuncios')
+    }
+  }
+
+  const handleSave = async () => {
     setError(null)
     if (!draft.title) {
       setError('El título es obligatorio')
@@ -27,22 +42,22 @@ export default function AnnouncementsPage() {
       setError(`Solo se permiten ${MAX_ITEMS} avisos. Elimina uno para agregar otro.`)
       return
     }
-    const next: Announcement = {
-      id: Date.now(),
-      title: draft.title,
-      subtitle: draft.subtitle,
-      body: draft.body,
-      start_date: draft.start_date,
-      end_date: draft.end_date,
-      image_url: draft.image_url,
-      link_url: draft.link_url,
+    try {
+      const res = await api.post<Announcement>('/api/pms/announcements', draft)
+      setItems((prev) => [res.data, ...prev].slice(0, MAX_ITEMS))
+      setDraft({})
+    } catch (e: any) {
+      setError(e?.message || 'Error al guardar')
     }
-    setItems((prev) => [next, ...prev])
-    setDraft({})
   }
 
-  const handleDelete = (id: number) => {
-    setItems((prev) => prev.filter((a) => a.id !== id))
+  const handleDelete = async (id: number) => {
+    try {
+      await api.delete(`/api/pms/announcements/${id}`)
+      setItems((prev) => prev.filter((a) => a.id !== id))
+    } catch (e: any) {
+      setError(e?.message || 'Error al eliminar')
+    }
   }
 
   return (
@@ -52,7 +67,7 @@ export default function AnnouncementsPage() {
           <h1 className="text-2xl font-bold">Novedades / Comunicados</h1>
           <p className="text-sm text-gray-500">Publica banners, saludos de cumpleaños o retos para que se vean en la app móvil.</p>
         </div>
-        <span className="text-xs text-gray-500">Futuro: conectar a API</span>
+        <span className="text-xs text-gray-500">Máximo {MAX_ITEMS} avisos activos</span>
       </div>
 
       {error && <div className="px-3 py-2 rounded bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
@@ -135,9 +150,9 @@ export default function AnnouncementsPage() {
       </div>
 
       <div className="bg-white rounded-lg border shadow p-4">
-        <h2 className="text-lg font-semibold mb-3">Borradores locales</h2>
+        <h2 className="text-lg font-semibold mb-3">Publicados</h2>
         {items.length === 0 ? (
-          <p className="text-sm text-gray-500">Aún no hay novedades. Guarda un borrador para previsualizar.</p>
+          <p className="text-sm text-gray-500">Aún no hay novedades.</p>
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
             {items.map((a) => (

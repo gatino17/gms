@@ -85,12 +85,6 @@ const STRINGS = {
   },
 }
 
-const BANNERS = [
-  { id: 'b1', title: 'Salsa Night', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=60' },
-  { id: 'b2', title: 'Bachata Weekend', img: 'https://images.unsplash.com/photo-1531259683007-016a7b628fc3?auto=format&fit=crop&w=800&q=60' },
-  { id: 'b3', title: 'Nuevo Curso Intermedio', img: 'https://images.unsplash.com/photo-1464375117522-1311d6a5b81f?auto=format&fit=crop&w=800&q=60' },
-]
-
 async function requestCode(email, tenantId) {
   const res = await fetch(`${BASE_URL}/api/pms/students/portal/request_code`, {
     method: 'POST',
@@ -127,6 +121,19 @@ async function fetchPortal(token, tenantId) {
   if (!res.ok) {
     const msg = await res.text()
     throw new Error(msg || `Error portal (${res.status})`)
+  }
+  return res.json()
+}
+
+async function fetchAnnouncementsApi(tenantId) {
+  const res = await fetch(`${BASE_URL}/api/pms/announcements`, {
+    headers: {
+      'X-Tenant-ID': String(tenantId ?? ''),
+    },
+  })
+  if (!res.ok) {
+    const msg = await res.text()
+    throw new Error(msg || `Error anuncios (${res.status})`)
   }
   return res.json()
 }
@@ -260,6 +267,8 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false)
   const [lastSync, setLastSync] = useState(null)
   const [retryCount, setRetryCount] = useState(0)
+  const [announcements, setAnnouncements] = useState([])
+  const [announcements, setAnnouncements] = useState([])
 
   const colorScheme = useColorScheme()
   const theme = useMemo(() => {
@@ -370,6 +379,12 @@ export default function App() {
       setLastSync(syncNow)
       await AsyncStorage.setItem('portal_cache', JSON.stringify({ data, lastSync: syncNow }))
       setRetryCount(0)
+      try {
+        const anns = await fetchAnnouncementsApi(data.student?.tenant_id ?? tid)
+        setAnnouncements(Array.isArray(anns) ? anns : [])
+      } catch (e) {
+        console.log('[announcements] fetch error', e)
+      }
       // programar notificación próxima clase
       if (data?.enrollments?.[0]?.course?.day_of_week && data.enrollments[0].course.start_time) {
         const next = nextClassDateTimeFromEnrollment(data.enrollments[0])
@@ -447,10 +462,10 @@ export default function App() {
         formatSchedule={formatSchedule}
         formatDate={formatDate}
         initials={initials}
-        banners={BANNERS}
         isOffline={isOffline}
         lastSync={lastSync}
         t={t}
+        announcements={announcements}
       />
     )
   }

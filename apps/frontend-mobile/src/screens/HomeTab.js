@@ -89,10 +89,10 @@ export default function HomeTab({
   formatSchedule,
   formatDate,
   initials,
-  banners,
   isOffline,
   lastSync,
   t,
+  announcements,
 }) {
   const [notes, setNotes] = useState({})
   const [drafts, setDrafts] = useState({})
@@ -227,16 +227,27 @@ export default function HomeTab({
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Novedades</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
-          {banners.map((b) => (
-            <View key={b.id} style={styles.banner}>
-              <Image source={{ uri: b.img }} style={styles.bannerImg} />
-              <View style={styles.bannerLabel}>
-                <Text style={styles.bannerText}>{b.title}</Text>
+        {announcements?.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
+            {announcements.map((b) => (
+              <View key={b.id} style={styles.banner}>
+                {b.image_url ? (
+                  <Image source={{ uri: b.image_url }} style={styles.bannerImg} />
+                ) : (
+                  <View style={[styles.bannerImg, { backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' }]}>
+                    <Text style={{ color: '#fff', fontWeight: '800' }}>{b.title?.[0] || 'N'}</Text>
+                  </View>
+                )}
+                <View style={styles.bannerLabel}>
+                  <Text style={styles.bannerText}>{b.title}</Text>
+                  {b.subtitle ? <Text style={[styles.bannerText, { fontSize: 12 }]}>{b.subtitle}</Text> : null}
+                </View>
               </View>
-            </View>
-          ))}
-        </ScrollView>
+            ))}
+          </ScrollView>
+        ) : (
+          <Text style={styles.itemSub}>Sin novedades</Text>
+        )}
       </View>
 
       <View style={styles.card}>

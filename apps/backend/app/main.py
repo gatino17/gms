@@ -12,6 +12,7 @@ from apps.backend.app.routers import pms_rooms
 from apps.backend.app.routers import pms_enrollments
 from apps.backend.app.routers import pms_attendance
 from apps.backend.app.routers import pms_tenants
+from apps.backend.app.routers import pms_announcements
 from apps.backend.app.routers import auth
 
 app = FastAPI(title=settings.api_title)
@@ -38,6 +39,7 @@ app.include_router(pms_rooms.router)
 app.include_router(pms_enrollments.router)
 app.include_router(pms_attendance.router)
 app.include_router(pms_tenants.router)
+app.include_router(pms_announcements.router)
 app.include_router(auth.router, tags=["login"])
 
 # Static files (for uploaded images)

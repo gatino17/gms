@@ -17,6 +17,8 @@ export default function PaymentsTab({ portal, styles, formatDate }) {
   const pending = portal.payments?.pending || []
   const pendingTotal = pending.reduce((s, p) => s + Number(p.amount || 0), 0)
   const paidTotal = payments.reduce((s, p) => s + Number(p.amount || 0), 0)
+  const defaultPeriodFrom = portal.enrollments?.[0]?.start_date || null
+  const defaultPeriodTo = portal.enrollments?.[0]?.end_date || null
 
   return (
     <View style={styles.card}>
@@ -50,6 +52,8 @@ export default function PaymentsTab({ portal, styles, formatDate }) {
             status="Pendiente"
             statusVariant="pending"
             period={p.period || null}
+            periodFrom={p.period_from || defaultPeriodFrom}
+            periodTo={p.period_to || defaultPeriodTo}
             styles={styles}
             formatDate={formatDate}
           />
@@ -74,6 +78,8 @@ export default function PaymentsTab({ portal, styles, formatDate }) {
               method={item.method}
               reference={item.reference}
               period={item.period || item.type || null}
+              periodFrom={item.period_from || defaultPeriodFrom}
+              periodTo={item.period_to || defaultPeriodTo}
               styles={styles}
               formatDate={formatDate}
             />
@@ -102,20 +108,21 @@ function SummaryPill({ label, amount, icon, styles, variant }) {
   )
 }
 
-const periodLabel = (period, date) => {
+const periodLabel = (period, periodFrom, periodTo, formatDate) => {
   if (period) return period
-  if (!date) return null
-  // Construir algo tipo "Periodo: MM/YYYY"
-  const d = new Date(date)
-  if (Number.isNaN(d.getTime())) return null
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const yyyy = d.getFullYear()
-  return `${mm}/${yyyy}`
+  if (periodFrom || periodTo) {
+    const fromTxt = periodFrom ? formatDate(periodFrom) : ''
+    const toTxt = periodTo ? formatDate(periodTo) : ''
+    if (fromTxt && toTxt) return `Inicio: ${fromTxt} · Fin: ${toTxt}`
+    if (fromTxt) return `Desde: ${fromTxt}`
+    if (toTxt) return `Hasta: ${toTxt}`
+  }
+  return null
 }
 
-function PaymentCard({ title, amount, date, status, statusVariant, method, reference, period, styles, formatDate }) {
+function PaymentCard({ title, amount, date, status, statusVariant, method, reference, period, periodFrom, periodTo, styles, formatDate }) {
   const isPending = statusVariant === 'pending'
-  const periodText = periodLabel(period, date)
+  const periodText = periodLabel(period, periodFrom, periodTo, formatDate)
   return (
     <View style={styles.payCard}>
       <View style={[styles.rowBetween, { alignItems: 'center' }]}>

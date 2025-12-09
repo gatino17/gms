@@ -6,6 +6,8 @@ import {
   ScrollView,
   Text,
   View,
+  TouchableOpacity,
+  TextInput,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
@@ -331,8 +333,8 @@ export default function HomeTab({
                         style={styles.resourceBtn}
                         onPress={() => openResource(item.course)}
                       >
-                        <Ionicons name="musical-notes-outline" size={14} color="#8b5cf6" />
-                        <Text style={styles.resourceBtnText}>Recursos</Text>
+                        <Ionicons name="logo-instagram" size={14} color="#8b5cf6" />
+                        <Text style={styles.resourceBtnText}>Instagram</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.resourceBtn, styles.noteBtn]}

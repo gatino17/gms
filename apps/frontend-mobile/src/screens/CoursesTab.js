@@ -121,8 +121,8 @@ export default function CoursesTab({ portal, styles, theme, formatSchedule, form
                       style={styles.resourceBtn}
                       onPress={() => openResource(item.course)}
                     >
-                      <Ionicons name="musical-notes-outline" size={14} color="#8b5cf6" />
-                      <Text style={styles.resourceBtnText}>Recursos</Text>
+                      <Ionicons name="logo-instagram" size={14} color="#8b5cf6" />
+                      <Text style={styles.resourceBtnText}>Instagram</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.resourceBtn, styles.noteBtn]}

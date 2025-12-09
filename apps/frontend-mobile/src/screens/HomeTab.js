@@ -147,13 +147,20 @@ export default function HomeTab({
               return (
                 <View style={styles.activeCard}>
                   <View style={styles.activeRow}>
-                    {makeAbsolute(item.course?.image_url) ? (
-                      <Image source={{ uri: makeAbsolute(item.course?.image_url) }} style={styles.courseThumb} />
-                    ) : (
-                      <View style={styles.courseThumbPlaceholder}>
-                        <Text style={styles.courseImageText}>{(item.course?.name || 'C')[0]}</Text>
-                      </View>
-                    )}
+                    <LinearGradient
+                      colors={['#ec4899', '#8b5cf6']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.courseThumbWrap}
+                    >
+                      {makeAbsolute(item.course?.image_url) ? (
+                        <Image source={{ uri: makeAbsolute(item.course?.image_url) }} style={styles.courseThumb} />
+                      ) : (
+                        <View style={styles.courseThumbPlaceholder}>
+                          <Text style={styles.courseImageText}>{(item.course?.name || 'C')[0]}</Text>
+                        </View>
+                      )}
+                    </LinearGradient>
                     <View style={{ flex: 1, marginLeft: 10 }}>
                       <View style={styles.rowBetween}>
                         <Text style={styles.itemTitle}>{item.course?.name}</Text>

@@ -459,12 +459,20 @@ export default function App() {
       <StatusBar style="light" />
       {!loggedIn ? (
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-          <View style={styles.header}>
+          <LinearGradient
+            colors={['#0f172a', '#111827', '#1e1b4b']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.loginHero}
+          >
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoText}>GMS</Text>
+            </View>
             <Text style={styles.title}>{t('home_title')}</Text>
             <Text style={styles.subtitle}>Portal alumno - version movil</Text>
-          </View>
+          </LinearGradient>
 
-          <View style={styles.card}>
+          <View style={styles.loginCard}>
             <Text style={styles.cardTitle}>{t('login_title')}</Text>
             <TextInput
               style={styles.input}
@@ -475,14 +483,6 @@ export default function App() {
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <View style={styles.row}>
-              <TouchableOpacity style={[styles.secondaryButton, styles.flex1]} onPress={handleRequestCode} disabled={loading}>
-                <Text style={styles.secondaryButtonText}>{loading ? '...' : t('send_code')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.primaryButton, styles.flex1]} onPress={handleLogin} disabled={loading || !codeSent}>
-                <Text style={styles.primaryButtonText}>{loading ? '...' : t('enter')}</Text>
-              </TouchableOpacity>
-            </View>
             <TextInput
               style={styles.input}
               placeholder={t('code_received')}
@@ -491,6 +491,14 @@ export default function App() {
               onChangeText={setCode}
               keyboardType="number-pad"
             />
+            <View style={styles.row}>
+              <TouchableOpacity style={[styles.secondaryButton, styles.flex1]} onPress={handleRequestCode} disabled={loading}>
+                <Text style={styles.secondaryButtonText}>{loading ? '...' : t('send_code')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.primaryButton, styles.flex1]} onPress={handleLogin} disabled={loading || !codeSent}>
+                <Text style={styles.primaryButtonText}>{loading ? '...' : t('enter')}</Text>
+              </TouchableOpacity>
+            </View>
             {token ? <Text style={styles.hint}>Sesion de {userEmail}</Text> : null}
           </View>
 
@@ -524,6 +532,32 @@ const makeStyles = (t) =>
     header: { marginBottom: 12 },
     title: { fontSize: 26, fontWeight: '800', color: t.text },
     subtitle: { fontSize: 14, color: t.sub },
+    loginHero: {
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 14,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.25,
+      shadowOffset: { width: 0, height: 8 },
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    logoCircle: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: '#fff',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+      shadowColor: '#000',
+      shadowOpacity: 0.2,
+      shadowOffset: { width: 0, height: 4 },
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    logoText: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
     card: {
       backgroundColor: t.card,
       borderRadius: 14,
@@ -536,6 +570,19 @@ const makeStyles = (t) =>
       shadowOpacity: 0.15,
       shadowRadius: 10,
       elevation: 4,
+    },
+    loginCard: {
+      backgroundColor: t.card,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: t.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.18,
+      shadowRadius: 12,
+      elevation: 5,
     },
     cardTitle: { fontSize: 16, fontWeight: '700', color: t.text, marginBottom: 8 },
     input: {

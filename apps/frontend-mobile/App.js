@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import HomeTab from './src/screens/HomeTab'
 import ProfileTab from './src/screens/ProfileTab'
 import PlaceholderTab from './src/screens/PlaceholderTab'
+import CoursesTab from './src/screens/CoursesTab'
 import NavBar from './src/components/NavBar'
 
 const hostFromExpo = Constants.expoConfig?.hostUri?.split(':')?.[0]
@@ -253,7 +254,16 @@ export default function App() {
       )
     }
     if (activeTab === 'courses') {
-      return <PlaceholderTab title="Cursos" description="Pronto veras tus cursos aqui." styles={styles} />
+      return (
+        <CoursesTab
+          portal={portal}
+          styles={styles}
+          theme={theme}
+          formatSchedule={formatSchedule}
+          formatDate={formatDate}
+          makeAbsolute={makeAbsolute}
+        />
+      )
     }
     if (activeTab === 'payments') {
       return <PlaceholderTab title="Pagos" description="Seccion de pagos en construccion." styles={styles} />

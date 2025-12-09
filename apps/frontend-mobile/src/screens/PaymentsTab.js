@@ -2,6 +2,16 @@ import React from 'react'
 import { FlatList, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
+const methodLabel = (method) => {
+  if (!method) return 'Pago'
+  const m = String(method).toLowerCase()
+  if (m.includes('cash') || m.includes('efect')) return 'Efectivo'
+  if (m.includes('card') || m.includes('tarjeta')) return 'Tarjeta'
+  if (m.includes('transfer')) return 'Transferencia'
+  if (m.includes('monthly') || m.includes('mensu')) return 'Mensualidad'
+  return method
+}
+
 export default function PaymentsTab({ portal, styles, formatDate }) {
   const payments = portal.payments?.recent || []
   const pending = portal.payments?.pending || []
@@ -39,6 +49,7 @@ export default function PaymentsTab({ portal, styles, formatDate }) {
             date={p.due_date || p.payment_date}
             status="Pendiente"
             statusVariant="pending"
+            period={p.period || null}
             styles={styles}
             formatDate={formatDate}
           />
@@ -62,6 +73,7 @@ export default function PaymentsTab({ portal, styles, formatDate }) {
               statusVariant="paid"
               method={item.method}
               reference={item.reference}
+              period={item.period || item.type || null}
               styles={styles}
               formatDate={formatDate}
             />
@@ -90,7 +102,7 @@ function SummaryPill({ label, amount, icon, styles, variant }) {
   )
 }
 
-function PaymentCard({ title, amount, date, status, statusVariant, method, reference, styles, formatDate }) {
+function PaymentCard({ title, amount, date, status, statusVariant, method, reference, period, styles, formatDate }) {
   const isPending = statusVariant === 'pending'
   return (
     <View style={styles.payCard}>
@@ -115,9 +127,14 @@ function PaymentCard({ title, amount, date, status, statusVariant, method, refer
           </View>
         </View>
       </View>
-      {method || reference ? (
+      {period ? (
         <Text style={[styles.itemSub, { marginTop: 6 }]}>
-          Pagado con: {method || 'n/d'}{reference ? ` · Ref: ${reference}` : ''}
+          Periodo: {period}
+        </Text>
+      ) : null}
+      {method || reference ? (
+        <Text style={[styles.itemSub, { marginTop: 4 }]}>
+          Pagado con: {methodLabel(method)}{reference ? ` · Ref: ${reference}` : ''}
         </Text>
       ) : null}
     </View>

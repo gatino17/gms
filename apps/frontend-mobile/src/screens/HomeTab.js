@@ -38,15 +38,6 @@ export default function HomeTab({
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.itemTitle}>{portal.student?.first_name} {portal.student?.last_name}</Text>
-          <LinearGradient
-            colors={['#8b5cf6', '#ec4899']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.emailPill}
-          >
-            <Ionicons name="mail-outline" size={14} color="#fff" />
-            <Text style={styles.emailText}>{portal.student?.email || 'Sin correo'}</Text>
-          </LinearGradient>
         </View>
         <View style={[styles.badge, portal.classes_active > 0 ? styles.badgeOk : styles.badgeAlert]}>
           <Text style={styles.badgeText}>{portal.classes_active > 0 ? 'Activo' : 'Inactivo'}</Text>

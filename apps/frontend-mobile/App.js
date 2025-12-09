@@ -14,6 +14,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as Notifications from 'expo-notifications'
 
 import HomeTab from './src/screens/HomeTab'
 import ProfileTab from './src/screens/ProfileTab'
@@ -129,6 +130,33 @@ async function fetchPortal(token, tenantId) {
   return res.json()
 }
 
+async function requestNotificationPermission() {
+  const { status } = await Notifications.getPermissionsAsync()
+  if (status !== 'granted') {
+    const ask = await Notifications.requestPermissionsAsync()
+    return ask.status === 'granted'
+  }
+  return true
+}
+
+async function scheduleNextClassNotification(dateTime, courseName) {
+  if (!dateTime) return
+  try {
+    const granted = await requestNotificationPermission()
+    if (!granted) return
+    await Notifications.cancelAllScheduledNotificationsAsync()
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Próxima clase',
+        body: `${courseName || 'Tu clase'} comienza pronto`,
+      },
+      trigger: { date: dateTime },
+    })
+  } catch (e) {
+    console.log('[notifications] error', e)
+  }
+}
+
 const makeAbsolute = (pathOrUrl) => {
   if (!pathOrUrl) return null
   try {
@@ -193,6 +221,28 @@ const formatSchedule = (course) => {
   return [day, start, end].filter(Boolean).join(' ')
 }
 
+const jsDayFromCourse = (dow) => {
+  if (dow === undefined || dow === null) return null
+  const num = Number(dow)
+  if (Number.isNaN(num)) return null
+  return (num + 1) % 7 // app usa 0=Lun...6=Dom, JS 0=Dom
+}
+
+const nextClassDateTimeFromEnrollment = (enrollment) => {
+  if (!enrollment?.course?.day_of_week || !enrollment.course.start_time) return null
+  const target = jsDayFromCourse(enrollment.course.day_of_week)
+  if (target === null) return null
+  const now = new Date()
+  let d = new Date(now)
+  while (d.getDay() !== target) {
+    d.setDate(d.getDate() + 1)
+  }
+  const [h, m] = String(enrollment.course.start_time).slice(0, 5).split(':').map(Number)
+  const next = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h || 0, m || 0)
+  if (next <= now) next.setDate(next.getDate() + 7)
+  return next
+}
+
 export default function App() {
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
@@ -208,7 +258,6 @@ export default function App() {
   const [lang, setLang] = useState('es')
   const [isOffline, setIsOffline] = useState(false)
   const [lastSync, setLastSync] = useState(null)
-  const [feedback, setFeedback] = useState(null)
   const [retryCount, setRetryCount] = useState(0)
 
   const colorScheme = useColorScheme()
@@ -320,6 +369,11 @@ export default function App() {
       setLastSync(syncNow)
       await AsyncStorage.setItem('portal_cache', JSON.stringify({ data, lastSync: syncNow }))
       setRetryCount(0)
+      // programar notificación próxima clase
+      if (data?.enrollments?.[0]?.course?.day_of_week && data.enrollments[0].course.start_time) {
+        const next = nextClassDateTimeFromEnrollment(data.enrollments[0])
+        await scheduleNextClassNotification(next, data.enrollments[0]?.course?.name)
+      }
     } catch (e) {
       Alert.alert('Error', e?.message || 'No se pudo cargar portal')
       console.log('[portal] error', e)
@@ -396,8 +450,6 @@ export default function App() {
         isOffline={isOffline}
         lastSync={lastSync}
         t={t}
-        feedback={feedback}
-        setFeedback={setFeedback}
       />
     )
   }
@@ -953,19 +1005,4 @@ const makeStyles = (t) =>
       borderColor: '#fcd34d',
     },
     offlineText: { color: '#b45309', fontWeight: '700', fontSize: 12 },
-    feedbackBtn: {
-      flex: 1,
-      backgroundColor: t.secondary,
-      paddingVertical: 12,
-      borderRadius: 12,
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: t.border,
-      marginHorizontal: 4,
-    },
-    feedbackBtnActive: {
-      borderColor: '#8b5cf6',
-      backgroundColor: t.isDark ? '#1e1b4b' : '#f3e8ff',
-    },
-    feedbackEmoji: { fontSize: 22 },
   })

@@ -5,7 +5,6 @@ import {
   Image,
   ScrollView,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -86,8 +85,6 @@ export default function HomeTab({
   isOffline,
   lastSync,
   t,
-  feedback,
-  setFeedback,
 }) {
   const nextClassDateTime = getNextClassDateTime(portal.enrollments?.[0])
   const countdown = nextClassDateTime ? formatCountdown(nextClassDateTime) : null
@@ -179,22 +176,6 @@ export default function HomeTab({
         <View style={styles.courseProgressTrack}>
           <View style={[styles.courseProgressBar, { width: `${Math.min(100, attendancePercent)}%` }]} />
         </View>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{t('quick_feedback')}</Text>
-        <View style={styles.rowBetween}>
-          {['👍', '😐', '👎'].map((emoji) => (
-            <TouchableOpacity
-              key={emoji}
-              style={[styles.feedbackBtn, feedback === emoji && styles.feedbackBtnActive]}
-              onPress={() => setFeedback(emoji)}
-            >
-              <Text style={styles.feedbackEmoji}>{emoji}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {feedback ? <Text style={[styles.itemSub, { marginTop: 8 }]}>Guardado: {feedback}</Text> : null}
       </View>
 
       <View style={styles.card}>
@@ -307,50 +288,6 @@ export default function HomeTab({
         ) : (
           <Text style={styles.itemSub}>Sin inscripciones</Text>
         ))}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Asistencia reciente</Text>
-        <Text style={styles.itemSub}>Progreso: {portal.attendance?.percent ?? 0}%</Text>
-        {portal.attendance?.recent?.length ? (
-          <FlatList
-            data={portal.attendance.recent}
-            keyExtractor={(it, idx) => `${it.course}-${idx}`}
-            scrollEnabled={false}
-            renderItem={({ item }) => (
-              <View style={styles.listItem}>
-                <Text style={styles.itemTitle}>{item.course}</Text>
-                <Text style={styles.itemSub}>{item.attended_at}</Text>
-              </View>
-            )}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-          />
-        ) : (
-          <Text style={styles.itemSub}>Sin registros</Text>
-        )}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Pagos recientes</Text>
-        {portal.payments?.recent?.length ? (
-          <FlatList
-            data={portal.payments.recent}
-            keyExtractor={(it) => String(it.id)}
-            scrollEnabled={false}
-            renderItem={({ item }) => (
-              <View style={styles.listItem}>
-                <View>
-                  <Text style={styles.itemTitle}>${item.amount}</Text>
-                  <Text style={styles.itemSub}>{item.payment_date}</Text>
-                </View>
-                <Text style={styles.itemSub}>{item.method}</Text>
-              </View>
-            )}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-          />
-        ) : (
-          <Text style={styles.itemSub}>Sin pagos</Text>
-        )}
       </View>
     </>
   )

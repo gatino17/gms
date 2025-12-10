@@ -185,6 +185,9 @@ export default function StudentDetailPage(){
   const [editMethod, setEditMethod] = useState<string>('')
   const [editAmount, setEditAmount] = useState<string>('')
   const [editPaymentId, setEditPaymentId] = useState<number|null>(null)
+  const [editMode, setEditMode] = useState<'edit' | 'renew'>('edit')
+  const [editCourseDay, setEditCourseDay] = useState<number|null>(null) // 0=Lun..6=Dom
+  const [editOccurrences, setEditOccurrences] = useState<number>(4)
 
   // cargar portal
   useEffect(() => {
@@ -321,6 +324,47 @@ export default function StudentDetailPage(){
     ;(data?.enrollments || []).forEach(e => m.set(e.course.id, e.course.name))
     return m
   }, [data?.enrollments])
+  const currentEnrollment = useMemo(() => {
+    if (!editEnrollmentId) return null
+    return (data?.enrollments || []).find(e => e.id === editEnrollmentId) || null
+  }, [data?.enrollments, editEnrollmentId])
+
+  const addDays = (ymd: string, days: number) => {
+    const [y,m,d] = ymd.split('-').map(Number)
+    const dt = new Date(y, (m||1)-1, d||1)
+    dt.setDate(dt.getDate() + days)
+    return toYMDInTZ(dt, CL_TZ)
+  }
+  const diffDays = (start?: string|null, end?: string|null) => {
+    if (!start || !end) return 0
+    const [sy,sm,sd] = start.split('-').map(Number)
+    const [ey,em,ed] = end.split('-').map(Number)
+    const a = new Date(sy, (sm||1)-1, sd||1)
+    const b = new Date(ey, (em||1)-1, ed||1)
+    const ms = b.getTime() - a.getTime()
+    return Math.max(0, Math.round(ms / (1000*60*60*24)))
+  }
+  const alignToWeekday = (startYMD: string, mon0?: number|null) => {
+    if (mon0 == null) return startYMD
+    const [y,m,d] = startYMD.split('-').map(Number)
+    const dt = new Date(y, (m||1)-1, d||1)
+    const cur = (dt.getDay() + 6) % 7 // 0=Lun..6=Dom
+    const delta = (mon0 - cur + 7) % 7
+    if (delta === 0) return startYMD
+    return addDays(startYMD, delta)
+  }
+  const computeEndByOccurrences = (startYMD: string, mon0: number|null, occurrences: number) => {
+    if (!mon0 || occurrences <= 1) return startYMD
+    let count = 1
+    const [sy, sm, sd] = startYMD.split('-').map(Number)
+    let dt = new Date(sy, (sm||1)-1, sd||1)
+    while (count < occurrences) {
+      dt.setDate(dt.getDate() + 1)
+      const cur = (dt.getDay() + 6) % 7
+      if (cur === mon0) count++
+    }
+    return toYMDInTZ(dt, CL_TZ)
+  }
 
   return (
     <div className="space-y-6">
@@ -399,23 +443,65 @@ export default function StudentDetailPage(){
             <div className="rounded-2xl border p-4 bg-gradient-to-b from-gray-50 to-white">
               <div className="text-lg font-medium mb-3">Mis cursos</div>
               <div className="space-y-3">
-                {(uniqueEnrollments ?? []).map((e)=> (
+                {(uniqueEnrollments ?? []).map((e)=> {
+                  const attended = (courseStats[e.id]?.attended ?? 0)
+                  const expected = (courseStats[e.id]?.expected ?? 0)
+                  const over = attended > expected
+                  const completed = expected > 0 && attended >= expected
+                  const progress = expected > 0 ? Math.min(100, (attended / expected) * 100) : 0
+                  return (
                   <div key={e.id} className="p-3 rounded-xl border bg-white">
                     <div className="flex items-start justify-between gap-2">
                       <div className="text-lg font-semibold text-gray-900">{e.course.name}</div>
                       <div className="shrink-0 flex items-center gap-2">
-                        <Link
-                          to={`/students/${id}/renew?enrollment=${e.id}&course=${e.course.id}`}
+                        <button
                           className="px-2 py-1 rounded-md text-white bg-emerald-600 hover:bg-emerald-700 text-xs"
                           title="Renovar periodo"
-                        >
+                          onClick={() => {
+                            setEditMode('renew')
+                            setEditEnrollmentId(e.id)
+                            setEditCourseDay(e.course.day_of_week ?? null)
+                            // ocurrencias del periodo anterior para replicar plan (clases/semana)
+                            let occ = 4
+                            if (e.start_date && e.end_date) {
+                              const c = countWeekdayOccurrencesInRange(e.course.day_of_week ?? 0, e.start_date, e.end_date)
+                              occ = Math.max(1, c)
+                            }
+                            setEditOccurrences(occ)
+                            const baseStart = e.end_date ? addDays(e.end_date, 1) : toYMDInTZ(new Date(), CL_TZ)
+                            const alignedStart = alignToWeekday(baseStart, e.course.day_of_week ?? null)
+                            const baseEnd = computeEndByOccurrences(alignedStart, e.course.day_of_week ?? null, occ)
+                            setEditStartDate(alignedStart)
+                            setEditEndDate(baseEnd)
+                            setEditError(null)
+                            const all = (data?.payments?.recent || []) as any[]
+                          const byEnroll = all.find(p => p.type === 'monthly' && (p.enrollment_id === e.id))
+                          const byCourse = all.find(p => p.type === 'monthly' && (p.course_id === e.course.id))
+                          const byDate = all.find(p => p.type === 'monthly' && p.payment_date && (
+                            (!e.start_date || p.payment_date >= e.start_date) && (!e.end_date || p.payment_date <= e.end_date)
+                          ))
+                          const target = byEnroll || byCourse || byDate || null
+                          setEditPaymentId(target?.id ?? null)
+                          setEditAmount(target?.amount != null ? String(target.amount) : '')
+                          setEditMethod(target?.method || '')
+                          setShowEdit(true)
+                        }}
+                      >
                           Renovar
-                        </Link>
+                        </button>
                         <button
                           className="px-2 py-1 rounded-md text-white bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-xs"
                           title="Editar periodo"
                           onClick={() => {
+                            setEditMode('edit')
                             setEditEnrollmentId(e.id)
+                            setEditCourseDay(e.course.day_of_week ?? null)
+                            let occ = 4
+                            if (e.start_date && e.end_date) {
+                              const c = countWeekdayOccurrencesInRange(e.course.day_of_week ?? 0, e.start_date, e.end_date)
+                              occ = Math.max(1, c)
+                            }
+                            setEditOccurrences(occ)
                             setEditStartDate(e.start_date || '')
                             setEditEndDate(e.end_date || '')
                             setEditError(null)
@@ -464,7 +550,20 @@ export default function StudentDetailPage(){
                       </div>
                       <div>
                         <div className="text-gray-500 text-xs">Estado</div>
-                        <div>{e.is_active ? 'Inscrito' : 'Inactivo'}</div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${
+                              completed
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : e.is_active
+                                  ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                  : 'bg-gray-100 text-gray-600 border-gray-200'
+                            }`}
+                          >
+                            {completed ? 'Completado' : e.is_active ? 'Inscrito' : 'Inactivo'}
+                          </span>
+                          {completed && <span className="text-xs text-emerald-700 font-semibold">({attended}/{expected})</span>}
+                        </div>
                       </div>
                       <div>
                         <div className="text-gray-500 text-xs">Periodo</div>
@@ -472,20 +571,19 @@ export default function StudentDetailPage(){
                       </div>
                       <div>
                         <div className="text-gray-500 text-xs">Asistencias</div>
-                        {(() => {
-                          const attended = (courseStats[e.id]?.attended ?? 0)
-                          const expected = (courseStats[e.id]?.expected ?? 0)
-                          const over = attended > expected
-                          return (
-                            <div className={over ? 'text-rose-600 font-semibold' : ''}>
-                              {attended} / {expected}
-                            </div>
-                          )
-                        })()}
+                        <div className={over ? 'text-rose-600 font-semibold' : 'text-gray-800'}>
+                          {attended} / {expected}
+                        </div>
+                        <div className="mt-1 h-1.5 bg-gray-100 rounded overflow-hidden">
+                          <div
+                            className={`h-1.5 ${completed ? 'bg-emerald-500' : 'bg-indigo-400'}`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
               <div className="flex items-center gap-1">
                 <span className="inline-block w-3 h-3 bg-amber-300 border border-amber-500 rounded"></span> Extra (no esperado)
@@ -498,8 +596,78 @@ export default function StudentDetailPage(){
             <div className="fixed inset-0 z-50 flex items-center justify-center">
               <div className="absolute inset-0 bg-black/40" onClick={()=>setShowEdit(false)} />
               <div className="relative z-10 bg-white rounded-2xl shadow-xl w-[95%] max-w-lg p-4">
-                <div className="text-lg font-semibold">Editar periodo</div>
-                <div className="text-sm text-gray-700">Actualiza fechas de inicio y fin.</div>
+                <div className="text-lg font-semibold">{editMode === 'renew' ? 'Renovar curso' : 'Editar periodo'}</div>
+                <div className="text-sm text-gray-700">
+                  {editMode === 'renew'
+                    ? 'Confirma las nuevas fechas sugeridas y el pago para renovar este curso.'
+                    : 'Actualiza fechas de inicio y fin.'}
+                </div>
+
+                {currentEnrollment && (
+                  <div className="mt-3 p-3 rounded-xl border bg-gradient-to-r from-indigo-50 via-white to-sky-50 text-sm text-gray-800 shadow-sm">
+                    <div className="font-semibold text-gray-900 flex items-center gap-2">
+                      <span className="inline-flex w-8 h-8 items-center justify-center rounded-full bg-white border border-indigo-100 text-indigo-600 text-sm">📘</span>
+                      <span>{currentEnrollment.course.name}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-700">
+                      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-gray-200 shadow-inner">
+                        <span className="text-amber-600">📅</span>
+                        <span className="text-gray-500">Anterior:</span>
+                        <span className="font-semibold text-gray-900">
+                          {currentEnrollment.start_date ? ymdToCL(currentEnrollment.start_date) : '-'}
+                          {currentEnrollment.end_date ? ` a ${ymdToCL(currentEnrollment.end_date)}` : ''}
+                        </span>
+                      </span>
+                      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-gray-200 shadow-inner">
+                        <span className="text-blue-600">📆</span>
+                        <span className="text-gray-500">Día:</span>
+                        <span className="font-semibold text-gray-900">
+                          {DAY_NAMES_MON_FIRST[(currentEnrollment.course.day_of_week ?? 0)]}
+                        </span>
+                      </span>
+                      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-gray-200 shadow-inner">
+                        <span className="text-emerald-600">⏰</span>
+                        <span className="text-gray-500">Horario:</span>
+                        <span className="font-semibold text-gray-900">
+                          {(currentEnrollment.course.start_time || '').slice(0,5)}
+                          {currentEnrollment.course.end_time ? ` - ${(currentEnrollment.course.end_time||'').slice(0,5)}` : ''}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="px-2 py-1 rounded border bg-gray-50 hover:bg-gray-100"
+                    onClick={() => {
+                      const rawStart = editStartDate || toYMDInTZ(new Date(), CL_TZ)
+                      const start = alignToWeekday(rawStart, editCourseDay)
+                      setEditStartDate(start)
+                      const end = computeEndByOccurrences(start, editCourseDay ?? null, editOccurrences || 4)
+                      setEditEndDate(end)
+                      if (!editMethod) setEditMethod('transfer')
+                      // Mantener monto previo si existe; de lo contrario se respeta el que viene precargado del pago
+                    }}
+                  >
+                    Atajo: 1 mes
+                  </button>
+                  <button
+                    type="button"
+                    className="px-2 py-1 rounded border bg-gray-50 hover:bg-gray-100"
+                    onClick={() => {
+                      const rawStart = editStartDate || toYMDInTZ(new Date(), CL_TZ)
+                      const start = alignToWeekday(rawStart, editCourseDay)
+                      setEditStartDate(start)
+                      setEditEndDate(start)
+                      if (!editMethod) setEditMethod('cash')
+                      setEditAmount('7000')
+                    }}
+                  >
+                    Atajo: Clase suelta
+                  </button>
+                </div>
 
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
@@ -515,7 +683,17 @@ export default function StudentDetailPage(){
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <div className="text-xs text-gray-600 mb-1">Método de pago</div>
-                    <input type="text" className="w-full border rounded px-3 py-2" placeholder="efectivo / transferencia / ..." value={editMethod} onChange={e=>setEditMethod(e.target.value)} />
+                    <select
+                      className="w-full border rounded px-3 py-2 bg-white"
+                      value={editMethod}
+                      onChange={e=>setEditMethod(e.target.value)}
+                    >
+                      <option value="">Selecciona método</option>
+                      <option value="cash">Efectivo</option>
+                      <option value="card">Tarjeta/Débito</option>
+                      <option value="transfer">Transferencia</option>
+                      <option value="agreement">Convenio</option>
+                    </select>
                   </div>
                   <div>
                     <div className="text-xs text-gray-600 mb-1">Monto</div>
@@ -594,7 +772,8 @@ export default function StudentDetailPage(){
                   const hasExtra = attended && extraIds.length > 0
                   const dayName = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][new Date(dateStr).getDay()]
                   const courseIdsForDay = expectedIds.length ? expectedIds : attendedIds
-                  const courseNames = courseIdsForDay.map(id => courseNameById.get(id)).filter(Boolean)
+                  const uniqueCourseIds = Array.from(new Set(courseIdsForDay))
+                  const courseNames = uniqueCourseIds.map(id => courseNameById.get(id)).filter(Boolean)
                   const mainCourse = courseNames[0]
                   const extraCourses = Math.max(0, courseNames.length - 1)
 
@@ -824,7 +1003,8 @@ export default function StudentDetailPage(){
                           return (e.course.day_of_week ?? -1) === mon0 && within
                         })
                         const list = base.length ? base : (data.enrollments||[])
-                        return list.map(e => (
+                        const uniqueByCourse = Array.from(new Map(list.map(e => [e.course.id, e])).values())
+                        return uniqueByCourse.map(e => (
                           <option key={e.id} value={String(e.course.id)}>{e.course.name}</option>
                         ))
                       })()}

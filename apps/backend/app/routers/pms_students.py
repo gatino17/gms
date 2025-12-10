@@ -12,7 +12,7 @@ from datetime import datetime
 from apps.backend.app.core import security
 
 from apps.backend.app.pms.models import Student
-from apps.backend.app.pms.models import Course, Enrollment, Attendance, Payment
+from apps.backend.app.pms.models import Course, Enrollment, Attendance, Payment, Teacher
 from apps.backend.app.pms.schemas import StudentOut, StudentCreate, StudentUpdate, StudentListResponse, StudentStats
 from apps.backend.app.pms.deps import get_tenant_id, get_db_session, get_current_student
 
@@ -247,29 +247,33 @@ async def student_portal_summary(
 
     from datetime import date, timedelta
     pres = await db.execute(
-        select(Payment)
+        select(Payment, Course, Teacher)
+        .join(Course, Course.id == Payment.course_id, isouter=True)
+        .join(Teacher, Teacher.id == Course.teacher_id, isouter=True)
         .where(Payment.tenant_id == tenant_id, Payment.student_id == student_id)
         .order_by(Payment.payment_date.desc(), Payment.created_at.desc())
         .limit(10)
     )
-    payments_recent = [
-        {
+    payments_recent = []
+    for p, c, t in pres.all():
+        payments_recent.append({
             "id": p.id,
             "amount": float(p.amount),
             "payment_date": p.payment_date.isoformat() if p.payment_date else None,
             "method": p.method,
             "type": p.type,
             "reference": p.reference,
-        }
-        for p in pres.scalars().all()
-    ]
+            "course_id": p.course_id,
+            "course_name": getattr(c, "name", None),
+            "teacher_name": getattr(t, "name", None),
+        })
 
     cutoff = date.today() - timedelta(days=90)
     pres2 = await db.execute(
-        select(Payment)
+        select(func.sum(Payment.amount))
         .where(Payment.tenant_id == tenant_id, Payment.student_id == student_id, Payment.payment_date >= cutoff)
     )
-    total_paid_recent = sum(float(p.amount) for p in pres2.scalars().all())
+    total_paid_recent = float(pres2.scalar() or 0)
 
     return {
         "student": {

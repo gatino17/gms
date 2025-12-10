@@ -53,8 +53,20 @@ type Props = {
   courses: CourseLite[]
   getCourse: (cid:string)=>CourseLite|undefined
   suggestedAmountFor: (it: EnrollItem)=>number|null
-  computeEnd: (start:string, lessons:'1'|'2', plan:'monthly'|'single_class')=>string
+  computeEnd: (start:string, lessons:'1'|'2', plan:'monthly'|'single_class', courseId?: string)=>string
   load: ()=>Promise<void>
+}
+
+function formatDateDDMMYYYY(ymd?: string | null) {
+  if (!ymd) return ''
+  const [y,m,d] = ymd.split('-')
+  return `${d}/${m}/${y}`
+}
+
+function addDays(ymd: string, days: number) {
+  const d = new Date(ymd)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0,10)
 }
 
 export default function AddCourseModal(props: Props){
@@ -78,6 +90,17 @@ export default function AddCourseModal(props: Props){
   const [alreadyEnrolledIds, setAlreadyEnrolledIds] = useState<Set<number>>(new Set())
   const [currentEnrs, setCurrentEnrs] = useState<CurrentEnrollment[]>([])
   const [loadError, setLoadError] = useState<string|null>(null)
+  const pendingRenewIds = useMemo(() => {
+    const set = new Set<number>()
+    enrollItems.forEach(it => {
+      if (it.courseId) set.add(Number(it.courseId))
+    })
+    return set
+  }, [enrollItems])
+  const visibleEnrs = useMemo(
+    () => currentEnrs.filter(e => !pendingRenewIds.has(e.course_id)),
+    [currentEnrs, pendingRenewIds]
+  )
 
   const priceCLP = (v:any) => (v==null? null : new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP'}).format(Number(v)))
   const todayStr = () => {
@@ -131,7 +154,25 @@ export default function AddCourseModal(props: Props){
             status
           }
         })
-        setCurrentEnrs(list)
+        // deduplicar: quedarnos con la inscripción más reciente por curso
+        const byCourse = new Map<number, CurrentEnrollment[]>()
+        for (const enr of list) {
+          const arr = byCourse.get(enr.course_id) || []
+          arr.push(enr)
+          byCourse.set(enr.course_id, arr)
+        }
+        const dedup: CurrentEnrollment[] = []
+        for (const arr of byCourse.values()) {
+          arr.sort((a,b) => {
+            const aEnd = a.end_date || a.start_date || ''
+            const bEnd = b.end_date || b.start_date || ''
+            if (aEnd !== bEnd) return bEnd.localeCompare(aEnd) // más reciente primero
+            return (b.start_date || '').localeCompare(a.start_date || '')
+          })
+          dedup.push(arr[0])
+        }
+        dedup.sort((a,b)=> (a.name||'').localeCompare(b.name||'', 'es'))
+        setCurrentEnrs(dedup)
       }catch(e:any){
         setPortal(null)
         setAlreadyEnrolledIds(new Set())
@@ -168,12 +209,47 @@ export default function AddCourseModal(props: Props){
     return { count: items.length, subtotal, discountApplied, totalAfter, lines }
   }, [paymentMode, enrollItems, summaryDiscount]) // eslint-disable-line
 
+  const handleRenewFromEnrollment = (enr: CurrentEnrollment) => {
+    const courseId = String(enr.course_id)
+    const c = getCourse(courseId)
+    const lessons: '1'|'2' = (c?.classes_per_week ?? 1) >= 2 ? '2' : '1'
+    const start = enr.end_date ? addDays(enr.end_date, 1) : todayStr()
+    const end = computeEnd(start, lessons, 'monthly', courseId)
+    const suggested = c?.price
+    const paymentAmount = (suggested != null && !Number.isNaN(Number(suggested))) ? String(suggested) : ''
+    const renewal: EnrollItem = {
+      courseId,
+      planType: 'monthly',
+      lessonsPerWeek: lessons,
+      start,
+      end,
+      endAuto: true,
+      payNow: true,
+      paymentAmount,
+      paymentDate: start || todayStr()
+    }
+    setEnrollItems([renewal])
+    setPaymentMode('per_course')
+    setSummaryPaymentDate(start || todayStr())
+    setSaveError(null)
+  }
+
+  const startRenewFromCourseId = (courseId: string) => {
+    const enr = currentEnrs.find(e => String(e.course_id) === String(courseId))
+    if (enr) handleRenewFromEnrollment(enr)
+  }
+
   const updateEnroll = (idx:number, patch: Partial<EnrollItem>) => {
     setEnrollItems(list=>{
       const next = [...list]
       const cur  = { ...next[idx], ...patch }
 
       if (patch.courseId !== undefined && cur.planType === 'monthly') {
+        // Si el curso ya está inscrito, lanzar flujo de renovación y no duplicar fila
+        if (alreadyEnrolledIds.has(Number(patch.courseId))) {
+          startRenewFromCourseId(patch.courseId)
+          return list
+        }
         const c = getCourse(cur.courseId)
         const cpw = (c?.classes_per_week ?? 1)
         cur.lessonsPerWeek = cpw >= 2 ? '2' : '1'
@@ -181,7 +257,7 @@ export default function AddCourseModal(props: Props){
       if (patch.planType === 'single_class') cur.lessonsPerWeek = '1'
 
       const needEndAuto = patch.start !== undefined || patch.lessonsPerWeek !== undefined || patch.planType !== undefined || patch.courseId !== undefined
-      if (needEndAuto && cur.endAuto) cur.end = computeEnd(cur.start, cur.lessonsPerWeek, cur.planType)
+      if (needEndAuto && cur.endAuto) cur.end = computeEnd(cur.start, cur.lessonsPerWeek, cur.planType, cur.courseId)
 
       if ((patch.courseId !== undefined || patch.planType !== undefined) && cur.payNow) {
         const c = getCourse(cur.courseId)
@@ -203,7 +279,7 @@ export default function AddCourseModal(props: Props){
         // Normaliza fechas: si falta "end" y endAuto está activo, calcular antes de guardar
         const normStart = it.start
         const normEnd = (!it.end && it.endAuto && it.start)
-          ? computeEnd(it.start, (it.planType==='single_class' ? '1' : it.lessonsPerWeek), it.planType)
+          ? computeEnd(it.start, (it.planType==='single_class' ? '1' : it.lessonsPerWeek), it.planType, it.courseId)
           : it.end
         const ePayload:any = { student_id: studentId, course_id: Number(it.courseId) }
         if (normStart) ePayload.start_date = normStart
@@ -289,33 +365,68 @@ export default function AddCourseModal(props: Props){
           {loadError && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{loadError}</div>}
 
           {/* Cursos YA inscritos desde /portal */}
-          <div className="mb-4 p-3 rounded border bg-white">
-            <div className="font-medium mb-2">Cursos ya inscritos</div>
-            {(currentEnrs.length === 0) ? (
-              <div className="text-sm text-gray-500">Este alumno no tiene cursos inscritos aún.</div>
+          <div className="mb-4 p-3 rounded-2xl border bg-gradient-to-b from-gray-50 to-white shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex w-9 h-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-fuchsia-100 text-purple-700 text-lg shadow-inner">📚</span>
+              <div>
+                <div className="font-semibold text-gray-900">Cursos ya inscritos</div>
+                <div className="text-xs text-gray-500">Historial y estado actual del alumno</div>
+              </div>
+            </div>
+            {(visibleEnrs.length === 0) ? (
+              <div className="text-sm text-gray-500">
+                {pendingRenewIds.size > 0
+                  ? 'Curso en renovación en el formulario (se ocultó aquí para no duplicar).'
+                  : 'Este alumno no tiene cursos inscritos aún.'}
+              </div>
             ) : (
-              <div className="space-y-2">
-                {currentEnrs.map(e => (
-                  <div key={e.enrollment_id} className="p-2 rounded-lg border bg-white flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-medium">{e.name}</div>
-                      <div className="text-xs text-gray-600">
-                        {e.schedule || 'Sin horario'} · {e.start_date ?? '—'} a {e.end_date ?? '—'}
+              <div className="space-y-3">
+                {visibleEnrs.map(e => {
+                  const isPendingRenew = pendingRenewIds.has(e.course_id)
+                  return (
+                  <div key={e.enrollment_id} className={`p-3 rounded-xl border border-gray-100 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex items-start justify-between gap-3 ${isPendingRenew ? 'opacity-75' : ''}`}>
+                    <div className="min-w-0 space-y-1">
+                      <div className="font-semibold text-gray-900 flex items-center gap-2">
+                        <span className="inline-flex w-7 h-7 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-sky-100 text-indigo-700 text-sm shadow-inner">📖</span>
+                        <span className="truncate">{e.name}</span>
+                        {isPendingRenew && <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-semibold">Renovación en progreso</span>}
+                      </div>
+                      <div className="text-xs text-gray-600 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">🕒</span>
+                          {e.schedule || 'Sin horario'}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">📅</span>
+                          <span className="font-semibold text-gray-800">{e.start_date ? formatDateDDMMYYYY(e.start_date) : 'Sin inicio'}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">🏁</span>
+                          <span className="font-semibold text-gray-800">{e.end_date ? formatDateDDMMYYYY(e.end_date) : 'Sin fin'}</span>
+                        </span>
                       </div>
                     </div>
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex flex-col items-end gap-2">
                       <span className={
                         e.status === 'activo'
-                          ? 'px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs'
+                          ? 'px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium'
                           : e.status === 'vencido'
-                          ? 'px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 text-xs'
-                          : 'px-2 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200 text-xs'
+                          ? 'px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-xs font-medium'
+                          : 'px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200 text-xs font-medium'
                       }>
                         {e.status}
                       </span>
+                      {e.status === 'vencido' && !isPendingRenew && (
+                        <button
+                          className="px-2.5 py-1 rounded-lg border border-emerald-200 text-emerald-700 text-xs font-semibold hover:bg-emerald-50 inline-flex items-center gap-1"
+                          onClick={() => handleRenewFromEnrollment(e)}
+                        >
+                          🔄 Renovar
+                        </button>
+                      )}
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>
@@ -468,42 +579,6 @@ export default function AddCourseModal(props: Props){
                           </div>
                         </div>
                       </div>
-
-                      {/* Sugerencia rápida de renovación si ya estaba inscrito */}
-                      {alreadyEnrolledIds.has(Number(it.courseId)) && (
-                        <div className="p-2 rounded border bg-amber-50 border-amber-200 text-amber-800 text-sm flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Ya está inscrito en este curso.</span>
-                            <span className="text-amber-700/80">Puedes renovar con nuevas fechas sugeridas.</span>
-                          </div>
-                          <button
-                            className="px-2.5 py-1 rounded border border-amber-300 hover:bg-amber-100 text-amber-900 text-xs"
-                            onClick={()=>{
-                              const cur = currentEnrs.find(e => e.course_id === Number(it.courseId))
-                              let start = ''
-                              if (cur?.end_date) {
-                                const d = new Date(cur.end_date)
-                                d.setDate(d.getDate() + 1)
-                                start = d.toISOString().slice(0,10)
-                              } else {
-                                start = todayStr()
-                              }
-                              const lessons = it.planType === 'single_class' ? '1' : it.lessonsPerWeek
-                              const end = computeEnd(start, lessons, it.planType)
-                              const cc = getCourse(it.courseId)
-                              const suggested = it.planType === 'single_class' ? cc?.class_price : cc?.price
-                              setEnrollItems(list=>{
-                                const next=[...list]
-                                const i = next.indexOf(it)
-                                next.splice(i,1,{ ...it, start, end, endAuto:true, payNow: paymentMode!=='none', paymentAmount: suggested ? String(suggested) : it.paymentAmount })
-                                return next
-                              })
-                            }}
-                          >
-                            Renovar
-                          </button>
-                        </div>
-                      )}
 
                       {/* Pago por curso */}
                       {paymentMode === 'per_course' && it.courseId && (

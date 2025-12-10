@@ -216,13 +216,41 @@ export default function StudentsPage() {
   }, [imageFile, form.photo_url])
 
   const getCourse = (cid: string) => courses.find(c => String(c.id) === cid)
-  const computeEnd = (start: string, lessons: '1'|'2', plan: 'monthly'|'single_class') => {
+  const computeEnd = (start: string, lessons: '1'|'2', plan: 'monthly'|'single_class', courseId?: string) => {
     if (!start) return ''
     if (plan === 'single_class') return start
+
+    const course = courseId ? getCourse(courseId) : undefined
+    const scheduledDays = [
+      course?.day_of_week,
+      course?.day_of_week_2,
+      course?.day_of_week_3,
+      course?.day_of_week_4,
+      course?.day_of_week_5,
+    ].filter((v): v is number => typeof v === 'number')
+    const neededClasses = lessons === '2' ? 8 : 4
+
+    // Si tenemos horario, contamos clases reales hasta completar las 8 (o 4)
+    if (scheduledDays.length > 0) {
+      const d = new Date(start)
+      let taken = 0
+      let guard = 0
+      while (taken < neededClasses && guard < 400) {
+        if (scheduledDays.includes(d.getDay())) {
+          taken += 1
+          if (taken === neededClasses) break
+        }
+        d.setDate(d.getDate() + 1)
+        guard += 1
+      }
+      return d.toISOString().slice(0,10)
+    }
+
+    // Fallback: asumimos 4 semanas de duración
+    const weeksNeeded = Math.ceil(neededClasses / (lessons === '2' ? 2 : 1))
     const d = new Date(start)
-    const addDays = lessons === '1' ? 21 : 24
-    const end = new Date(d.getTime()); end.setDate(end.getDate() + addDays)
-    return end.toISOString().slice(0,10)
+    d.setDate(d.getDate() + (weeksNeeded - 1) * 7)
+    return d.toISOString().slice(0,10)
   }
   const updateEnroll = (idx: number, patch: Partial<EnrollItem>) => {
     setEnrollItems(list => {
@@ -235,7 +263,7 @@ export default function StudentsPage() {
       }
       if (patch.planType === 'single_class') cur.lessonsPerWeek = '1'
       const needEndAuto = patch.start !== undefined || patch.lessonsPerWeek !== undefined || patch.planType !== undefined || patch.courseId !== undefined
-      if (needEndAuto && cur.endAuto) cur.end = computeEnd(cur.start, cur.lessonsPerWeek, cur.planType)
+      if (needEndAuto && cur.endAuto) cur.end = computeEnd(cur.start, cur.lessonsPerWeek, cur.planType, cur.courseId)
       if ((patch.courseId !== undefined || patch.planType !== undefined) && cur.payNow) {
         const c = getCourse(cur.courseId)
         const suggested = cur.planType === 'single_class' ? c?.class_price : c?.price
@@ -599,9 +627,6 @@ export default function StudentsPage() {
     </div>
   )
 }
-
-
-
 
 
 

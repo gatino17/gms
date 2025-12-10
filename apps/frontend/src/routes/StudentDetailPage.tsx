@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api, toAbsoluteUrl } from '../lib/api'
 
 type PortalData = {
   student: { id:number; first_name:string; last_name:string; email?:string|null }
@@ -71,24 +71,59 @@ function buildPaymentPeriod(p: any, enrollments?: PortalData['enrollments']): st
   return '-'
 }
 
-function resolvePaymentCourseName(p: any, enrollments?: PortalData['enrollments']): string {
-  if (!enrollments || enrollments.length === 0) return ''
-  const byEnroll = enrollments.find(e => e.id === p.enrollment_id)
-  if (byEnroll) return byEnroll.course.name
-  const byCourse = enrollments.find(e => e.course.id === p.course_id)
-  if (byCourse) return byCourse.course.name
-  const payYmd = p.payment_date ?? ''
-  if (payYmd) {
-    const match = enrollments.find(e => ymdBetween(payYmd, e.start_date, e.end_date))
-    if (match) return match.course.name
+function resolvePaymentCourseInfo(
+  p: any,
+  enrollments?: PortalData['enrollments'],
+  teacherMap?: Record<number, string>,
+  courseCatalog?: Record<number, { name?: string; teacher?: string; image?: string }>
+): { course?: string; teacher?: string; image?: string } {
+  const directCourse = (p.course && (p.course.name || (p.course as any).title)) || p.course_name
+  const directTeacher = (p.course && (p.course as any).teacher_name) || p.teacher_name
+  const directImage = (p.course && (p.course as any).image_url) || p.course_image
+
+  const fromCatalog = (id?: number) => {
+    if (id == null) return { name: undefined, teacher: undefined }
+    const c = courseCatalog?.[id]
+    return { name: c?.name, teacher: c?.teacher || teacherMap?.[id], image: c?.image }
   }
-  return ''
+
+  // 1) Por enrollment
+  if (enrollments && enrollments.length > 0) {
+    const byEnroll = enrollments.find(e => e.id === p.enrollment_id)
+    if (byEnroll) {
+      const cat = fromCatalog(byEnroll.course.id)
+      return {
+        course: byEnroll.course.name || cat.name,
+        teacher: (byEnroll.course as any).teacher_name || cat.teacher,
+        image: (byEnroll.course as any).image_url || cat.image,
+      }
+    }
+    const byCourse = enrollments.find(e => e.course.id === p.course_id)
+    if (byCourse) {
+      const cat = fromCatalog(byCourse.course.id)
+      return {
+        course: byCourse.course.name || cat.name,
+        teacher: (byCourse.course as any).teacher_name || cat.teacher,
+        image: (byCourse.course as any).image_url || cat.image,
+      }
+    }
+  }
+
+  // 2) Catálogo
+  if (p.course_id != null) {
+    const cat = fromCatalog(p.course_id)
+    if (cat.name || cat.teacher || cat.image) return { course: cat.name || directCourse, teacher: cat.teacher || directTeacher, image: cat.image || directImage }
+  }
+
+  // 3) Datos directos del pago
+  return { course: directCourse, teacher: directTeacher || (p.course_id != null ? teacherMap?.[p.course_id] : undefined), image: directImage }
 }
 
 function buildPaymentConcept(p: any, enrollments?: PortalData['enrollments']): string {
   const base = (p.type === 'monthly' ? 'Mensualidad' : (p.type === 'single_class' ? 'Clase suelta' : (p.type || 'Pago')))
-  const courseName = resolvePaymentCourseName(p, enrollments)
-  if (courseName) return `${base} - ${courseName}`
+  const { course, teacher } = resolvePaymentCourseInfo(p, enrollments)
+  if (course && teacher) return `${base} - ${course} (Prof. ${teacher})`
+  if (course) return `${base} - ${course}`
   if (p.reference) return `${base} - ${p.reference}`
   return base
 }
@@ -130,6 +165,8 @@ export default function StudentDetailPage(){
   const [calMonth, setCalMonth] = useState(today.getMonth() + 1)
   const [calDays, setCalDays] = useState<CalDay[]>([])
   const [calLoading, setCalLoading] = useState(false)
+  const [courseTeacherMap, setCourseTeacherMap] = useState<Record<number, string>>({})
+  const [courseCatalog, setCourseCatalog] = useState<Record<number, { name?: string; teacher?: string; image?: string }>>({})
 
   // modal asistencia simple
   const [showAttend, setShowAttend] = useState(false)
@@ -157,6 +194,21 @@ export default function StudentDetailPage(){
       try{
         const portalRes = await api.get(`/api/pms/students/${id}/portal`)
         setData(portalRes.data)
+        // Enriquecer con profesores desde cursos
+        try{
+          const cres = await api.get('/api/pms/courses', { params: { limit: 500, offset: 0 } })
+          const items = cres.data?.items ?? (Array.isArray(cres.data) ? cres.data : [])
+          const tMap: Record<number, string> = {}
+          const cMap: Record<number, { name?: string; teacher?: string; image?: string }> = {}
+          for (const c of items) {
+            if (c.id != null) {
+              if (c.teacher_name) tMap[c.id] = c.teacher_name
+              cMap[c.id] = { name: c.name, teacher: c.teacher_name, image: c.image_url }
+            }
+          }
+          setCourseTeacherMap(tMap)
+          setCourseCatalog(cMap)
+        }catch{}
       }catch(e:any){ setError(e?.message || 'No se pudo cargar alumno') }
       finally{ setLoading(false) }
     }
@@ -176,26 +228,67 @@ export default function StudentDetailPage(){
   const attendedThisMonth = useMemo(() => (calDays || []).filter(d => d.attended).length, [calDays])
   const expectedThisMonth = useMemo(() => (calDays || []).filter(d => d.expected).length, [calDays])
   const fmtCLP = useMemo(() => new Intl.NumberFormat('es-CL', { style:'currency', currency:'CLP' }), [])
+  const joinedAt = data?.student?.joined_at ? new Date(data.student.joined_at) : null
+  const joinedAtLabel = data?.student?.joined_at ? ymdToCL(data.student.joined_at) : '-'
+  const yearsSinceJoin = useMemo(() => {
+    if (!joinedAt) return 0
+    const now = new Date()
+    let years = now.getFullYear() - joinedAt.getFullYear()
+    const hasNotReached = (now.getMonth() < joinedAt.getMonth()) || (now.getMonth() === joinedAt.getMonth() && now.getDate() < joinedAt.getDate())
+    if (hasNotReached) years -= 1
+    return Math.max(0, years)
+  }, [joinedAt])
+  const daysToOneYear = useMemo(() => {
+    if (!joinedAt) return null
+    const oneYear = new Date(joinedAt)
+    oneYear.setFullYear(oneYear.getFullYear() + 1)
+    const todayMid = new Date()
+    todayMid.setHours(0,0,0,0)
+    const diffMs = oneYear.getTime() - todayMid.getTime()
+    return Math.ceil(diffMs / (1000*60*60*24))
+  }, [joinedAt])
+
+  // Dedup: quedarnos con la matrícula más reciente por curso
+  const uniqueEnrollments = useMemo(() => {
+    const list = data?.enrollments || []
+    const byCourse = new Map<number, typeof list>()
+    list.forEach(e => {
+      const arr = byCourse.get(e.course.id) || []
+      arr.push(e)
+      byCourse.set(e.course.id, arr)
+    })
+    const dedup: typeof list = []
+    for (const arr of byCourse.values()) {
+      arr.sort((a,b) => {
+        const aEnd = a.end_date || a.start_date || ''
+        const bEnd = b.end_date || b.start_date || ''
+        if (aEnd !== bEnd) return bEnd.localeCompare(aEnd) // más reciente primero
+        return (b.start_date || '').localeCompare(a.start_date || '')
+      })
+      dedup.push(arr[0])
+    }
+    return dedup
+  }, [data?.enrollments])
 
   // horario semanal (0=Lun..6=Dom)
   const schedule = useMemo(() => {
     const map = new Map<number, any[]>()
     for (let i = 0; i < 7; i++) map.set(i, [])
-    for (const e of (data?.enrollments ?? [])) {
+    for (const e of uniqueEnrollments) {
       const idx = (e.course.day_of_week ?? 0)
       if (idx >= 0 && idx <= 6) map.get(idx)!.push(e)
     }
     return map
-  }, [data?.enrollments])
+  }, [uniqueEnrollments])
 
   // Stats de asistencia por curso (enrollment)
   const [courseStats, setCourseStats] = useState<Record<number, { expected:number; attended:number }>>({})
   useEffect(() => {
     (async () => {
       try{
-        if(!id || !(data?.enrollments?.length)) return
+        if(!id || !(uniqueEnrollments.length)) return
         const next: Record<number, { expected:number; attended:number }> = {}
-        for (const e of data.enrollments) {
+        for (const e of uniqueEnrollments) {
           const start = e.start_date || ''
           const end   = e.end_date   || ''
           if (!start || !end) continue
@@ -221,7 +314,13 @@ export default function StudentDetailPage(){
         setCourseStats(next)
       }catch{}
     })()
-  }, [id, data?.enrollments, calDays])
+  }, [id, uniqueEnrollments, calDays])
+
+  const courseNameById = useMemo(() => {
+    const m = new Map<number, string>()
+    ;(data?.enrollments || []).forEach(e => m.set(e.course.id, e.course.name))
+    return m
+  }, [data?.enrollments])
 
   return (
     <div className="space-y-6">
@@ -234,6 +333,22 @@ export default function StudentDetailPage(){
                 {data ? `${data.student.first_name} ${data.student.last_name}` : 'Alumno'}
               </h1>
               <div className="text-sm/relaxed opacity-90">{data?.student.email ?? '-'}</div>
+              <div className="text-sm flex items-center gap-2 opacity-90">
+                <span className="inline-flex items-center gap-1">
+                  <span>📅</span>
+                  <span>Ingreso: {joinedAtLabel}</span>
+                </span>
+                {yearsSinceJoin >= 1 && (
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold shadow-sm border border-amber-200">
+                    🎉 ¡{yearsSinceJoin} año{yearsSinceJoin>1?'s':''} con nosotros!
+                  </span>
+                )}
+                {yearsSinceJoin === 0 && daysToOneYear !== null && daysToOneYear > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/15 text-white text-xs">
+                    ⏳ Te faltan {daysToOneYear} día{daysToOneYear>1?'s':''} para 1 año
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button className="px-3 py-2 md:px-4 md:py-2 rounded-lg text-white shadow-sm transition bg-white/10 hover:bg-white/20" onClick={() => { if(id){ api.get(`/api/pms/students/${id}/portal`).then(r=>setData(r.data)).finally(()=>fetchCalendar()) } }} title="Actualizar datos">Actualizar</button>
@@ -250,20 +365,29 @@ export default function StudentDetailPage(){
         <>
           {/* Métricas generales */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl border bg-gradient-to-b from-fuchsia-50 to-white">
-              <div className="text-sm text-gray-600 mb-1">Asistencia (mes actual)</div>
+            <div className="p-4 rounded-2xl border bg-white shadow-sm">
+              <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                <span className="inline-flex w-8 h-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 text-lg">✅</span>
+                <span>Asistencia (mes actual)</span>
+              </div>
               <div className="text-3xl font-semibold text-gray-900">{attendedThisMonth} / {expectedThisMonth || 0}</div>
               <div className="mt-2 h-1.5 bg-gray-100 rounded overflow-hidden">
                 <div className="h-2 bg-emerald-500" style={{ width: `${Math.min(100, (attendedThisMonth/Math.max(1, expectedThisMonth))*100)}%` }} />
               </div>
             </div>
-            <div className="p-4 rounded-2xl border bg-gradient-to-b from-violet-50 to-white">
-              <div className="text-sm text-gray-600 mb-1">Clases activas</div>
+            <div className="p-4 rounded-2xl border bg-white shadow-sm">
+              <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                <span className="inline-flex w-8 h-8 items-center justify-center rounded-full bg-sky-50 text-sky-700 text-lg">📚</span>
+                <span>Clases activas</span>
+              </div>
               <div className="text-3xl font-semibold text-gray-900">{data.classes_active}</div>
               <div className="text-xs text-gray-500 mt-1">Clases semanales</div>
             </div>
-            <div className="p-4 rounded-2xl border bg-gradient-to-b from-emerald-50 to-white">
-              <div className="text-sm text-gray-600 mb-1">Total pagado (90 días)</div>
+            <div className="p-4 rounded-2xl border bg-white shadow-sm">
+              <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                <span className="inline-flex w-8 h-8 items-center justify-center rounded-full bg-amber-50 text-amber-700 text-lg">💰</span>
+                <span>Total pagado (90 días)</span>
+              </div>
               <div className="text-3xl font-semibold text-gray-900">{new Intl.NumberFormat('es-CL', { style:'currency', currency:'CLP' }).format(Number(data.payments.total_last_90 || 0))}</div>
               <div className="text-xs text-gray-500 mt-1">Últimos pagos</div>
             </div>
@@ -275,7 +399,7 @@ export default function StudentDetailPage(){
             <div className="rounded-2xl border p-4 bg-gradient-to-b from-gray-50 to-white">
               <div className="text-lg font-medium mb-3">Mis cursos</div>
               <div className="space-y-3">
-                {(data.enrollments ?? []).map((e)=> (
+                {(uniqueEnrollments ?? []).map((e)=> (
                   <div key={e.id} className="p-3 rounded-xl border bg-white">
                     <div className="flex items-start justify-between gap-2">
                       <div className="text-lg font-semibold text-gray-900">{e.course.name}</div>
@@ -468,6 +592,11 @@ export default function StudentDetailPage(){
                   const attendedIds = (rec?.attended_course_ids ?? []) as number[]
                   const extraIds = attendedIds.filter(id => !expectedIds.includes(id))
                   const hasExtra = attended && extraIds.length > 0
+                  const dayName = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][new Date(dateStr).getDay()]
+                  const courseIdsForDay = expectedIds.length ? expectedIds : attendedIds
+                  const courseNames = courseIdsForDay.map(id => courseNameById.get(id)).filter(Boolean)
+                  const mainCourse = courseNames[0]
+                  const extraCourses = Math.max(0, courseNames.length - 1)
 
                   let cls = 'border bg-white'
                   if (hasExtra) cls = 'bg-amber-100 border border-amber-300'
@@ -526,8 +655,18 @@ export default function StudentDetailPage(){
                         }
                         return base
                       })()}
-                    >
-                      <div className="text-xs text-gray-700">{d}</div>
+                      >
+                      <div className="flex items-center justify-between text-[11px] text-gray-700">
+                        <span className="font-semibold">{d}</span>
+                        <span className="text-[10px] text-gray-500">{dayName}</span>
+                      </div>
+                      {mainCourse && (
+                        <div className="mt-1 text-[10px] text-gray-600 truncate flex items-center gap-1">
+                          <span className="inline-block w-2 h-2 rounded-full bg-indigo-400"></span>
+                          <span className="font-semibold text-gray-800 truncate">{mainCourse}</span>
+                          {extraCourses > 0 && <span className="text-gray-400">+{extraCourses}</span>}
+                        </div>
+                      )}
                       {attended && (
                         <div className={`absolute bottom-1 right-1 text-[10px] leading-none font-bold ${hasExtra ? 'text-amber-700' : 'text-green-800'}`}>V</div>
                       )}
@@ -558,28 +697,70 @@ export default function StudentDetailPage(){
                 const monthly = all.filter(p => p.type === 'monthly').sort(sortFn)
                 const single  = all.filter(p => p.type === 'single_class').sort(sortFn)
                 const others  = all.filter(p => p.type !== 'monthly' && p.type !== 'single_class').sort(sortFn)
+                const Badge = ({ text, color }:{text:string; color:'emerald'|'sky'|'amber'|'indigo'|'gray'}) => {
+                  const map:any = {
+                    emerald:'bg-emerald-50 text-emerald-600 border-emerald-100',
+                    sky:'bg-sky-50 text-sky-600 border-sky-100',
+                    amber:'bg-amber-50 text-amber-600 border-amber-100',
+                    indigo:'bg-indigo-50 text-indigo-600 border-indigo-100',
+                    gray:'bg-gray-50 text-gray-700 border-gray-100',
+                  }
+                  return <span className={`px-2 py-0.5 rounded-full border text-xs font-medium ${map[color] || map.gray}`}>{text}</span>
+                }
+                const MethodBadge = (m?:string) => {
+                  if (m === 'cash') return <Badge text="Efectivo" color="emerald" />
+                  if (m === 'card') return <Badge text="Tarjeta" color="sky" />
+                  if (m === 'transfer') return <Badge text="Transferencia" color="amber" />
+                  if (m === 'agreement') return <Badge text="Convenio" color="indigo" />
+                  return <Badge text={m || '-'} color="gray" />
+                }
+
                 const Table = ({rows, getRowClass}:{rows:any[], getRowClass?:(p:any)=>string}) => (
-                  <div className="overflow-auto rounded-xl border">
+                  <div className="overflow-auto rounded-2xl border border-gray-100 shadow-sm bg-white">
                     <table className="min-w-full text-sm">
-                      <thead className="bg-gray-50 text-left">
-                        <tr>
-                          <th className="px-3 py-2">Fecha</th>
-                          <th className="px-3 py-2">Concepto</th>
-                          <th className="px-3 py-2">Periodo</th>
-                          <th className="px-3 py-2">M\u00E9todo</th>
-                          <th className="px-3 py-2 text-right">Monto</th>
+                      <thead className="bg-gradient-to-r from-white to-gray-50 text-left border-b border-gray-100">
+                        <tr className="text-gray-700">
+                          <th className="px-3 py-3 font-semibold">Fecha</th>
+                          <th className="px-3 py-3 font-semibold">Curso</th>
+                          <th className="px-3 py-3 font-semibold">Profesor</th>
+                          <th className="px-3 py-3 font-semibold">Periodo</th>
+                          <th className="px-3 py-3 font-semibold">Tipo</th>
+                          <th className="px-3 py-3 font-semibold">Método</th>
+                          <th className="px-3 py-3 font-semibold text-right">Monto</th>
+                          <th className="px-3 py-3 font-semibold">Referencia</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {rows.map((p:any) => (
-                          <tr key={p.id} className={`border-t ${getRowClass ? getRowClass(p) : ''}`}>
-                            <td className="px-3 py-2">{p.payment_date ? ymdToCL(p.payment_date) : '-'}</td>
-                            <td className="px-3 py-2">{buildPaymentConcept(p, data?.enrollments)}</td>
-                            <td className="px-3 py-2">{buildPaymentPeriod(p, data?.enrollments)}</td>
-                            <td className="px-3 py-2">{p.method || '-'}</td>
-                            <td className="px-3 py-2 text-right">{fmtCLP.format(Number(p.amount||0))}</td>
-                          </tr>
-                        ))}
+                      <tbody className="[&>tr:nth-child(even)]:bg-gray-50">
+                        {rows.map((p:any) => {
+                          const info = resolvePaymentCourseInfo(p, data?.enrollments, courseTeacherMap, courseCatalog)
+                          return (
+                            <tr key={p.id} className={`border-t ${getRowClass ? getRowClass(p) : ''}`}>
+                              <td className="px-3 py-3 text-gray-800">{p.payment_date ? ymdToCL(p.payment_date) : '-'}</td>
+                              <td className="px-3 py-3">
+                                <div className="flex items-center gap-2 text-gray-800 font-medium">
+                                  {info.image ? (
+                                    <img src={toAbsoluteUrl(info.image)} alt={info.course || 'Curso'} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                                  ) : (
+                                    <span className="inline-flex w-8 h-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-sky-100 text-indigo-700 text-sm shadow-inner">📘</span>
+                                  )}
+                                  <span className="truncate">{info.course || '-'}</span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 text-gray-700">{info.teacher || '-'}</td>
+                              <td className="px-3 py-3 text-gray-700">{buildPaymentPeriod(p, data?.enrollments)}</td>
+                              <td className="px-3 py-3 text-gray-700">
+                                {p.type === 'monthly'
+                                  ? <Badge text="Mensualidad" color="indigo" />
+                                  : p.type === 'single_class'
+                                    ? <Badge text="Clase suelta" color="sky" />
+                                    : <Badge text={p.type || '-'} color="gray" />}
+                              </td>
+                              <td className="px-3 py-3 text-gray-700">{MethodBadge(p.method)}</td>
+                              <td className="px-3 py-3 text-right font-semibold text-gray-900">{fmtCLP.format(Number(p.amount||0))}</td>
+                              <td className="px-3 py-3 text-gray-700">{p.reference || '-'}</td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -592,7 +773,7 @@ export default function StudentDetailPage(){
                           <div className="text-sm font-semibold text-gray-700 whitespace-nowrap">Mensualidad</div>
                           <div className="flex-1 border-t border-gray-200" />
                         </div>
-                        <Table rows={monthly} getRowClass={() => 'bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white'} />
+                        <Table rows={monthly} getRowClass={() => ''} />
                       </div>
                     )}
                     {single.length > 0 && (

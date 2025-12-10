@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useTenant } from '../lib/tenant'
@@ -85,18 +85,23 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // rango de fechas base
+  const todayYMD = toYMDInTZ(new Date(), CL_TZ)
+  const [dateFrom, setDateFrom] = useState<string>(todayYMD)
+  const [dateTo, setDateTo] = useState<string>(todayYMD)
+
   // filtros
   const [fMethod, setFMethod] = useState<string>("")
   const [fType, setFType] = useState<string>("")
   const [q, setQ] = useState<string>("")
+  const [debouncedQ, setDebouncedQ] = useState<string>("")
+  const [debouncedFrom, setDebouncedFrom] = useState<string>(todayYMD)
+  const [debouncedTo, setDebouncedTo] = useState<string>(todayYMD)
+  const [debouncedMethod, setDebouncedMethod] = useState<string>("")
+  const [debouncedType, setDebouncedType] = useState<string>("")
   const [page, setPage] = useState<number>(1) 
   const [pageSize, setPageSize] = useState<number>(20)
   const [total, setTotal] = useState<number>(0)
-
-  // rango de fechas
-  const todayYMD = toYMDInTZ(new Date(), CL_TZ)
-  const [dateFrom, setDateFrom] = useState<string>(todayYMD)
-  const [dateTo, setDateTo] = useState<string>(todayYMD)
 
   // rango rapido
   const [quickRange, setQuickRange] = useState<string>('dia_hoy')
@@ -105,23 +110,40 @@ export default function PaymentsPage() {
 
   // vista
   const [viewMode, setViewMode] = useState<ViewMode>('detalle')
+  const [tableLoading, setTableLoading] = useState(false)
+  const [firstLoad, setFirstLoad] = useState(true)
 
   // Reset page when filters change
   useEffect(() => { setPage(1) }, [q, fMethod, fType, dateFrom, dateTo, tenantId])
 
+  // debounce entradas para evitar múltiples fetch mientras se escribe
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedQ(q)
+      setDebouncedFrom(dateFrom)
+      setDebouncedTo(dateTo)
+      setDebouncedMethod(fMethod)
+      setDebouncedType(fType)
+    }, 280)
+    return () => clearTimeout(handle)
+  }, [q, dateFrom, dateTo, fMethod, fType])
+
   useEffect(() => {
     const load = async () => {
-      setLoading(true); setError(null)
+      // solo mostramos loading fuerte en el primer render; luego usamos tableLoading ligero
+      setError(null)
+      if (firstLoad) setLoading(true)
+      setTableLoading(true)
       try {
         const params: any = {
           limit: pageSize,
           offset: (page - 1) * pageSize,
         }
-        if (fMethod) params.method = fMethod
-        if (fType) params.type = fType
-        if (q) params.q = q
-        if (dateFrom) params.date_from = dateFrom
-        if (dateTo) params.date_to = dateTo
+        if (debouncedMethod) params.method = debouncedMethod
+        if (debouncedType) params.type = debouncedType
+        if (debouncedQ) params.q = debouncedQ
+        if (debouncedFrom) params.date_from = debouncedFrom
+        if (debouncedTo) params.date_to = debouncedTo
 
         const [pres, cres, sres, eres] = await Promise.all([
           api.get('/api/pms/payments', { params }),
@@ -156,10 +178,14 @@ export default function PaymentsPage() {
         })))
       } catch (e:any) {
         setError(e?.message || 'Error cargando pagos')
-      } finally { setLoading(false) }
+      } finally {
+        setLoading(false)
+        setTableLoading(false)
+        setFirstLoad(false)
+      }
     }
     load()
-  }, [tenantId, fMethod, fType, q, page, pageSize, dateFrom, dateTo])
+  }, [tenantId, debouncedMethod, debouncedType, debouncedQ, page, pageSize, debouncedFrom, debouncedTo])
 
   // Si cambian manualmente fechas ? personalizado
   useEffect(() => {
@@ -173,11 +199,9 @@ export default function PaymentsPage() {
         ? 'Tarjeta/Débito'
         : m === 'transfer'
           ? 'Transferencia'
-          : m === 'agreement'
-            ? 'Convenio'
-            : m
+          : (m === 'agreement' || m === 'convenio') ? 'Convenio' : m
   const typeLabel = (t:string) =>
-    t === 'monthly' ? 'Mensualidad' : t === 'single_class' ? 'Clase suelta' : t === 'rental' ? 'Arriendo' : t
+    t === 'monthly' ? 'Mensualidad' : t === 'single_class' ? 'Clase suelta' : t
 
   // ---- Totales mes actual ----
   const monthTotals = useMemo(() => {
@@ -268,7 +292,7 @@ export default function PaymentsPage() {
     return items
   }, [payments, students, courses, enrollments, dateFrom, dateTo])
 
-  // Filtros
+    // Filtros
   const filteredRows = useMemo(() => {
     let arr = rangeRows
     if (fMethod) arr = arr.filter(r => r.p.method === fMethod)
@@ -503,31 +527,49 @@ export default function PaymentsPage() {
     </svg>
   )
 
-  function FeaturedStat({ title, value, small, icon, highlight }: { title: string; value: string; small?: string; icon?: any; highlight?: boolean }) {
+  function FeaturedStat({
+    title, value, small, icon, highlight,
+    iconBg = 'from-amber-100 to-amber-50',
+    iconText = 'text-amber-600',
+  }: {
+    title: string; value: string; small?: string; icon?: any; highlight?: boolean;
+    iconBg?: string; iconText?: string;
+  }) {
     return (
-      <div className={`rounded-2xl p-[2px] bg-gradient-to-r from-fuchsia-600 to-purple-600 ${highlight ? 'shadow-lg' : 'shadow-md'}`}>
-        <div className={`rounded-2xl ${highlight ? 'bg-gradient-to-r from-fuchsia-50 to-purple-50' : 'bg-white/95 backdrop-blur'} px-5 py-4`}>
-          <div className="flex items-center gap-2">
-            {icon ? <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/70 text-fuchsia-700 text-sm">{icon}</span> : null}
-            <div className="text-xs text-gray-600">{title}</div>
-          </div>
-          <div className={`font-bold ${highlight ? 'text-3xl' : 'text-2xl'}`}>{value}</div>
-          {small ? <div className="text-[11px] text-gray-500 mt-0.5">{small}</div> : null}
+      <div className={`rounded-2xl border ${highlight ? 'border-gray-200 shadow-md' : 'border-gray-100 shadow-sm'} bg-white px-5 py-4`}>
+        <div className="flex items-center gap-3">
+          {icon ? (
+            <span className={`inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br ${iconBg} ${iconText} text-lg shadow-inner`}>
+              {icon}
+            </span>
+          ) : null}
+          <div className="text-xs text-gray-600 font-semibold">{title}</div>
         </div>
+        <div className={`mt-2 font-bold ${highlight ? 'text-3xl' : 'text-2xl'} text-gray-900`}>{value}</div>
+        {small ? <div className="text-[11px] text-gray-500 mt-0.5">{small}</div> : null}
       </div>
     )
   }
-  function GradientStat({ title, value, small, icon, highlight }: { title: string; value: string; small?: string; icon?: any; highlight?: boolean }) {
+  function GradientStat({
+    title, value, small, icon, highlight,
+    iconBg = 'from-fuchsia-100 to-purple-100',
+    iconText = 'text-fuchsia-700',
+  }: {
+    title: string; value: string; small?: string; icon?: any; highlight?: boolean;
+    iconBg?: string; iconText?: string;
+  }) {
     return (
-      <div className={`rounded-2xl ${highlight ? 'p-[2px]' : 'p-[1px]'} bg-gradient-to-r from-fuchsia-600 to-purple-600 ${highlight ? 'shadow-md' : 'shadow-sm'}`}>
-        <div className={`rounded-2xl ${highlight ? 'bg-gradient-to-r from-fuchsia-50 to-purple-50' : 'bg-white/90 backdrop-blur'} px-4 py-3`}>
-          <div className="flex items-center gap-2">
-            {icon ? <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/70 text-fuchsia-700 text-sm">{icon}</span> : null}
-            <div className="text-xs text-gray-500">{title}</div>
-          </div>
-          <div className={`font-semibold ${highlight ? 'text-2xl' : 'text-xl'}`}>{value}</div>
-          {small ? <div className="text-[11px] text-gray-500 mt-0.5">{small}</div> : null}
+      <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          {icon ? (
+            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br ${iconBg} ${iconText} text-base shadow-inner`}>
+              {icon}
+            </span>
+          ) : null}
+          <div className="text-xs text-gray-600 font-semibold">{title}</div>
         </div>
+        <div className={`mt-1 font-semibold ${highlight ? 'text-2xl' : 'text-xl'} text-gray-900`}>{value}</div>
+        {small ? <div className="text-[11px] text-gray-500 mt-0.5">{small}</div> : null}
       </div>
     )
   }
@@ -586,10 +628,13 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      {loading && <div>Cargando...</div>}
       {error && <div className="text-red-600">{error}</div>}
 
-      {!loading && !error && (
+      {!firstLoad && loading && !error && (
+        <div className="text-sm text-gray-600">Actualizando...</div>
+      )}
+
+      {(!firstLoad || !loading) && !error && (
         <>
           {/* ---- Resumen del mes ---- */}
           <div>
@@ -599,69 +644,87 @@ export default function PaymentsPage() {
               <div className="flex-1 border-t border-gray-200" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              <FeaturedStat title="Mes (total)" value={fmtCLP.format(monthTotals.monthTotal)} icon={IconTotal} highlight />
-              <FeaturedStat title="Mes Efectivo" value={fmtCLP.format(monthTotals.monthByMethod['cash'] || 0)} icon={IconCash} />
-              <FeaturedStat title="Mes Tarjeta" value={fmtCLP.format(monthTotals.monthByMethod['card'] || 0)} icon={IconCard} />
-              <FeaturedStat title="Mes Transferencia" value={fmtCLP.format(monthTotals.monthByMethod['transfer'] || 0)} icon={IconTransfer} />
-              <FeaturedStat title="Mes Convenio" value={fmtCLP.format(monthTotals.monthAgreement || 0)} icon={IconAgreement} />
+              <FeaturedStat title="Mes (total)" value={fmtCLP.format(monthTotals.monthTotal)} icon={IconTotal} highlight iconBg="from-purple-100 to-fuchsia-50" iconText="text-purple-600" />
+              <FeaturedStat title="Mes Efectivo" value={fmtCLP.format(monthTotals.monthByMethod['cash'] || 0)} icon={IconCash} iconBg="from-emerald-100 to-emerald-50" iconText="text-emerald-600" />
+              <FeaturedStat title="Mes Tarjeta" value={fmtCLP.format(monthTotals.monthByMethod['card'] || 0)} icon={IconCard} iconBg="from-sky-100 to-sky-50" iconText="text-sky-600" />
+              <FeaturedStat title="Mes Transferencia" value={fmtCLP.format(monthTotals.monthByMethod['transfer'] || 0)} icon={IconTransfer} iconBg="from-indigo-100 to-indigo-50" iconText="text-indigo-600" />
+              <FeaturedStat title="Mes Convenio" value={fmtCLP.format(monthTotals.monthAgreement || 0)} icon={IconAgreement} iconBg="from-amber-100 to-amber-50" iconText="text-amber-600" />
             </div>
           </div>
 
           {/* ---- Filtro fechas + rapido ---- */}
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 my-2">
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="flex flex-col">
-                  <label className="text-xs text-gray-600 mb-1">Rango rapido</label>
-                  <select className="border rounded px-3 py-2" value={quickRange} onChange={e => applyQuickRange(e.target.value)}>
-                    <option value="dia_hoy">Por da (hoy)</option>
-                    <option value="mes_actual">Por mes (mes actual)</option>
-                    <option value="mes_elegir">Por mes (elegir)</option>
-                    <option value="ciclo_6a5">Ciclo 6 ? 5</option>
-                    <option value="personalizado">Personalizado</option>
-                  </select>
-                </div>
-
-                {quickRange === 'mes_elegir' && (
-                  <div className="flex flex-col">
-                    <label className="text-xs text-gray-600 mb-1">Mes (YYYY-MM)</label>
-                    <input type="month" className="border rounded px-3 py-2" value={pickMonth} onChange={(e)=> applyPickedMonth(e.target.value)} />
-                  </div>
-                )}
-
-                {quickRange === 'ciclo_6a5' && (
-                  <div className="flex flex-col">
-                    <label className="text-xs text-gray-600 mb-1">Mes inicio ciclo (YYYY-MM)</label>
-                    <input type="month" className="border rounded px-3 py-2" value={cycleMonth} onChange={(e)=> applyCycle6to5(e.target.value)} />
-                    <span className="text-[10px] text-gray-500 mt-1">Rango: 06/MM ? 05/(MM+1)</span>
-                  </div>
-                )}
-
-                {/* Manual */}
-                <div className="flex flex-col">
-                  <label className="text-xs text-gray-600 mb-1">Desde</label>
-                  <input type="date" className="border rounded px-3 py-2" value={dateFrom} max={dateTo || undefined}
-                    onChange={e=>{ setDateFrom(e.target.value); setQuickRange('personalizado') }} />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-xs text-gray-600 mb-1">Hasta</label>
-                  <input type="date" className="border rounded px-3 py-2" value={dateTo} min={dateFrom || undefined}
-                    onChange={e=>{ setDateTo(e.target.value); setQuickRange('personalizado') }} />
-                </div>
-              </div>
-
-              <div className="text-xs text-gray-700">
-                Rango seleccionado:&nbsp;<span className="font-semibold">{toDDMMYYYY(dateFrom)}  {toDDMMYYYY(dateTo)}</span>
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-sky-100 to-indigo-100 text-sky-700 text-lg shadow-inner">📅</span>
+              <div>
+                <div className="text-sm font-semibold text-gray-900">Rango de fechas</div>
+                <div className="text-xs text-gray-500">Filtro rápido y personalizado</div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              <GradientStat title="Rango (total)" value={fmtCLP.format(rangeTotals.total)} icon={IconTotal} highlight />
-              <GradientStat title="Rango Efectivo" value={fmtCLP.format(rangeTotals.byMethod['cash'] || 0)} icon={IconCash} />
-              <GradientStat title="Rango Tarjeta" value={fmtCLP.format(rangeTotals.byMethod['card'] || 0)} icon={IconCard} />
-              <GradientStat title="Rango Transferencia" value={fmtCLP.format(rangeTotals.byMethod['transfer'] || 0)} icon={IconTransfer} />
-              <GradientStat title="Rango Convenio" value={fmtCLP.format(rangeTotals.agreement || 0)} icon={IconAgreement} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                  <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">⚡</span>
+                  Rango rapido
+                </label>
+                <select className="border rounded px-3 py-2" value={quickRange} onChange={e => applyQuickRange(e.target.value)}>
+                  <option value="dia_hoy">Por dia (hoy)</option>
+                  <option value="mes_actual">Por mes (mes actual)</option>
+                  <option value="mes_elegir">Por mes (elegir)</option>
+                  <option value="ciclo_6a5">Ciclo 6 a 5</option>
+                  <option value="personalizado">Personalizado</option>
+                </select>
+              </div>
+
+              {quickRange === 'mes_elegir' && (
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                    <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">🗓️</span>
+                    Mes (YYYY-MM)
+                  </label>
+                  <input type="month" className="border rounded px-3 py-2" value={pickMonth} onChange={(e)=> applyPickedMonth(e.target.value)} />
+                </div>
+              )}
+
+              {quickRange === 'ciclo_6a5' && (
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                    <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">🔄</span>
+                    Mes inicio ciclo (YYYY-MM)
+                  </label>
+                  <input type="month" className="border rounded px-3 py-2" value={cycleMonth} onChange={(e)=> applyCycle6to5(e.target.value)} />
+                  <span className="text-[10px] text-gray-500 mt-1">Rango: 06/MM a 05/(MM+1)</span>
+                </div>
+              )}
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                  <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">↙</span>
+                  Desde
+                </label>
+                <input type="date" className="border rounded px-3 py-2" value={dateFrom} max={dateTo || undefined}
+                  onChange={e=>{ setDateFrom(e.target.value); setQuickRange('personalizado') }} />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                  <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">↗</span>
+                  Hasta
+                </label>
+                <input type="date" className="border rounded px-3 py-2" value={dateTo} min={dateFrom || undefined}
+                  onChange={e=>{ setDateTo(e.target.value); setQuickRange('personalizado') }} />
+              </div>
             </div>
+
+          </div>
+
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <GradientStat title="Rango (total)" value={fmtCLP.format(rangeTotals.total)} icon={IconTotal} highlight iconBg="from-purple-100 to-fuchsia-100" iconText="text-purple-700" />
+            <GradientStat title="Rango Efectivo" value={fmtCLP.format(rangeTotals.byMethod['cash'] || 0)} icon={IconCash} iconBg="from-emerald-100 to-emerald-50" iconText="text-emerald-600" />
+            <GradientStat title="Rango Tarjeta" value={fmtCLP.format(rangeTotals.byMethod['card'] || 0)} icon={IconCard} iconBg="from-sky-100 to-sky-50" iconText="text-sky-600" />
+            <GradientStat title="Rango Transferencia" value={fmtCLP.format(rangeTotals.byMethod['transfer'] || 0)} icon={IconTransfer} iconBg="from-indigo-100 to-indigo-50" iconText="text-indigo-600" />
+            <GradientStat title="Rango Convenio" value={fmtCLP.format(rangeTotals.agreement || 0)} icon={IconAgreement} iconBg="from-amber-100 to-amber-50" iconText="text-amber-600" />
           </div>
 
           {/* ---- Vista + filtros de la tabla ---- */}
@@ -684,20 +747,22 @@ export default function PaymentsPage() {
               <div className="text-xs text-gray-700">Total mostrado:&nbsp;<span className="font-semibold">{fmtCLP.format(filteredTotal)}</span></div>
             </div>
 
-            {viewMode === 'detalle' ? (
-              <div className="bg-white rounded-2xl border border-fuchsia-100/70 shadow-sm overflow-auto p-3">
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <select className="border rounded px-3 py-2" value={fMethod} onChange={e=>setFMethod(e.target.value)} title="Metodo">
-                    <option value="">Metodo: todos</option>
+              {viewMode === 'detalle' ? (
+                <div className="bg-white rounded-2xl border border-fuchsia-100/70 shadow-sm overflow-auto p-3 relative">
+                  {tableLoading && <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center text-sm text-gray-700">Actualizando...</div>}
+
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <select className="border rounded px-3 py-2" value={fMethod} onChange={e=>setFMethod(e.target.value)} title="Metodo">
+                      <option value="">Metodo: todos</option>
                     <option value="cash">Efectivo</option>
                     <option value="card">Tarjeta</option>
                     <option value="transfer">Transferencia</option>
+                    <option value="agreement">Convenio</option>
                   </select>
                   <select className="border rounded px-3 py-2" value={fType} onChange={e=>setFType(e.target.value)} title="Tipo">
                     <option value="">Tipo: todos</option>
                     <option value="monthly">Mensualidad</option>
                     <option value="single_class">Clase suelta</option>
-                    <option value="rental">Arriendo</option>
                   </select>
                   <input className="border rounded px-3 py-2 flex-1 min-w-[180px]" placeholder="Buscar (alumno/curso/profesor/nota)" value={q} onChange={e=>setQ(e.target.value)} />
                   <select className="border rounded px-2 py-2" value={String(pageSize)} onChange={e=>setPageSize(Number(e.target.value))} title="Filas por Pgina">
@@ -837,6 +902,8 @@ export default function PaymentsPage() {
     </div>
   )
 }
+
+
 
 
 

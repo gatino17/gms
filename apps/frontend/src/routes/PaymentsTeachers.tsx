@@ -167,22 +167,15 @@ const IcMoney = () => (
 )
 
 // ---------- Stats pequenas ----------
-function FeaturedStat({ title, value }: { title: string; value: string }) {
+function StatCard({ title, value, icon, iconBg, iconText }: { title: string; value: string; icon: JSX.Element; iconBg: string; iconText: string }) {
   return (
-    <div className="rounded-2xl p-[2px] bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-md">
-      <div className="rounded-2xl bg-white px-5 py-4">
-        <div className="text-xs text-gray-600">{title}</div>
-        <div className="text-2xl font-bold">{value}</div>
-      </div>
-    </div>
-  )
-}
-function GradientStat({ title, value }: { title: string; value: string }) {
-  return (
-    <div className="rounded-2xl p-[1px] bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-sm">
-      <div className="rounded-2xl bg-white px-4 py-3">
-        <div className="text-xs text-gray-500">{title}</div>
-        <div className="text-xl font-semibold">{value}</div>
+    <div className="rounded-2xl border border-gray-100 bg-white shadow-sm px-4 py-3 flex items-center gap-3">
+      <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full ${iconBg} ${iconText} text-lg shadow-inner`}>
+        {icon}
+      </span>
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-500">{title}</span>
+        <span className="text-lg font-semibold text-gray-900">{value}</span>
       </div>
     </div>
   )
@@ -240,7 +233,7 @@ function TeacherCard({
             <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 flex items-center justify-between gap-2 min-w-0">
               <span className="inline-flex items-center gap-1 min-w-0">
                 <IcCard />
-                <span className="truncate">Tarjeta/Debito</span>
+                <span className="truncate">Tarjeta/Débito</span>
               </span>
               <span className="font-semibold text-right whitespace-nowrap shrink-0">{fmtCLP.format(totals.card)}</span>
             </div>
@@ -273,13 +266,15 @@ export default function PaymentsTeachers() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [byTeacher, setByTeacher] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [tableLoading, setTableLoading] = useState(false)
+  const [firstLoad, setFirstLoad] = useState(true)
   const [error, setError] = useState<string|null>(null)
 
   const [teacher, setTeacher] = useState<string>('')
 
   const todayYMD = toYMDInTZ(new Date(), CL_TZ)
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
+  const [dateFrom, setDateFrom] = useState<string>(todayYMD)
+  const [dateTo, setDateTo] = useState<string>(todayYMD)
   const [quickRange, setQuickRange] = useState<string>('personalizado')
   const [pickMonth, setPickMonth] = useState<string>('')   // YYYY-MM
   const [cycleMonth, setCycleMonth] = useState<string>('') // YYYY-MM
@@ -290,7 +285,9 @@ export default function PaymentsTeachers() {
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true); setError(null)
+      setError(null)
+      if (firstLoad) setLoading(true)
+      setTableLoading(true)
       try {
         const payParams: any = { limit: 1000, offset: 0 }
         if (dateFrom) payParams.date_from = dateFrom
@@ -345,7 +342,11 @@ export default function PaymentsTeachers() {
         })))
       } catch (e: any) {
         setError(e?.message || 'Error cargando datos')
-      } finally { setLoading(false) }
+      } finally {
+        setLoading(false)
+        setTableLoading(false)
+        setFirstLoad(false)
+      }
     }
     load()
   }, [tenantId, dateFrom, dateTo])
@@ -543,80 +544,92 @@ export default function PaymentsTeachers() {
     <div className="space-y-6">
       {/* Header y filtros */}
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-          <div className="flex flex-col">
-            <h1 className="text-2xl font-semibold">Pagos por profesor</h1>
-            <div className="text-sm text-gray-600">{headerSubtitle}</div>
-            <div className="text-xs text-gray-500">Profesores: {teachers.length}</div>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">Pagos por profesor</h1>
+          <div className="text-sm text-gray-600">{headerSubtitle}</div>
+          <div className="text-xs text-gray-500">Profesores: {teachers.length}</div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={() => window.history.back()}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-fuchsia-200 bg-gradient-to-r from-fuchsia-100 to-purple-100 text-fuchsia-800 hover:from-fuchsia-200 hover:to-purple-200 shadow-sm"
+            title="Volver"
+          >
+            ← Volver
+          </button>
+        </div>
+
+        <div className="flex flex-col w-full">
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-sky-100 to-indigo-100 text-sky-700 text-lg shadow-inner">📅</span>
+              <div>
+                <div className="text-sm font-semibold text-gray-900">Rango de fechas</div>
+                <div className="text-xs text-gray-500">Filtro rápido y personalizado</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                  <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">⚡</span>
+                  Rango rápido
+                </label>
+                <select className="border rounded px-3 py-2" value={quickRange} onChange={e => applyQuickRange(e.target.value)}>
+                  <option value="dia_hoy">Por día (hoy)</option>
+                  <option value="mes_actual">Por mes (mes actual)</option>
+                  <option value="mes_elegir">Por mes (elegir)</option>
+                  <option value="ciclo_6a5">Ciclo 6 a 5</option>
+                  <option value="personalizado">Personalizado</option>
+                </select>
+              </div>
+
+              {quickRange === 'mes_elegir' && (
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                    <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">🗓️</span>
+                    Mes (YYYY-MM)
+                  </label>
+                  <input type="month" className="border rounded px-3 py-2" value={pickMonth} onChange={(e)=> applyPickedMonth(e.target.value)} />
+                </div>
+              )}
+
+              {quickRange === 'ciclo_6a5' && (
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                    <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">🔄</span>
+                    Mes inicio ciclo (YYYY-MM)
+                  </label>
+                  <input type="month" className="border rounded px-3 py-2" value={cycleMonth} onChange={(e)=> applyCycle6to5(e.target.value)} />
+                  <span className="text-[10px] text-gray-500 mt-1">Rango: 06/MM a 05/(MM+1)</span>
+                </div>
+              )}
+
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                  <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">↙</span>
+                  Desde
+                </label>
+                <input type="date" className="border rounded px-3 py-2" value={dateFrom} max={dateTo || undefined}
+                  onChange={e=>{ setDateFrom(e.target.value); setQuickRange('personalizado') }} />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                  <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">↗</span>
+                  Hasta
+                </label>
+                <input type="date" className="border rounded px-3 py-2" value={dateTo} min={dateFrom || undefined}
+                  onChange={e=>{ setDateTo(e.target.value); setQuickRange('personalizado') }} />
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-700">
+              Rango seleccionado:&nbsp;<span className="font-semibold">{toDDMMYYYY(dateFrom)}  {toDDMMYYYY(dateTo)}</span>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-end gap-3">
-            {/* Rango rapido */}
-            <div className="flex flex-col">
-              <label className="text-xs text-gray-600 mb-1">Rango rapido</label>
-              <select
-                className="border rounded px-3 py-2"
-                value={quickRange}
-                onChange={e => applyQuickRange(e.target.value)}
-              >
-                <option value="dia_hoy">Por dia (hoy)</option>
-                <option value="mes_actual">Por mes (mes actual)</option>
-                <option value="mes_elegir">Por mes (elegir)</option>
-                <option value="ciclo_6a5">Ciclo 6 a 5</option>
-                <option value="personalizado">Personalizado</option>
-              </select>
-            </div>
-
-            {/* Elegir mes */}
-            {quickRange === 'mes_elegir' && (
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600 mb-1">Mes (YYYY-MM)</label>
-                <input
-                  type="month"
-                  className="border rounded px-3 py-2"
-                  value={pickMonth}
-                  onChange={(e)=> applyPickedMonth(e.target.value)}
-                />
-              </div>
-            )}
-
-            {/* Ciclo 6?5 */}
-            {quickRange === 'ciclo_6a5' && (
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600 mb-1">Mes inicio ciclo</label>
-                <input
-                  type="month"
-                  className="border rounded px-3 py-2"
-                  value={cycleMonth}
-                  onChange={(e)=> applyCycle6to5(e.target.value)}
-                />
-                <span className="text-[10px] text-gray-500 mt-1">Rango: 06/MM a 05/(MM+1)</span>
-              </div>
-            )}
-
-            {/* Fechas manuales */}
-            <div className="flex flex-col">
-              <label className="text-xs text-gray-600 mb-1">Desde</label>
-              <input
-                type="date"
-                className="border rounded px-3 py-2"
-                value={dateFrom}
-                max={dateTo || undefined}
-                onChange={e=>{ setDateFrom(e.target.value); setQuickRange('personalizado') }}
-              />
-            </div>
-            <div className="flex flex-col">
-              <label className="text-xs text-gray-600 mb-1">Hasta</label>
-              <input
-                type="date"
-                className="border rounded px-3 py-2"
-                value={dateTo}
-                min={dateFrom || undefined}
-                onChange={e=>{ setDateTo(e.target.value); setQuickRange('personalizado') }}
-              />
-            </div>
-
-            {/* Profesor */}
+          <div className="flex flex-wrap items-end gap-3 pt-3">
             <div className="flex flex-col">
               <label className="text-xs text-gray-600 mb-1">Profesor</label>
               <select className="border rounded px-3 py-2" value={teacher} onChange={e=>setTeacher(e.target.value)}>
@@ -627,12 +640,9 @@ export default function PaymentsTeachers() {
           </div>
         </div>
 
-        {/* Rango seleccionado */}
-        <div className="text-xs text-gray-700 inline-flex items-center gap-1">
-          <IcCalendar />
-          <span>Rango:</span>
-          <span className="font-semibold">{toDDMMYYYY(dateFrom)} a {toDDMMYYYY(dateTo)}</span>
-        </div>
+        {!firstLoad && tableLoading && (
+          <div className="text-xs text-fuchsia-700 animate-pulse">Actualizando datos...</div>
+        )}
       </div>
 
       {loading && <div>Cargando...</div>}
@@ -642,12 +652,12 @@ export default function PaymentsTeachers() {
         <>
           {/* Tarjetas resumen cuando hay profesor seleccionado */}
           {teacher ? (
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-              <FeaturedStat title={`Total ${teacher}`} value={fmtCLP.format(selectedAgg?.total || 0)} />
-              <GradientStat title="Efectivo" value={fmtCLP.format(selectedAgg?.cash || 0)} />
-              <GradientStat title="Tarjeta/Debito" value={fmtCLP.format(selectedAgg?.card || 0)} />
-              <GradientStat title="Transferencia" value={fmtCLP.format(selectedAgg?.transfer || 0)} />
-              <GradientStat title="Convenio" value={fmtCLP.format(selectedAgg?.agreement || 0)} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+              <StatCard title={`Total ${teacher}`} value={fmtCLP.format(selectedAgg?.total || 0)} icon={<IcMoney />} iconBg="bg-gradient-to-br from-purple-100 to-fuchsia-100" iconText="text-purple-700" />
+              <StatCard title="Efectivo" value={fmtCLP.format(selectedAgg?.cash || 0)} icon={<IcCash />} iconBg="bg-gradient-to-br from-emerald-100 to-emerald-50" iconText="text-emerald-700" />
+              <StatCard title="Tarjeta/Débito" value={fmtCLP.format(selectedAgg?.card || 0)} icon={<IcCard />} iconBg="bg-gradient-to-br from-sky-100 to-indigo-50" iconText="text-sky-700" />
+              <StatCard title="Transferencia" value={fmtCLP.format(selectedAgg?.transfer || 0)} icon={<IcTransfer />} iconBg="bg-gradient-to-br from-indigo-100 to-blue-50" iconText="text-indigo-700" />
+              <StatCard title="Convenio" value={fmtCLP.format(selectedAgg?.agreement || 0)} icon={<IcDeal />} iconBg="bg-gradient-to-br from-amber-100 to-amber-50" iconText="text-amber-700" />
             </div>
           ) : (
             <div className="rounded-2xl border border-gray-100 bg-white px-5 py-4">
@@ -661,7 +671,12 @@ export default function PaymentsTeachers() {
           {teacher ? (
             <>
               {/* -------- Tabla por curso (contorno degradado) -------- */}
-              <div className="rounded-2xl p-[2px] bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-sm">
+              <div className="rounded-2xl p-[2px] bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-sm relative">
+                {tableLoading && !firstLoad && (
+                  <div className="absolute inset-0 rounded-2xl bg-white/70 backdrop-blur-[1px] flex items-center justify-center text-sm font-semibold text-fuchsia-700">
+                    Actualizando...
+                  </div>
+                )}
                 <div className="bg-white rounded-2xl overflow-auto">
                   <div className="px-4 pt-4 text-sm font-semibold">Detalle por curso</div>
                   <table className="min-w-full text-sm">
@@ -699,7 +714,12 @@ export default function PaymentsTeachers() {
               </div>
 
               {/* -------- Lista detallada (contorno degradado) -------- */}
-              <div className="rounded-2xl p-[2px] bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-sm">
+              <div className="rounded-2xl p-[2px] bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-sm relative">
+                {tableLoading && !firstLoad && (
+                  <div className="absolute inset-0 rounded-2xl bg-white/70 backdrop-blur-[1px] flex items-center justify-center text-sm font-semibold text-fuchsia-700">
+                    Actualizando...
+                  </div>
+                )}
                 <div className="bg-white rounded-2xl overflow-auto">
                   <div className="px-4 pt-4 text-sm font-semibold">Listado detallado</div>
                   <table className="min-w-full text-sm">

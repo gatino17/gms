@@ -319,10 +319,16 @@ export default function PaymentsPage() {
 
     // Filtros
   const filteredRows = useMemo(() => {
-    const normalize = (s: string) => s
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/\p{Diacritic}/gu, '')
+    const normalize = (s: string) => {
+      const lower = (s || '').toLowerCase().trim()
+      let noAccents = lower
+      try {
+        noAccents = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      } catch {
+        // normalize no disponible; usamos cadena en minuscula sin cambios
+      }
+      return noAccents.replace(/\s+/g, ' ')
+    }
 
     let arr = q.trim() ? allRows : rangeRows
     if (fMethod) arr = arr.filter(r => r.p.method === fMethod)

@@ -247,6 +247,36 @@ class PaymentByTeacherListResponse(BaseModel):
     total: int
 
 
+# -------- Anuncios --------
+class AnnouncementBase(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    subtitle: Optional[str] = Field(default=None, max_length=255)
+    body: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    image_url: Optional[str] = Field(default=None, max_length=255)
+    link_url: Optional[str] = Field(default=None, max_length=255)
+    is_active: bool = True
+    sort_order: Optional[int] = None
+
+
+class AnnouncementCreate(AnnouncementBase):
+    pass
+
+
+class AnnouncementUpdate(AnnouncementBase):
+    pass
+
+
+class AnnouncementOut(AnnouncementBase):
+    id: int
+    tenant_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
 
 
 

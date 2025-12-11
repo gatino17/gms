@@ -51,6 +51,8 @@ type CourseStatusItem = {
     id: number
     name: string
     level?: string | null
+    start_time?: string | null
+    end_time?: string | null
     price?: number | null
     class_price?: number | null
     image_url?: string | null

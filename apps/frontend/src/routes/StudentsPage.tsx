@@ -22,6 +22,13 @@ import CreateStudentModal from "../components/CreateStudentModal"
 import EditStudentModal   from "../components/EditStudentModal"
 import AddCourseModal from "../components/AddCourseModal"
 
+const fmtDisplayDate = (iso?: string | null) => {
+  if (!iso) return '-'
+  const parts = iso.split('-')
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
+  return iso
+}
+
 
 type Student = {
   id: number
@@ -431,7 +438,7 @@ export default function StudentsPage() {
                     <td className="px-3 py-2">
                       <div className="inline-flex items-center gap-1 text-gray-700">
                         <HiOutlineCalendar className="text-gray-400" />
-                        {s.joined_at ?? '-'}
+                        {fmtDisplayDate(s.joined_at)}
                       </div>
                     </td>
                     <td className="px-3 py-2">
@@ -627,8 +634,6 @@ export default function StudentsPage() {
     </div>
   )
 }
-
-
 
 
 

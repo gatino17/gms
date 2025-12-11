@@ -250,7 +250,10 @@ export default function DashboardPage() {
         const hasPayForCourse = st.id != null && group.course.id != null ? studentCourseHasPayment.has(`${st.id}_${group.course.id}`) : false
         const isPending = payStatus ? payStatus !== 'activo' : !(hasPay || hasPayForCourse)
         if (isPending) {
-          const timeLabel = [group.course.start_time, group.course.end_time].filter(Boolean).map(t => (t || '').slice(0,5)).join(' - ')
+          const timeLabel = [group.course?.start_time, group.course?.end_time]
+            .filter((t): t is string => Boolean(t))
+            .map(t => t.slice(0, 5))
+            .join(' - ')
           pendingDetails.push({ student: fullName, course: group.course.name, time: timeLabel || undefined })
         }
         if (st.birthday_today) birthdaysSet.add(fullName)

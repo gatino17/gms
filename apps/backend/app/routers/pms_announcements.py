@@ -3,9 +3,11 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, select
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from sqlalchemy import or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from pathlib import Path
+import secrets
 
 from apps.backend.app.pms import models, schemas
 from apps.backend.app.pms.deps import get_db_session, get_tenant_id
@@ -50,6 +52,15 @@ async def create_announcement(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
+    # sort_order autoincremental si no viene
+    sort_order = payload.sort_order
+    if sort_order is None:
+        res = await db.execute(
+            select(models.Announcement.sort_order).where(models.Announcement.tenant_id == tenant_id).order_by(models.Announcement.sort_order.desc()).limit(1)
+        )
+        max_sort = res.scalar()
+        sort_order = (max_sort or 0) + 1
+
     obj = models.Announcement(
         tenant_id=tenant_id,
         title=payload.title,
@@ -60,7 +71,7 @@ async def create_announcement(
         image_url=payload.image_url,
         link_url=payload.link_url,
         is_active=payload.is_active,
-        sort_order=payload.sort_order,
+        sort_order=sort_order,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
@@ -68,6 +79,32 @@ async def create_announcement(
     await db.commit()
     await db.refresh(obj)
     return obj
+
+
+@router.post("/upload-image")
+async def upload_announcement_image(
+    file: UploadFile = File(...),
+    tenant_id: int = Depends(get_tenant_id),
+):
+    ct = (file.content_type or "").lower()
+    allowed = {"image/jpeg", "image/png", "image/webp"}
+    if ct not in allowed:
+        raise HTTPException(status_code=400, detail="Tipo no permitido. Use JPG, PNG o WEBP")
+    content = await file.read()
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Imagen supera 2 MB")
+
+    from apps.backend.app.main import static_dir  # type: ignore
+    filename = Path(file.filename or "image").name
+    # Evitar colisiones
+    stem = Path(filename).stem
+    ext = Path(filename).suffix or ".jpg"
+    safe_name = f"{stem}_{secrets.token_hex(4)}{ext}"
+    target = Path(static_dir) / "uploads" / "announcements" / str(tenant_id)
+    target.mkdir(parents=True, exist_ok=True)
+    (target / safe_name).write_bytes(content)
+    public_url = f"/static/uploads/announcements/{tenant_id}/{safe_name}"
+    return {"url": public_url}
 
 
 @router.put("/{announcement_id}", response_model=schemas.AnnouncementOut)
@@ -113,4 +150,3 @@ async def delete_announcement(
     await db.delete(obj)
     await db.commit()
     return
-

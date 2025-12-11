@@ -20,6 +20,8 @@ export default function AnnouncementsPage() {
   const [items, setItems] = useState<Announcement[]>([])
   const [draft, setDraft] = useState<Partial<Announcement>>({})
   const [error, setError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const MAX_ITEMS = 4
 
@@ -170,11 +172,52 @@ export default function AnnouncementsPage() {
                 <label className="block text-sm font-medium">Imagen (URL)</label>
                 <input
                   className="w-full border rounded px-3 py-2"
-                  value={draft.image_url || ''}
-                  onChange={(e) => setDraft({ ...draft, image_url: e.target.value })}
-                  placeholder="https://..."
-                />
-              </div>
+            value={draft.image_url || ''}
+            onChange={(e) => setDraft({ ...draft, image_url: e.target.value })}
+            placeholder="https://..."
+          />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <label className="block text-sm font-medium">Subir imagen (máx 2MB)</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              setUploadError(null)
+              if (!file.type.startsWith('image/')) {
+                setUploadError('Archivo no es una imagen')
+                return
+              }
+              if (file.size > 2 * 1024 * 1024) {
+                setUploadError('Máximo 2MB')
+                return
+              }
+              try {
+                setUploading(true)
+                // Subir a backend
+                const fd = new FormData()
+                fd.append('file', file)
+                const res = await api.post<{ url: string }>('/api/pms/announcements/upload-image', fd, {
+                  headers: { 'Content-Type': 'multipart/form-data' },
+                })
+                setDraft((d) => ({ ...d, image_url: res.data.url }))
+              } catch (err: any) {
+                setUploadError(err?.response?.data?.detail || err?.message || 'No se pudo subir la imagen')
+              } finally {
+                setUploading(false)
+              }
+            }}
+          />
+          {uploading && <div className="text-xs text-gray-500">Subiendo...</div>}
+          {uploadError && <div className="text-xs text-red-600">{uploadError}</div>}
+          {draft.image_url && (
+            <div className="mt-2">
+              <img src={draft.image_url} alt="preview" className="w-full max-w-xs h-32 object-cover rounded" />
+            </div>
+          )}
+        </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium">Enlace (opcional)</label>
                 <input
@@ -182,16 +225,6 @@ export default function AnnouncementsPage() {
                   value={draft.link_url || ''}
                   onChange={(e) => setDraft({ ...draft, link_url: e.target.value })}
                   placeholder="https://..."
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">Orden</label>
-                <input
-                  type="number"
-                  className="w-full border rounded px-3 py-2"
-                  value={draft.sort_order ?? ''}
-                  onChange={(e) => setDraft({ ...draft, sort_order: e.target.value === '' ? undefined : Number(e.target.value) })}
-                  placeholder="Ej: 1"
                 />
               </div>
               <div className="flex items-center gap-2">

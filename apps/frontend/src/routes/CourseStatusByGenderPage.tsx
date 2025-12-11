@@ -162,7 +162,12 @@ export default function CourseStatusByGenderPage() {
         await Promise.all(attendancePromises)
       } catch { /* si falla seguimos con los datos originales */ }
 
-      setPayments(payRes.data?.results ?? payRes.data ?? [])
+      const payRows = Array.isArray(payRes.data)
+        ? payRes.data
+        : Array.isArray(payRes.data?.results)
+          ? payRes.data.results
+          : []
+      setPayments(payRows)
       setData(statusData)
     } catch (e: any) {
       setError(e?.message ?? 'Error cargando estado de cursos')
@@ -188,6 +193,7 @@ export default function CourseStatusByGenderPage() {
   // Filtrado en memoria para respuesta inmediata en la tabla
   // Agrupacion directa de los datos cargados (el load ya se dispara en cada cambio de filtro de texto con debounce)
   const grouped = useMemo(() => {
+    const pays = Array.isArray(payments) ? payments : []
     return data.map((row) => {
       const today = new Date()
       const expectedDefault = Math.max(1, ((row.course as any).classes_per_week ?? 1) * 4)
@@ -200,7 +206,7 @@ export default function CourseStatusByGenderPage() {
       }
       const enrStudents = row.students.map((s) => {
         const payStatus = (s.payment_status || '').toString().toLowerCase()
-        const hasPay = payments.some((p) => p.student_id === s.id && p.course_id === row.course.id)
+        const hasPay = pays.some((p) => p.student_id === s.id && p.course_id === row.course.id)
         const stuEnd = toDate(s.renewal_date)
         const isPastPeriod = stuEnd ? today > stuEnd : false
         let statusLabel = 'Inscrito'

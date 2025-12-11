@@ -10,6 +10,8 @@ type Announcement = {
   end_date?: string
   image_url?: string
   link_url?: string
+  is_active?: boolean
+  sort_order?: number | null
 }
 
 export default function AnnouncementsPage() {
@@ -18,6 +20,12 @@ export default function AnnouncementsPage() {
   const [error, setError] = useState<string | null>(null)
   const MAX_ITEMS = 4
 
+  const fmtDisplayDate = (iso?: string) => {
+    if (!iso) return ''
+    const parts = iso.split('-')
+    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : iso
+  }
+
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -25,7 +33,7 @@ export default function AnnouncementsPage() {
 
   const load = async () => {
     try {
-      const res = await api.get<Announcement[]>('/api/pms/announcements')
+      const res = await api.get<Announcement[]>('/api/pms/announcements', { params: { active_only: false, limit: 50 } })
       setItems(res.data)
     } catch (e: any) {
       setError(e?.message || 'Error al cargar anuncios')
@@ -35,7 +43,7 @@ export default function AnnouncementsPage() {
   const handleSave = async () => {
     setError(null)
     if (!draft.title) {
-      setError('El título es obligatorio')
+      setError('El titulo es obligatorio')
       return
     }
     if (items.length >= MAX_ITEMS) {
@@ -65,16 +73,16 @@ export default function AnnouncementsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Novedades / Comunicados</h1>
-          <p className="text-sm text-gray-500">Publica banners, saludos de cumpleaños o retos para que se vean en la app móvil.</p>
+          <p className="text-sm text-gray-500">Publica banners, saludos o retos para que se vean en la app movil.</p>
         </div>
-        <span className="text-xs text-gray-500">Máximo {MAX_ITEMS} avisos activos</span>
+        <span className="text-xs text-gray-500">Maximo {MAX_ITEMS} avisos activos</span>
       </div>
 
       {error && <div className="px-3 py-2 rounded bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
 
       <div className="bg-white rounded-lg border shadow p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Título</label>
+          <label className="block text-sm font-medium">Titulo</label>
           <input
             className="w-full border rounded px-3 py-2"
             value={draft.title || ''}
@@ -83,7 +91,7 @@ export default function AnnouncementsPage() {
           />
         </div>
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Subtítulo</label>
+          <label className="block text-sm font-medium">Subtitulo</label>
           <input
             className="w-full border rounded px-3 py-2"
             value={draft.subtitle || ''}
@@ -137,6 +145,28 @@ export default function AnnouncementsPage() {
             placeholder="https://..."
           />
         </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Orden</label>
+          <input
+            type="number"
+            className="w-full border rounded px-3 py-2"
+            value={draft.sort_order ?? ''}
+            onChange={(e) => setDraft({ ...draft, sort_order: e.target.value === '' ? undefined : Number(e.target.value) })}
+            placeholder="Ej: 1"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            id="is_active"
+            type="checkbox"
+            className="h-4 w-4"
+            checked={draft.is_active ?? true}
+            onChange={(e) => setDraft({ ...draft, is_active: e.target.checked })}
+          />
+          <label htmlFor="is_active" className="text-sm text-gray-700">
+            Activo
+          </label>
+        </div>
         <div className="md:col-span-2 flex justify-end">
           <button
             type="button"
@@ -144,7 +174,7 @@ export default function AnnouncementsPage() {
             className="px-4 py-2 rounded bg-fuchsia-600 text-white font-semibold shadow hover:bg-fuchsia-700 disabled:opacity-60"
             disabled={items.length >= MAX_ITEMS}
           >
-            Guardar en borrador ({items.length}/{MAX_ITEMS})
+            Guardar ({items.length}/{MAX_ITEMS})
           </button>
         </div>
       </div>
@@ -152,7 +182,7 @@ export default function AnnouncementsPage() {
       <div className="bg-white rounded-lg border shadow p-4">
         <h2 className="text-lg font-semibold mb-3">Publicados</h2>
         {items.length === 0 ? (
-          <p className="text-sm text-gray-500">Aún no hay novedades.</p>
+          <p className="text-sm text-gray-500">Aun no hay novedades.</p>
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
             {items.map((a) => (
@@ -164,12 +194,21 @@ export default function AnnouncementsPage() {
                   </div>
                   {a.start_date || a.end_date ? (
                     <span className="text-xs text-gray-500">
-                      {a.start_date || 's/inicio'} → {a.end_date || 's/fin'}
+                      {fmtDisplayDate(a.start_date) || 's/inicio'} · {fmtDisplayDate(a.end_date) || 's/fin'}
                     </span>
                   ) : null}
                 </div>
+                {a.image_url && (
+                  <div className="mb-2">
+                    <img src={a.image_url} alt={a.title} className="w-full h-32 object-cover rounded" />
+                  </div>
+                )}
                 {a.body && <p className="text-sm text-gray-700">{a.body}</p>}
                 {a.link_url && <p className="text-xs text-fuchsia-700 truncate mt-1">{a.link_url}</p>}
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
+                  {a.sort_order != null && <span>Orden: {a.sort_order}</span>}
+                  {a.is_active === false && <span className="text-rose-600">Inactivo</span>}
+                </div>
                 <div className="mt-3 flex justify-end">
                   <button
                     type="button"

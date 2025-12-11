@@ -280,12 +280,25 @@ export default function PaymentsPage() {
     return c.name
   }
 
+  // Normalizador (acentos y espacios)
+  const normalize = useCallback((s: string) => {
+    const lower = (s || '').toLowerCase().trim()
+    let noAccents = lower
+    try {
+      noAccents = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    } catch {
+      // normalize no disponible
+    }
+    return noAccents.replace(/\s+/g, ' ')
+  }, [])
+
   // Mapea pago -> fila normalizada
   const mapPaymentToRow = useCallback((p: Payment) => {
     const c = p.course_id ? courses[p.course_id!] : undefined
-    const student = p.student_id ? (students[p.student_id!]?.name || '-') : '-'
-    const course  = courseShort(c)
-    const teacher = c?.teacher_name || '-'
+    const student = p.student_name || (p.student_id ? (students[p.student_id!]?.name || '-') : '-') || '-'
+    const courseShortLabel  = courseShort(c)
+    const course  = p.course_name || courseShortLabel
+    const teacher = p.teacher_name || c?.teacher_name || '-'
     const typeStr = typeLabel(p.type)
     const methodStr = methodLabel(p.method)
     let periodo = ''
@@ -295,11 +308,15 @@ export default function PaymentsPage() {
     } else if (p.type === 'single_class') {
       periodo = `${toDDMMYYYY(p.payment_date)}`
     }
+    const searchText = normalize(
+      `${student} ${course} ${courseShortLabel} ${teacher} ${typeStr} ${methodStr} ${periodo} ${p.notes || ''} ${p.reference || ''}`
+    )
     return {
       p, student, course, teacher, periodo, typeStr, methodStr,
-      dateStr: toDDMMYYYY(p.payment_date)
+      dateStr: toDDMMYYYY(p.payment_date),
+      searchText,
     }
-  }, [courses, students, enrollments])
+  }, [courses, students, enrollments, normalize])
 
   // Filas dentro del rango
   const rangeRows = useMemo(() => {
@@ -319,28 +336,15 @@ export default function PaymentsPage() {
 
     // Filtros
   const filteredRows = useMemo(() => {
-    const normalize = (s: string) => {
-      const lower = (s || '').toLowerCase().trim()
-      let noAccents = lower
-      try {
-        noAccents = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      } catch {
-        // normalize no disponible; usamos cadena en minuscula sin cambios
-      }
-      return noAccents.replace(/\s+/g, ' ')
-    }
-
     let arr = q.trim() ? allRows : rangeRows
     if (fMethod) arr = arr.filter(r => r.p.method === fMethod)
     if (fType) arr = arr.filter(r => r.p.type === fType)
     if (q.trim()) {
       const qq = normalize(q)
-      arr = arr.filter(r =>
-        normalize(`${r.student} ${r.course} ${r.teacher} ${r.typeStr} ${r.methodStr} ${r.periodo} ${r.p.notes||''}`).includes(qq)
-      )
+      arr = arr.filter(r => r.searchText.includes(qq))
     }
     return arr
-  }, [rangeRows, fMethod, fType, q])
+  }, [rangeRows, fMethod, fType, q, allRows, normalize])
 
   const filteredTotal = useMemo(
     () => filteredRows.reduce((acc, r) => acc + Number(r.p.amount || 0), 0),

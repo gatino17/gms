@@ -311,13 +311,18 @@ export default function PaymentsPage() {
 
     // Filtros
   const filteredRows = useMemo(() => {
+    const normalize = (s: string) => s
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+
     let arr = rangeRows
     if (fMethod) arr = arr.filter(r => r.p.method === fMethod)
     if (fType) arr = arr.filter(r => r.p.type === fType)
     if (q.trim()) {
-      const qq = q.toLowerCase()
+      const qq = normalize(q)
       arr = arr.filter(r =>
-        (`${r.student} ${r.course} ${r.teacher} ${r.typeStr} ${r.methodStr} ${r.periodo} ${r.p.notes||''}`.toLowerCase().includes(qq))
+        normalize(`${r.student} ${r.course} ${r.teacher} ${r.typeStr} ${r.methodStr} ${r.periodo} ${r.p.notes||''}`).includes(qq)
       )
     }
     return arr

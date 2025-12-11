@@ -119,10 +119,11 @@ export default function CourseDetailPage() {
               attended_course_ids?: number[]
             }[]
             for (const d of days) {
-              if (d.date >= start && d.date <= end) {
-                if ((d.expected_course_ids || []).includes(courseId)) expected++
-                if ((d.attended_course_ids || []).includes(courseId)) attended++
-              }
+              const expIds = d.expected_course_ids || []
+              const attIds = d.attended_course_ids || []
+              const inPeriod = d.date >= start && d.date <= end
+              if (inPeriod && expIds.includes(courseId)) expected++
+              if (d.date >= start && attIds.includes(courseId)) attended++ // cuenta extras posteriores al fin
             }
           } catch { }
         }

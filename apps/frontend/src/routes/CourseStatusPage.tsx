@@ -40,7 +40,7 @@ export default function CourseStatusPage() {
   const [studentQ, setStudentQ] = useState('')
   const [day, setDay] = useState<string>('') // '' = todos; 0..6 especificos
   const [teacherQ, setTeacherQ] = useState('')
-  const [attendanceDays, setAttendanceDays] = useState<string>('30')
+  const [attendanceDays, setAttendanceDays] = useState<string>('365')
   const [sortBy, setSortBy] = useState<'none' | 'att_desc' | 'att_asc'>('none')
   const [payments, setPayments] = useState<PaymentRow[]>([])
 
@@ -87,6 +87,22 @@ export default function CourseStatusPage() {
     const da = String(d.getDate()).padStart(2, '0')
     return `${y}-${m}-${da}`
   }
+  const monthsInRange = (startYMD: string, endYMD: string) => {
+    const out: { year: number; month: number }[] = []
+    const [sy, sm] = startYMD.split('-').map(Number)
+    const [ey, em] = endYMD.split('-').map(Number)
+    let y = sy
+    let m = sm
+    while (y < ey || (y === ey && m <= em)) {
+      out.push({ year: y, month: m })
+      m++
+      if (m > 12) {
+        m = 1
+        y++
+      }
+    }
+    return out
+  }
   const weeksBetween = (start?: Date | null, end?: Date | null): number | null => {
     if (!start || !end) return null
     const s = new Date(start.getFullYear(), start.getMonth(), start.getDate())
@@ -132,7 +148,8 @@ export default function CourseStatusPage() {
       if (studentQ) params.student_q = studentQ
       if (day !== '') params.day_of_week = Number(day)
       if (teacherQ) params.teacher_q = teacherQ
-      if (attendanceDays) params.attendance_days = Number(attendanceDays)
+      const attDaysNum = Number(attendanceDays) || 365
+      params.attendance_days = attDaysNum
       const today = new Date()
       const startRange = new Date()
       startRange.setDate(today.getDate() - 365) // pagos del ultimo año
@@ -147,7 +164,43 @@ export default function CourseStatusPage() {
           },
         }),
       ])
-      setData(statusRes.data)
+      const statusData: CourseRow[] = statusRes.data || []
+      // Recalcular asistencias para capturar extras (5/4, etc.)
+      try {
+        const latest = toYMD(today)
+        const attendancePromises: Promise<void>[] = []
+        for (const row of statusData) {
+          for (const s of row.students || []) {
+            const start = s.enrolled_since || latest
+            const end = s.renewal_date || latest
+            const horizon = toYMD(new Date(new Date().setMonth(new Date().getMonth() + 6)))
+            const maxYMD = [latest, end, horizon].sort().slice(-1)[0]
+            const months = monthsInRange(start.slice(0, 7) + '-01', maxYMD.slice(0, 7) + '-01')
+            const courseId = row.course.id
+            const studentId = s.id
+            const key = `${courseId}_${studentId}_${start}_${end}`
+            attendancePromises.push((async () => {
+              let attended = 0
+              for (const mm of months) {
+                try {
+                  const res = await api.get(`/api/pms/students/${studentId}/attendance_calendar`, { params: { year: mm.year, month: mm.month } })
+                  const days = (res.data?.days || []) as { date: string; attended_course_ids?: number[]; expected_course_ids?: number[] }[]
+                  for (const d of days) {
+                    if (d.date >= start && d.date <= maxYMD) {
+                      if ((d.attended_course_ids || []).includes(courseId)) attended++
+                    }
+                  }
+                } catch {}
+              }
+              s.attendance_count = attended
+            })())
+          }
+        }
+        await Promise.all(attendancePromises)
+      } catch {
+        // si falla, seguimos con los datos originales
+      }
+      setData(statusData)
       setPayments((payRes.data as any)?.items ?? payRes.data ?? [])
     } catch (e: any) {
       setError(e?.message ?? 'Error cargando estado de cursos')

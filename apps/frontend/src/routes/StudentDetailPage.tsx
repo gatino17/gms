@@ -292,33 +292,39 @@ export default function StudentDetailPage(){
       try{
         if(!id || !(uniqueEnrollments.length)) return
         const next: Record<number, { expected:number; attended:number }> = {}
+        const maxYMD = (...dates: string[]) => dates.filter(Boolean).sort().slice(-1)[0] || ''
+        const futureHorizon = toYMDInTZ(new Date(new Date().setMonth(new Date().getMonth() + 6)), CL_TZ)
         for (const e of uniqueEnrollments) {
           const start = e.start_date || ''
           const end   = e.end_date   || ''
           if (!start || !end) continue
           const courseId = e.course.id
-
           let attended = 0
           let expected = 0
-          const months = monthsInRange(start.slice(0,7) + '-01', end.slice(0,7) + '-01')
-          for (const mm of months) {
-            try{
-              const res = await api.get(`/api/pms/students/${id}/attendance_calendar`, { params: { year: mm.year, month: mm.month } })
-              const days = (res.data?.days || []) as { date: string; attended_course_ids?: number[]; expected_course_ids?: number[] }[]
-              for (const d of days) {
-                if (d.date >= start && d.date <= end) {
-                  if ((d.attended_course_ids || []).includes(courseId)) attended++
-                  if ((d.expected_course_ids || []).includes(courseId)) expected++
-                }
+          const endOfShownMonth = toYMDInTZ(new Date(calYear, calMonth, 0), CL_TZ)
+          const latest = maxYMD(todayYMD, end, endOfShownMonth, futureHorizon)
+          const months = monthsInRange(start.slice(0,7) + '-01', latest.slice(0,7) + '-01')
+          const monthRequests = months.map(mm =>
+            api.get(`/api/pms/students/${id}/attendance_calendar`, { params: { year: mm.year, month: mm.month } })
+              .then(res => res.data?.days || [])
+              .catch(() => [])
+          )
+          const monthsDays = await Promise.all(monthRequests)
+          for (const days of monthsDays) {
+            for (const d of days as { date: string; attended_course_ids?: number[]; expected_course_ids?: number[] }[]) {
+              if (d.date >= start && d.date <= latest) {
+                const attendedHere = (d.attended_course_ids || []).includes(courseId)
+                if (attendedHere) attended++
+                if (d.date <= end && (d.expected_course_ids || []).includes(courseId)) expected++
               }
-            }catch{}
+            }
           }
           next[e.id] = { expected, attended }
         }
         setCourseStats(next)
       }catch{}
     })()
-  }, [id, uniqueEnrollments, calDays])
+  }, [id, uniqueEnrollments, todayYMD])
 
   const courseNameById = useMemo(() => {
     const m = new Map<number, string>()
@@ -451,6 +457,7 @@ export default function StudentDetailPage(){
                     const attended = (courseStats[e.id]?.attended ?? 0)
                     const expected = (courseStats[e.id]?.expected ?? 0)
                     const over = attended > expected
+                    const extra = over ? attended - expected : 0
                     const completed = expected > 0 && attended >= expected
                     const progress = expected > 0 ? Math.min(100, (attended / expected) * 100) : 0
                     const payStatus = (e as any).payment_status?.toString().toLowerCase?.() || ''
@@ -591,9 +598,15 @@ export default function StudentDetailPage(){
                         <div className={over ? 'text-rose-600 font-semibold' : 'text-gray-800'}>
                           {attended} / {expected}
                         </div>
+                        {over && extra > 0 && (
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 text-[11px] mt-0.5">
+                            <span className="font-semibold">{extra}</span>
+                            <span>clase{extra > 1 ? 's' : ''} extra fuera del plan</span>
+                          </div>
+                        )}
                         <div className="mt-1 h-1.5 bg-gray-100 rounded overflow-hidden">
                           <div
-                            className={`h-1.5 ${completed ? 'bg-emerald-500' : 'bg-indigo-400'}`}
+                            className={`h-1.5 ${completed ? 'bg-emerald-500' : over ? 'bg-amber-500' : 'bg-indigo-400'}`}
                             style={{ width: `${progress}%` }}
                           />
                         </div>
@@ -813,7 +826,7 @@ export default function StudentDetailPage(){
                   const expectedIds = (rec?.expected_course_ids ?? []) as number[]
                   const attendedIds = (rec?.attended_course_ids ?? []) as number[]
                   const extraIds = attendedIds.filter(id => !expectedIds.includes(id))
-                  const hasExtra = attended && extraIds.length > 0
+                  const hasExtra = attended && (extraIds.length > 0 || (expectedIds.length === 0 && attendedIds.length > 0))
                   const dayName = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][new Date(dateStr).getDay()]
                   const courseIdsForDay = expectedIds.length ? expectedIds : attendedIds
                   const uniqueCourseIds = Array.from(new Set(courseIdsForDay))

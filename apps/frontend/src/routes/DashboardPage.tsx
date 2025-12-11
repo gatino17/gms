@@ -231,10 +231,12 @@ export default function DashboardPage() {
     const endTo = toYMDInTZ(new Date(Date.now() + 7 * 24 * 3600 * 1000), CL_TZ)
     const todayDate = new Date(`${today}T00:00:00`)
 
-    // pagos indexados por student para fallback (usa solo los cargados en dashboard)
+    // pagos indexados por student/course para fallback (usa solo los cargados en dashboard)
     const studentHasPayment = new Set<number>()
+    const studentCourseHasPayment = new Set<string>()
     for (const p of payments) {
       if (p.student_id != null) studentHasPayment.add(p.student_id)
+      if (p.student_id != null && p.course_id != null) studentCourseHasPayment.add(`${p.student_id}_${p.course_id}`)
     }
 
     for (const group of status) {
@@ -244,7 +246,9 @@ export default function DashboardPage() {
           soonEnd.push({ student: fullName, course: group.course.name, renewal_date: st.renewal_date })
         }
         const payStatus = (st.payment_status || '').toString().toLowerCase()
-        const isPending = payStatus ? payStatus !== 'activo' : !studentHasPayment.has(st.id)
+        const hasPay = studentHasPayment.has(st.id)
+        const hasPayForCourse = st.id != null && group.course.id != null ? studentCourseHasPayment.has(`${st.id}_${group.course.id}`) : false
+        const isPending = payStatus ? payStatus !== 'activo' : !(hasPay || hasPayForCourse)
         if (isPending) pendingSet.add(fullName)
         if (st.birthday_today) birthdaysSet.add(fullName)
         if (st.enrolled_since) {

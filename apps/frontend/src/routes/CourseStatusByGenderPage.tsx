@@ -315,7 +315,8 @@ function GenderTable({ title, students, expectedAttendance, onView }: GenderTabl
                 const EmailIcon = MdEmail
                 const phoneTitle = s.phone ?? 'Sin telefono'
                 const emailTitle = s.email ?? 'Sin correo'
-                const paid = s.payment_status === 'activo'
+                const payStatus = (s.payment_status || 'pendiente').toString().toLowerCase()
+                const paid = payStatus === 'activo'
                 const att = s.attendance_count ?? 0
                 const attPct = Math.min(100, Math.round((att / expectedAttendance) * 100))
 
@@ -360,7 +361,7 @@ function GenderTable({ title, students, expectedAttendance, onView }: GenderTabl
                           : 'bg-rose-50 text-rose-700 border-rose-300'
                           }`}
                       >
-                        {paid ? 'Activo' : 'Pendiente'}
+                        {paid ? 'Activo' : 'Pendiente de pago'}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">

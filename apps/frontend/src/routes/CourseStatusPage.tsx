@@ -28,6 +28,8 @@ type CourseRow = {
   }[]
 }
 
+type PaymentRow = { id: number; student_id?: number | null; course_id?: number | null; payment_date?: string | null }
+
 export default function CourseStatusPage() {
   const navigate = useNavigate()
   const { tenantId } = useTenant()
@@ -40,6 +42,7 @@ export default function CourseStatusPage() {
   const [teacherQ, setTeacherQ] = useState('')
   const [attendanceDays, setAttendanceDays] = useState<string>('30')
   const [sortBy, setSortBy] = useState<'none' | 'att_desc' | 'att_asc'>('none')
+  const [payments, setPayments] = useState<PaymentRow[]>([])
 
   // Modal de renovacion
   const [showRenew, setShowRenew] = useState(false)
@@ -77,6 +80,12 @@ export default function CourseStatusPage() {
     const parts = iso.split('-').map(Number)
     if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) return null
     return new Date(parts[0], parts[1] - 1, parts[2])
+  }
+  const toYMD = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const da = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${da}`
   }
   const weeksBetween = (start?: Date | null, end?: Date | null): number | null => {
     if (!start || !end) return null
@@ -124,8 +133,22 @@ export default function CourseStatusPage() {
       if (day !== '') params.day_of_week = Number(day)
       if (teacherQ) params.teacher_q = teacherQ
       if (attendanceDays) params.attendance_days = Number(attendanceDays)
-      const res = await api.get('/api/pms/course_status', { params })
-      setData(res.data)
+      const today = new Date()
+      const startRange = new Date()
+      startRange.setDate(today.getDate() - 365) // pagos del ultimo año
+      const [statusRes, payRes] = await Promise.all([
+        api.get('/api/pms/course_status', { params }),
+        api.get('/api/pms/payments', {
+          params: {
+            limit: 1000,
+            offset: 0,
+            date_from: toYMD(startRange),
+            date_to: toYMD(today),
+          },
+        }),
+      ])
+      setData(statusRes.data)
+      setPayments((payRes.data as any)?.items ?? payRes.data ?? [])
     } catch (e: any) {
       setError(e?.message ?? 'Error cargando estado de cursos')
     } finally {
@@ -527,7 +550,9 @@ export default function CourseStatusPage() {
                                 const phoneTitle =
                                   s.phone ?? 'Sin teléfono'
                                 const emailTitle = s.email ?? 'Sin correo'
-                                const paid = s.payment_status === 'activo'
+                                  const payStatus = (s.payment_status || '').toString().toLowerCase()
+                                  const hasPay = payments.some(p => p.student_id === s.id && p.course_id === group.course.id)
+                                  const paid = hasPay
                                 const att = s.attendance_count ?? 0
                                 const stuStart = toDate(s.enrolled_since)
                                 const stuEnd = toDate(s.renewal_date)
@@ -643,7 +668,7 @@ export default function CourseStatusPage() {
                                             : 'bg-rose-50 text-rose-700 border-rose-300'
                                         }`}
                                       >
-                                        {paid ? 'Activo' : 'Pendiente'}
+                                        {paid ? 'Activo' : 'Pendiente de pago'}
                                       </span>
                                     </td>
                                     <td className="px-3 py-2 text-center">

@@ -603,7 +603,7 @@ export default function StudentDetailPage(){
                         <div className={over ? 'text-rose-600 font-semibold' : 'text-gray-800'}>
                           {attended} / {expected}
                         </div>
-                        {over && extra > 0 && (
+                        {extra > 0 && (
                           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 text-[11px] mt-0.5">
                             <span className="font-semibold">{extra}</span>
                             <span>clase{extra > 1 ? 's' : ''} extra fuera del plan</span>
@@ -908,9 +908,17 @@ export default function StudentDetailPage(){
                           {extraCourses > 0 && <span className="text-gray-400">+{extraCourses}</span>}
                         </div>
                       )}
-                      {attended && (
-                        <div className={`absolute bottom-1 right-1 text-[10px] leading-none font-bold ${hasExtra ? 'text-amber-700' : 'text-green-800'}`}>V</div>
-                      )}
+                          {attended && (
+                            <div
+                              className={`absolute bottom-1 right-1 inline-flex w-4 h-4 items-center justify-center rounded-full border text-[10px] font-bold ${
+                                hasExtra
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : 'bg-green-50 text-green-700 border-green-200'
+                              }`}
+                            >
+                              ✓
+                            </div>
+                          )}
                     </button>
                   )
                 }
@@ -920,7 +928,7 @@ export default function StudentDetailPage(){
 
             <div className="flex items-center gap-4 mt-3 text-xs text-gray-600">
               <div className="flex items-center gap-1">
-                <span className="inline-block w-3 h-3 bg-green-300 border border-green-500 rounded"></span> Asistió <span className="ml-1 text-[10px] font-bold text-green-800">V</span>
+                <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-green-50 border border-green-300 text-green-700 text-[11px] font-bold">✓</span> Asistió
               </div>
               <div className="flex items-center gap-1">
                 <span className="inline-block w-3 h-3 bg-red-300 border border-red-500 rounded"></span> No asistió

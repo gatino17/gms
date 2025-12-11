@@ -215,7 +215,7 @@ export default function CourseStatusByGenderPage() {
           statusLabel = 'Pendiente de pago'
           statusClass = 'bg-rose-50 text-rose-700 border-rose-200'
         } else if (isPastPeriod) {
-          statusLabel = 'Pendiente de renovacion'
+          statusLabel = 'Pendiente de renovación'
           statusClass = 'bg-amber-50 text-amber-700 border-amber-200'
         }
         const att = s.attendance_count ?? 0

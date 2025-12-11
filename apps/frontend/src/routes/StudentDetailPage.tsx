@@ -5,7 +5,7 @@ import { api, toAbsoluteUrl } from '../lib/api'
 type PortalData = {
   student: { id:number; first_name:string; last_name:string; email?:string|null }
   enrollments: {
-    id:number; is_active:boolean;
+    id:number; is_active:boolean; payment_status?: string | null;
     start_date?:string|null; end_date?:string|null;
     course:{ id:number; name:string; day_of_week?:number|null; start_time?:string|null; end_time?:string|null }
   }[]
@@ -328,6 +328,9 @@ export default function StudentDetailPage(){
     if (!editEnrollmentId) return null
     return (data?.enrollments || []).find(e => e.id === editEnrollmentId) || null
   }, [data?.enrollments, editEnrollmentId])
+  const currentDayOfWeek = useMemo(() => {
+    return editCourseDay ?? currentEnrollment?.course.day_of_week ?? null
+  }, [editCourseDay, currentEnrollment])
 
   const addDays = (ymd: string, days: number) => {
     const [y,m,d] = ymd.split('-').map(Number)
@@ -443,14 +446,18 @@ export default function StudentDetailPage(){
             <div className="rounded-2xl border p-4 bg-gradient-to-b from-gray-50 to-white">
               <div className="text-lg font-medium mb-3">Mis cursos</div>
               <div className="space-y-3">
-                {(uniqueEnrollments ?? []).map((e)=> {
-                  const attended = (courseStats[e.id]?.attended ?? 0)
-                  const expected = (courseStats[e.id]?.expected ?? 0)
-                  const over = attended > expected
-                  const completed = expected > 0 && attended >= expected
-                  const progress = expected > 0 ? Math.min(100, (attended / expected) * 100) : 0
-                  return (
-                  <div key={e.id} className="p-3 rounded-xl border bg-white">
+                  {(uniqueEnrollments ?? []).map((e)=> {
+                    const attended = (courseStats[e.id]?.attended ?? 0)
+                    const expected = (courseStats[e.id]?.expected ?? 0)
+                    const over = attended > expected
+                    const completed = expected > 0 && attended >= expected
+                    const progress = expected > 0 ? Math.min(100, (attended / expected) * 100) : 0
+                    const payStatus = (e as any).payment_status?.toString().toLowerCase?.() || ''
+                    const hasPaymentsForEnroll = (data?.payments?.recent || []).some(p => p.enrollment_id === e.id)
+                    const hasPaymentsForCourse = (data?.payments?.recent || []).some(p => p.course_id === e.course.id)
+                    const isPending = payStatus ? payStatus !== 'activo' : !(hasPaymentsForEnroll || hasPaymentsForCourse)
+                    return (
+                    <div key={e.id} className="p-3 rounded-xl border bg-white">
                     <div className="flex items-start justify-between gap-2">
                       <div className="text-lg font-semibold text-gray-900">{e.course.name}</div>
                       <div className="shrink-0 flex items-center gap-2">
@@ -475,16 +482,16 @@ export default function StudentDetailPage(){
                             setEditEndDate(baseEnd)
                             setEditError(null)
                             const all = (data?.payments?.recent || []) as any[]
-                          const byEnroll = all.find(p => p.type === 'monthly' && (p.enrollment_id === e.id))
-                          const byCourse = all.find(p => p.type === 'monthly' && (p.course_id === e.course.id))
-                          const byDate = all.find(p => p.type === 'monthly' && p.payment_date && (
-                            (!e.start_date || p.payment_date >= e.start_date) && (!e.end_date || p.payment_date <= e.end_date)
-                          ))
-                          const target = byEnroll || byCourse || byDate || null
-                          setEditPaymentId(target?.id ?? null)
-                          setEditAmount(target?.amount != null ? String(target.amount) : '')
-                          setEditMethod(target?.method || '')
-                          setShowEdit(true)
+                            const byEnroll = all.find(p => p.type === 'monthly' && (p.enrollment_id === e.id))
+                            const byCourse = all.find(p => p.type === 'monthly' && (p.course_id === e.course.id))
+                            const byDate = all.find(p => p.type === 'monthly' && p.payment_date && (
+                              (!e.start_date || p.payment_date >= e.start_date) && (!e.end_date || p.payment_date <= e.end_date)
+                            ))
+                            const target = byEnroll || byCourse || byDate || null
+                            setEditPaymentId(null) // en renovación siempre crear nuevo pago
+                            setEditAmount(target?.amount != null ? String(target.amount) : '')
+                            setEditMethod(target?.method || '')
+                            setShowEdit(true)
                         }}
                       >
                           Renovar
@@ -554,13 +561,21 @@ export default function StudentDetailPage(){
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${
                               completed
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : isPending
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : e.is_active
+                                      ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                      : 'bg-gray-100 text-gray-600 border-gray-200'
+                              }`}
+                            >
+                            {completed
+                              ? 'Completado'
+                              : isPending
+                              ? 'Pendiente de pago'
                                 : e.is_active
-                                  ? 'bg-sky-50 text-sky-700 border-sky-200'
-                                  : 'bg-gray-100 text-gray-600 border-gray-200'
-                            }`}
-                          >
-                            {completed ? 'Completado' : e.is_active ? 'Inscrito' : 'Inactivo'}
+                                  ? 'Inscrito'
+                                  : 'Inactivo'}
                           </span>
                           {completed && <span className="text-xs text-emerald-700 font-semibold">({attended}/{expected})</span>}
                         </div>
@@ -642,10 +657,14 @@ export default function StudentDetailPage(){
                     type="button"
                     className="px-2 py-1 rounded border bg-gray-50 hover:bg-gray-100"
                     onClick={() => {
+                      const day = currentDayOfWeek ?? 0
+                      const occ = editOccurrences || (currentEnrollment && currentEnrollment.start_date && currentEnrollment.end_date
+                        ? Math.max(1, countWeekdayOccurrencesInRange(day, currentEnrollment.start_date, currentEnrollment.end_date))
+                        : 4)
                       const rawStart = editStartDate || toYMDInTZ(new Date(), CL_TZ)
-                      const start = alignToWeekday(rawStart, editCourseDay)
+                      const start = alignToWeekday(rawStart, day)
                       setEditStartDate(start)
-                      const end = computeEndByOccurrences(start, editCourseDay ?? null, editOccurrences || 4)
+                      const end = computeEndByOccurrences(start, day, occ)
                       setEditEndDate(end)
                       if (!editMethod) setEditMethod('transfer')
                       // Mantener monto previo si existe; de lo contrario se respeta el que viene precargado del pago
@@ -657,8 +676,9 @@ export default function StudentDetailPage(){
                     type="button"
                     className="px-2 py-1 rounded border bg-gray-50 hover:bg-gray-100"
                     onClick={() => {
+                      const day = currentDayOfWeek ?? 0
                       const rawStart = editStartDate || toYMDInTZ(new Date(), CL_TZ)
-                      const start = alignToWeekday(rawStart, editCourseDay)
+                      const start = alignToWeekday(rawStart, day)
                       setEditStartDate(start)
                       setEditEndDate(start)
                       if (!editMethod) setEditMethod('cash')
@@ -712,14 +732,36 @@ export default function StudentDetailPage(){
                       try{
                         if(!editEnrollmentId) return
                         setEditSaving(true); setEditError(null)
-                        await api.patch(`/api/pms/enrollments/${editEnrollmentId}`, {
+                        await api.put(`/api/pms/enrollments/${editEnrollmentId}`, {
                           start_date: editStartDate || null,
                           end_date: editEndDate || null,
                         })
+                        const paymentsRecent = (data?.payments?.recent || []) as any[]
+                        const todayYMD = toYMDInTZ(new Date(), CL_TZ)
+                        const periodLabel = `${editStartDate ? ymdToCL(editStartDate) : ''}${editEndDate ? ` a ${ymdToCL(editEndDate)}` : ''}`
                         if (editPaymentId) {
-                          await api.patch(`/api/pms/payments/${editPaymentId}`, {
-                            method: editMethod || undefined,
-                            amount: Number(editAmount || 0)
+                          const existing = paymentsRecent.find(p => p.id === editPaymentId)
+                          await api.put(`/api/pms/payments/${editPaymentId}`, {
+                            student_id: id ? Number(id) : undefined,
+                            course_id: existing?.course_id ?? currentEnrollment?.course?.id,
+                            enrollment_id: existing?.enrollment_id ?? editEnrollmentId,
+                            amount: Number(editAmount || 0),
+                            method: editMethod || existing?.method || 'transfer',
+                            type: existing?.type || 'monthly',
+                            payment_date: existing?.payment_date || todayYMD,
+                            reference: existing?.reference || periodLabel || undefined,
+                          })
+                        } else if (editMode === 'renew') {
+                          // Crear pago de renovación si no existía
+                          await api.post('/api/pms/payments', {
+                            student_id: id ? Number(id) : undefined,
+                            course_id: currentEnrollment?.course?.id,
+                            enrollment_id: editEnrollmentId,
+                            amount: Number(editAmount || 0),
+                            method: editMethod || 'transfer',
+                            type: 'monthly',
+                            payment_date: todayYMD,
+                            reference: periodLabel || undefined,
                           })
                         }
                         // refrescar portal e historial (periodo

@@ -27,6 +27,48 @@ type CourseRow = {
 }
 
 type GenderKey = 'female' | 'male' | 'other'
+type PaymentRow = { id: number; student_id?: number | null; course_id?: number | null; payment_date?: string | null }
+
+function toDate(iso?: string | null) {
+  if (!iso) return null
+  const parts = iso.split('-').map(Number)
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null
+  return new Date(parts[0], parts[1] - 1, parts[2])
+}
+
+function toYMD(d: Date) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const da = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${da}`
+}
+
+function weeksBetween(start?: Date | null, end?: Date | null): number | null {
+  if (!start || !end) return null
+  const s = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const e = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+  const diffMs = e.getTime() - s.getTime()
+  if (diffMs < 0) return 0
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1
+  return Math.max(1, Math.ceil(days / 7))
+}
+
+function monthsInRange(startYMD: string, endYMD: string) {
+  const out: { year: number; month: number }[] = []
+  const [sy, sm] = startYMD.split('-').map(Number)
+  const [ey, em] = endYMD.split('-').map(Number)
+  let y = sy
+  let m = sm
+  while (y < ey || (y === ey && m <= em)) {
+    out.push({ year: y, month: m })
+    m++
+    if (m > 12) {
+      m = 1
+      y++
+    }
+  }
+  return out
+}
 
 function fmtDisplayDate(iso?: string | null) {
   if (!iso) return '-'
@@ -48,6 +90,7 @@ export default function CourseStatusByGenderPage() {
   const [data, setData] = useState<CourseRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [payments, setPayments] = useState<PaymentRow[]>([])
 
   const [courseQ, setCourseQ] = useState('')
   const [studentQ, setStudentQ] = useState('')
@@ -70,8 +113,57 @@ export default function CourseStatusByGenderPage() {
       if (day !== '') params.day_of_week = Number(day)
       if (teacherQ) params.teacher_q = teacherQ
       if (attendanceDays) params.attendance_days = Number(attendanceDays)
-      const res = await api.get('/api/pms/course_status', { params })
-      setData(res.data)
+      const today = new Date()
+      const startRange = new Date()
+      startRange.setDate(today.getDate() - 365) // pagos del ultimo año
+      const [statusRes, payRes] = await Promise.all([
+        api.get('/api/pms/course_status', { params }),
+        api.get('/api/pms/payments', {
+          params: {
+            limit: 1000,
+            offset: 0,
+            date_from: toYMD(startRange),
+            date_to: toYMD(today),
+          },
+        }),
+      ])
+      const statusData: CourseRow[] = statusRes.data || []
+
+      // Recalcular asistencias para capturar extras (5/4, etc.)
+      try {
+        const latest = toYMD(today)
+        const attendancePromises: Promise<void>[] = []
+        for (const row of statusData) {
+          for (const s of row.students || []) {
+            const start = s.enrolled_since || latest
+            const end = s.renewal_date || latest
+            const horizon = toYMD(new Date(new Date().setMonth(new Date().getMonth() + 6)))
+            const maxYMD = [latest, end, horizon].sort().slice(-1)[0]
+            const months = monthsInRange(start.slice(0, 7) + '-01', maxYMD.slice(0, 7) + '-01')
+            const courseId = row.course.id
+            const studentId = s.id
+            attendancePromises.push((async () => {
+              let attended = 0
+              for (const mm of months) {
+                try {
+                  const res = await api.get(`/api/pms/students/${studentId}/attendance_calendar`, { params: { year: mm.year, month: mm.month } })
+                  const days = (res.data?.days || []) as { date: string; attended_course_ids?: number[] }[]
+                  for (const d of days) {
+                    if (d.date >= start && d.date <= maxYMD) {
+                      if ((d.attended_course_ids || []).includes(courseId)) attended++
+                    }
+                  }
+                } catch { }
+              }
+              s.attendance_count = attended
+            })())
+          }
+        }
+        await Promise.all(attendancePromises)
+      } catch { /* si falla seguimos con los datos originales */ }
+
+      setPayments(payRes.data?.results ?? payRes.data ?? [])
+      setData(statusData)
     } catch (e: any) {
       setError(e?.message ?? 'Error cargando estado de cursos')
     } finally {
@@ -97,7 +189,8 @@ export default function CourseStatusByGenderPage() {
   // Agrupacion directa de los datos cargados (el load ya se dispara en cada cambio de filtro de texto con debounce)
   const grouped = useMemo(() => {
     return data.map((row) => {
-      const expectedAttendance = Math.max(1, ((row.course as any).classes_per_week ?? 1) * 4)
+      const today = new Date()
+      const expectedDefault = Math.max(1, ((row.course as any).classes_per_week ?? 1) * 4)
       const sorter = (a: any, b: any) => {
         const av = a.attendance_count ?? 0
         const bv = b.attendance_count ?? 0
@@ -105,17 +198,48 @@ export default function CourseStatusByGenderPage() {
         if (sortBy === 'att_asc') return av - bv
         return 0
       }
-      const female = row.students.filter((s) => normalizeGender(s.gender) === 'female').sort(sorter)
-      const male = row.students.filter((s) => normalizeGender(s.gender) === 'male').sort(sorter)
-      const other = row.students.filter((s) => normalizeGender(s.gender) === 'other').sort(sorter)
+      const enrStudents = row.students.map((s) => {
+        const payStatus = (s.payment_status || '').toString().toLowerCase()
+        const hasPay = payments.some((p) => p.student_id === s.id && p.course_id === row.course.id)
+        const stuEnd = toDate(s.renewal_date)
+        const isPastPeriod = stuEnd ? today > stuEnd : false
+        let statusLabel = 'Inscrito'
+        let statusClass = 'bg-sky-50 text-sky-700 border-sky-200'
+        if (!hasPay) {
+          statusLabel = 'Pendiente de pago'
+          statusClass = 'bg-rose-50 text-rose-700 border-rose-200'
+        } else if (isPastPeriod) {
+          statusLabel = 'Pendiente de renovacion'
+          statusClass = 'bg-amber-50 text-amber-700 border-amber-200'
+        }
+        const att = s.attendance_count ?? 0
+        const stuStart = toDate(s.enrolled_since)
+        const weeks = weeksBetween(stuStart, stuEnd)
+        const expected =
+          stuStart && stuEnd && stuStart.getTime() === stuEnd.getTime()
+            ? 1
+            : weeks != null
+              ? Math.max(1, ((row.course as any).classes_per_week ?? 1) * weeks)
+              : expectedDefault
+        const attPct = expected > 0 ? Math.min(100, Math.round((att / expected) * 100)) : 0
+        const over = att > expected
+        const extra = over ? att - expected : 0
+        const isSingleClass =
+          !!(s.enrolled_since && s.renewal_date && s.enrolled_since === s.renewal_date)
+
+        return { ...s, attendance_count: att, expected, attPct, extra, statusLabel, statusClass, isSingleClass }
+      })
+      const female = enrStudents.filter((s) => normalizeGender(s.gender) === 'female').sort(sorter)
+      const male = enrStudents.filter((s) => normalizeGender(s.gender) === 'male').sort(sorter)
+      const other = enrStudents.filter((s) => normalizeGender(s.gender) === 'other').sort(sorter)
       const counts = row.counts ?? {
-        total: row.students.length,
+        total: enrStudents.length,
         female: female.length,
         male: male.length,
       }
-      return { row, expectedAttendance, female, male, other, counts }
+      return { row, expectedAttendance: expectedDefault, female, male, other, counts }
     })
-  }, [data, sortBy])
+  }, [data, sortBy, payments])
 
   const handleViewStudent = (studentId: number) => {
     navigate(`/students/${studentId}`)
@@ -264,12 +388,12 @@ export default function CourseStatusByGenderPage() {
 
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <GenderTable title="Mujeres" students={female} expectedAttendance={expectedAttendance} onView={handleViewStudent} />
-                <GenderTable title="Hombres" students={male} expectedAttendance={expectedAttendance} onView={handleViewStudent} />
+                <GenderTable title="Mujeres" students={female} onView={handleViewStudent} />
+                <GenderTable title="Hombres" students={male} onView={handleViewStudent} />
               </div>
               {other.length > 0 && (
                 <div className="grid grid-cols-1">
-                  <GenderTable title="Otro / Sin dato" students={other} expectedAttendance={expectedAttendance} onView={handleViewStudent} />
+                  <GenderTable title="Otro / Sin dato" students={other} onView={handleViewStudent} />
                 </div>
               )}
             </div>
@@ -282,12 +406,11 @@ export default function CourseStatusByGenderPage() {
 
 type GenderTableProps = {
   title: string
-  students: CourseRow['students']
-  expectedAttendance: number
+  students: (CourseRow['students'][number] & { expected: number; attPct: number; extra: number; statusLabel: string; statusClass: string })
   onView: (id: number) => void
 }
 
-function GenderTable({ title, students, expectedAttendance, onView }: GenderTableProps) {
+function GenderTable({ title, students, onView }: GenderTableProps) {
   return (
     <div className="rounded-2xl border border-fuchsia-200/60 bg-white shadow-sm overflow-hidden">
       <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50">{title}</div>
@@ -315,10 +438,8 @@ function GenderTable({ title, students, expectedAttendance, onView }: GenderTabl
                 const EmailIcon = MdEmail
                 const phoneTitle = s.phone ?? 'Sin telefono'
                 const emailTitle = s.email ?? 'Sin correo'
-                const payStatus = (s.payment_status || 'pendiente').toString().toLowerCase()
-                const paid = payStatus === 'activo'
+                const paid = s.statusLabel === 'Inscrito'
                 const att = s.attendance_count ?? 0
-                const attPct = Math.min(100, Math.round((att / expectedAttendance) * 100))
 
                 return (
                   <tr key={s.id} className="border-t hover:bg-fuchsia-50/40">
@@ -356,18 +477,25 @@ function GenderTable({ title, students, expectedAttendance, onView }: GenderTabl
                     <td className="px-3 py-2 text-center">{fmtDisplayDate(s.renewal_date)}</td>
                     <td className="px-3 py-2 text-center">
                       <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold border shadow-sm ${paid
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                          : 'bg-rose-50 text-rose-700 border-rose-300'
-                          }`}
+                        className={`px-2 py-1 rounded-full text-xs font-semibold border shadow-sm ${s.statusClass}`}
                       >
-                        {paid ? 'Activo' : 'Pendiente de pago'}
+                        {s.statusLabel}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <span className="text-[12px] text-gray-700">
-                        {att} / {expectedAttendance} ({attPct}%)
-                      </span>
+                      <div className="flex items-center justify-center gap-1">
+                        <span className={`text-[12px] ${att > s.expected ? 'text-rose-600 font-semibold' : 'text-gray-700'}`}>
+                          {att} / {s.expected} {s.expected > 0 && `(${s.attPct}%)`}
+                        </span>
+                        {s.extra > 0 && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-700 text-[11px] font-semibold px-2 py-0.5 border border-rose-100"
+                            title="Excedió lo contratado"
+                          >
+                            +extra
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-center">
                       <button

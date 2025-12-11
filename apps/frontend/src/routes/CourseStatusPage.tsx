@@ -551,7 +551,7 @@ export default function CourseStatusPage() {
                                   s.phone ?? 'Sin teléfono'
                                 const emailTitle = s.email ?? 'Sin correo'
                                   const payStatus = (s.payment_status || '').toString().toLowerCase()
-                                  const hasPay = payments.some(p => p.student_id === s.id && p.course_id === group.course.id)
+                                  const hasPay = payments.some(p => p.student_id === s.id && p.course_id === row.course.id)
                                   const paid = hasPay
                                 const att = s.attendance_count ?? 0
                                 const stuStart = toDate(s.enrolled_since)

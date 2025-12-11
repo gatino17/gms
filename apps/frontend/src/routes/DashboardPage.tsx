@@ -224,7 +224,7 @@ export default function DashboardPage() {
 
   const alerts = useMemo(() => {
     const soonEnd: { student: string; course: string; renewal_date: string }[] = []
-    const pendingSet = new Set<string>()
+    const pendingDetails: { student: string; course: string; time?: string }[] = []
     const birthdaysSet = new Set<string>()
     const anniversariesSet = new Set<string>()
     const endFrom = today
@@ -249,7 +249,10 @@ export default function DashboardPage() {
         const hasPay = studentHasPayment.has(st.id)
         const hasPayForCourse = st.id != null && group.course.id != null ? studentCourseHasPayment.has(`${st.id}_${group.course.id}`) : false
         const isPending = payStatus ? payStatus !== 'activo' : !(hasPay || hasPayForCourse)
-        if (isPending) pendingSet.add(fullName)
+        if (isPending) {
+          const timeLabel = [group.course.start_time, group.course.end_time].filter(Boolean).map(t => (t || '').slice(0,5)).join(' - ')
+          pendingDetails.push({ student: fullName, course: group.course.name, time: timeLabel || undefined })
+        }
         if (st.birthday_today) birthdaysSet.add(fullName)
         if (st.enrolled_since) {
           const joined = new Date(`${st.enrolled_since}T00:00:00`)
@@ -278,7 +281,7 @@ export default function DashboardPage() {
     soonEnd.sort((a, b) => a.renewal_date.localeCompare(b.renewal_date))
     const anniversaries = Array.from(anniversariesSet).slice(0, 6)
     const birthdays = Array.from(birthdaysSet).slice(0, 6)
-    const pending = Array.from(pendingSet)
+    const pending = pendingDetails
     return {
       soonEnd,
       pendingCount: pending.length,
@@ -487,7 +490,21 @@ export default function DashboardPage() {
                       {alerts.pendingCount}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-600">{alerts.pendingPreview.slice(0, 3).join(', ') || '-'}</div>
+                  {alerts.pendingPreview.length === 0 ? (
+                    <div className="text-xs text-gray-500">-</div>
+                  ) : (
+                    <ul className="text-xs text-gray-700 space-y-1">
+                      {alerts.pendingPreview.map((p, idx) => (
+                        <li key={idx} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                          <span className="font-medium text-gray-900">{p.student}</span>
+                          <span className="text-gray-600">
+                            {(p.course || '').trim() || 'Curso sin nombre'}
+                            {p.time ? ` • ${p.time}` : ''}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
                 {/* Renovaciones proximas */}

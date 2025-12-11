@@ -112,6 +112,17 @@ export default function PaymentsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('detalle')
   const [tableLoading, setTableLoading] = useState(false)
   const [firstLoad, setFirstLoad] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  // modal edición/eliminación
+  const [editing, setEditing] = useState<Payment | null>(null)
+  const [editAmount, setEditAmount] = useState<string>('')
+  const [editMethod, setEditMethod] = useState<string>('cash')
+  const [editType, setEditType] = useState<string>('monthly')
+  const [editDate, setEditDate] = useState<string>('')
+  const [editReference, setEditReference] = useState<string>('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   // Reset page when filters change
   useEffect(() => { setPage(1) }, [q, fMethod, fType, dateFrom, dateTo, tenantId])
@@ -185,7 +196,7 @@ export default function PaymentsPage() {
       }
     }
     load()
-  }, [tenantId, debouncedMethod, debouncedType, debouncedQ, page, pageSize, debouncedFrom, debouncedTo])
+  }, [tenantId, debouncedMethod, debouncedType, debouncedQ, page, pageSize, debouncedFrom, debouncedTo, reloadKey])
 
   // Si cambian manualmente fechas ? personalizado
   useEffect(() => {
@@ -779,12 +790,14 @@ export default function PaymentsPage() {
                       <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Profesor</th>
                       <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Periodo</th>
                       <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Metodo</th>
+                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Tipo</th>
                       <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Monto</th>
+                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pageRows.length === 0 ? (
-                      <tr><td className="px-3 py-4 text-sm text-gray-500" colSpan={7}>Sin pagos en el rango seleccionado.</td></tr>
+                      <tr><td className="px-3 py-4 text-sm text-gray-500" colSpan={9}>Sin pagos en el rango seleccionado.</td></tr>
                     ) : pageRows.map(row => (
                       <tr key={row.p.id} className="border-t hover:bg-fuchsia-50/40">
                         <td className="px-3 py-2">{row.dateStr}</td>
@@ -793,7 +806,36 @@ export default function PaymentsPage() {
                         <td className="px-3 py-2">{row.teacher}</td>
                         <td className="px-3 py-2">{row.periodo || '-'}</td>
                         <td className="px-3 py-2">{row.methodStr}</td>
+                        <td className="px-3 py-2 text-xs text-gray-700 capitalize">{row.p.type || '-'}</td>
                         <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(Number(row.p.amount||0))}</td>
+                        <td className="px-3 py-2 text-xs text-gray-700">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              className="px-2 py-1 rounded border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                              onClick={() => {
+                                setEditing(row.p)
+                                setEditAmount(String(row.p.amount || ''))
+                                setEditMethod(row.p.method || 'cash')
+                                setEditType(row.p.type || 'monthly')
+                                setEditDate(row.p.payment_date || row.dateStr || toYMDInTZ(new Date(), CL_TZ))
+                                setEditReference(row.p.reference || '')
+                                setEditError(null)
+                              }}
+                            >Editar</button>
+                            <button
+                              className="px-2 py-1 rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                              onClick={async () => {
+                                if (!confirm('¿Eliminar este pago?')) return
+                                try{
+                                  await api.delete(`/api/pms/payments/${row.p.id}`)
+                                  setReloadKey(k=>k+1)
+                                }catch(e:any){
+                                  alert(e?.response?.data?.detail || e?.message || 'No se pudo eliminar')
+                                }
+                              }}
+                            >Eliminar</button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -898,6 +940,85 @@ export default function PaymentsPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* Modal edición pago */}
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30" onClick={()=>{ if(!editSaving) setEditing(null) }} />
+          <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-[95%] max-w-xl p-4 border">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-lg font-semibold text-gray-900">Editar pago</div>
+                <div className="text-sm text-gray-600">ID #{editing.id} · {editing.payment_date}</div>
+              </div>
+              <button className="text-gray-400 hover:text-gray-600" onClick={()=>!editSaving && setEditing(null)}>✕</button>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs text-gray-600 mb-1">Fecha de pago</div>
+                <input type="date" className="w-full border rounded px-3 py-2" value={editDate} onChange={e=>setEditDate(e.target.value)} />
+              </div>
+              <div>
+                <div className="text-xs text-gray-600 mb-1">Método</div>
+                <select className="w-full border rounded px-3 py-2" value={editMethod} onChange={e=>setEditMethod(e.target.value)}>
+                  <option value="cash">Efectivo</option>
+                  <option value="card">Tarjeta</option>
+                  <option value="transfer">Transferencia</option>
+                  <option value="agreement">Convenio</option>
+                </select>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600 mb-1">Tipo</div>
+                <select className="w-full border rounded px-3 py-2" value={editType} onChange={e=>setEditType(e.target.value)}>
+                  <option value="monthly">Mensualidad</option>
+                  <option value="single_class">Clase suelta</option>
+                  <option value="rental">Arriendo</option>
+                  <option value="agreement">Convenio</option>
+                </select>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600 mb-1">Monto</div>
+                <input type="number" className="w-full border rounded px-3 py-2" value={editAmount} onChange={e=>setEditAmount(e.target.value)} />
+              </div>
+              <div className="md:col-span-2">
+                <div className="text-xs text-gray-600 mb-1">Referencia / Nota</div>
+                <input type="text" className="w-full border rounded px-3 py-2" value={editReference} onChange={e=>setEditReference(e.target.value)} />
+              </div>
+            </div>
+
+            {editError && <div className="mt-2 text-sm text-rose-700">{editError}</div>}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="px-3 py-2 rounded border" onClick={()=>!editSaving && setEditing(null)} disabled={editSaving}>Cancelar</button>
+              <button
+                className="px-3 py-2 rounded text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60"
+                disabled={editSaving}
+                onClick={async ()=>{
+                  try{
+                    setEditSaving(true); setEditError(null)
+                    await api.put(`/api/pms/payments/${editing.id}`, {
+                      amount: Number(editAmount || 0),
+                      method: editMethod,
+                      type: editType,
+                      payment_date: editDate || editing.payment_date,
+                      reference: editReference || undefined,
+                    })
+                    setEditing(null)
+                    setReloadKey(k=>k+1)
+                  }catch(e:any){
+                    setEditError(e?.response?.data?.detail || e?.message || 'No se pudo actualizar')
+                  }finally{
+                    setEditSaving(false)
+                  }
+                }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

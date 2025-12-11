@@ -403,7 +403,9 @@ export default function StudentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {pagedData.map((s, idx) => (
+                {pagedData.map((s, idx) => {
+                  const missingData = !s.email || !s.phone || !s.photo_url
+                  return (
                   <tr key={s.id} className="border-t">
                     <td className="px-3 py-2">{(page - 1) * pageSize + idx + 1}</td>
                     <td className="px-3 py-2">
@@ -418,7 +420,17 @@ export default function StudentsPage() {
                       </div>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="font-semibold text-fuchsia-700">{s.first_name} {s.last_name}</div>
+                      <div className="font-semibold text-fuchsia-700 flex items-center gap-2">
+                        {s.first_name} {s.last_name}
+                        {missingData && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-rose-700 border border-rose-200 bg-gradient-to-r from-rose-50 via-rose-100 to-rose-50"
+                            title="Faltan datos de contacto o foto"
+                          >
+                            Datos incompletos
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-gray-500 flex items-center gap-1">
                         {s.gender && <span>{s.gender}</span>}
                       </div>
@@ -517,7 +529,7 @@ export default function StudentsPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>
@@ -634,7 +646,6 @@ export default function StudentsPage() {
     </div>
   )
 }
-
 
 
 

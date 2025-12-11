@@ -280,34 +280,42 @@ export default function PaymentsPage() {
     return c.name
   }
 
+  // Mapea pago -> fila normalizada
+  const mapPaymentToRow = useCallback((p: Payment) => {
+    const c = p.course_id ? courses[p.course_id!] : undefined
+    const student = p.student_id ? (students[p.student_id!]?.name || '-') : '-'
+    const course  = courseShort(c)
+    const teacher = c?.teacher_name || '-'
+    const typeStr = typeLabel(p.type)
+    const methodStr = methodLabel(p.method)
+    let periodo = ''
+    if (p.type === 'monthly' || isAgreementPayment(p)) {
+      const per = findPeriodForPayment(p)
+      if (per.start && per.end) periodo = `${toDDMMYYYY(per.start)} a ${toDDMMYYYY(per.end)}`
+    } else if (p.type === 'single_class') {
+      periodo = `${toDDMMYYYY(p.payment_date)}`
+    }
+    return {
+      p, student, course, teacher, periodo, typeStr, methodStr,
+      dateStr: toDDMMYYYY(p.payment_date)
+    }
+  }, [courses, students, enrollments])
+
   // Filas dentro del rango
   const rangeRows = useMemo(() => {
     const from = dateFrom || '0000-01-01'
     const to = dateTo || '9999-12-31'
-    const items = payments
+    return payments
       .filter(p => p.payment_date >= from && p.payment_date <= to)
-      .map(p => {
-        const c = p.course_id ? courses[p.course_id!] : undefined
-        const student = p.student_id ? (students[p.student_id!]?.name || '-') : '-'
-        const course  = courseShort(c)
-        const teacher = c?.teacher_name || '-'
-        const typeStr = typeLabel(p.type)
-        const methodStr = methodLabel(p.method)
-        let periodo = ''
-        if (p.type === 'monthly' || isAgreementPayment(p)) {
-          const per = findPeriodForPayment(p)
-          if (per.start && per.end) periodo = `${toDDMMYYYY(per.start)} a ${toDDMMYYYY(per.end)}`
-        } else if (p.type === 'single_class') {
-          periodo = `${toDDMMYYYY(p.payment_date)}`
-        }
-        return {
-          p, student, course, teacher, periodo, typeStr, methodStr,
-          dateStr: toDDMMYYYY(p.payment_date)
-        }
-      })
+      .map(mapPaymentToRow)
       .sort((a,b)=> b.p.id - a.p.id)
-    return items
-  }, [payments, students, courses, enrollments, dateFrom, dateTo])
+  }, [payments, dateFrom, dateTo, mapPaymentToRow])
+
+  // Todas las filas (usadas para búsqueda libre)
+  const allRows = useMemo(
+    () => payments.map(mapPaymentToRow).sort((a,b)=> b.p.id - a.p.id),
+    [payments, mapPaymentToRow]
+  )
 
     // Filtros
   const filteredRows = useMemo(() => {
@@ -316,7 +324,7 @@ export default function PaymentsPage() {
       .normalize('NFD')
       .replace(/\p{Diacritic}/gu, '')
 
-    let arr = rangeRows
+    let arr = q.trim() ? allRows : rangeRows
     if (fMethod) arr = arr.filter(r => r.p.method === fMethod)
     if (fType) arr = arr.filter(r => r.p.type === fType)
     if (q.trim()) {

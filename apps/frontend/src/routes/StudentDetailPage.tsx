@@ -167,6 +167,7 @@ export default function StudentDetailPage(){
   const [calLoading, setCalLoading] = useState(false)
   const [courseTeacherMap, setCourseTeacherMap] = useState<Record<number, string>>({})
   const [courseCatalog, setCourseCatalog] = useState<Record<number, { name?: string; teacher?: string; image?: string }>>({})
+  const todayYMD = useMemo(() => toYMDInTZ(new Date(), CL_TZ), [])
 
   // modal asistencia simple
   const [showAttend, setShowAttend] = useState(false)
@@ -456,11 +457,28 @@ export default function StudentDetailPage(){
                     const hasPaymentsForEnroll = (data?.payments?.recent || []).some(p => p.enrollment_id === e.id)
                     const hasPaymentsForCourse = (data?.payments?.recent || []).some(p => p.course_id === e.course.id)
                     const isPending = payStatus ? payStatus !== 'activo' : !(hasPaymentsForEnroll || hasPaymentsForCourse)
+                    const endYMD = e.end_date || ''
+                    const isPastPeriod = endYMD ? todayYMD > endYMD : false
+                    let statusLabel = 'Inscrito'
+                    let statusClass = 'bg-sky-50 text-sky-700 border-sky-200'
+                    if (isPending) {
+                      statusLabel = 'Pendiente de pago'
+                      statusClass = 'bg-rose-50 text-rose-700 border-rose-200'
+                    } else if (isPastPeriod) {
+                      statusLabel = 'Pendiente de renovación'
+                      statusClass = 'bg-amber-50 text-amber-700 border-amber-200'
+                    } else if (completed) {
+                      statusLabel = 'Completado'
+                      statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    } else if (!e.is_active) {
+                      statusLabel = 'Inactivo'
+                      statusClass = 'bg-gray-100 text-gray-600 border-gray-200'
+                    }
                     return (
                     <div key={e.id} className="p-3 rounded-xl border bg-white">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="text-lg font-semibold text-gray-900">{e.course.name}</div>
-                      <div className="shrink-0 flex items-center gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="text-lg font-semibold text-gray-900">{e.course.name}</div>
+                        <div className="shrink-0 flex items-center gap-2">
                         <button
                           className="px-2 py-1 rounded-md text-white bg-emerald-600 hover:bg-emerald-700 text-xs"
                           title="Renovar periodo"
@@ -558,27 +576,11 @@ export default function StudentDetailPage(){
                       <div>
                         <div className="text-gray-500 text-xs">Estado</div>
                         <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${
-                              completed
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : isPending
-                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                    : e.is_active
-                                      ? 'bg-sky-50 text-sky-700 border-sky-200'
-                                      : 'bg-gray-100 text-gray-600 border-gray-200'
-                              }`}
-                            >
-                            {completed
-                              ? 'Completado'
-                              : isPending
-                              ? 'Pendiente de pago'
-                                : e.is_active
-                                  ? 'Inscrito'
-                                  : 'Inactivo'}
-                          </span>
-                          {completed && <span className="text-xs text-emerald-700 font-semibold">({attended}/{expected})</span>}
-                        </div>
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${statusClass}`}>
+                              {statusLabel}
+                            </span>
+                            {completed && <span className="text-xs text-emerald-700 font-semibold">({attended}/{expected})</span>}
+                          </div>
                       </div>
                       <div>
                         <div className="text-gray-500 text-xs">Periodo</div>

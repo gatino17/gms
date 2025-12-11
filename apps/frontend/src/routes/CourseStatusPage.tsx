@@ -552,10 +552,21 @@ export default function CourseStatusPage() {
                                 const emailTitle = s.email ?? 'Sin correo'
                                   const payStatus = (s.payment_status || '').toString().toLowerCase()
                                   const hasPay = payments.some(p => p.student_id === s.id && p.course_id === row.course.id)
-                                  const paid = hasPay
+                                  const today = new Date()
+                                  const stuEnd = toDate(s.renewal_date)
+                                  const isPastPeriod = stuEnd ? today > stuEnd : false
+                                  const paid = hasPay && !isPastPeriod
+                                  let statusLabel = 'Inscrito'
+                                  let statusClass = 'bg-sky-50 text-sky-700 border-sky-200'
+                                  if (!hasPay) {
+                                    statusLabel = 'Pendiente de pago'
+                                    statusClass = 'bg-rose-50 text-rose-700 border-rose-200'
+                                  } else if (isPastPeriod) {
+                                    statusLabel = 'Pendiente de renovación'
+                                    statusClass = 'bg-amber-50 text-amber-700 border-amber-200'
+                                  }
                                 const att = s.attendance_count ?? 0
                                 const stuStart = toDate(s.enrolled_since)
-                                const stuEnd = toDate(s.renewal_date)
                                 const weeks = weeksBetween(stuStart, stuEnd)
                                 const expected = stuStart && stuEnd && stuStart.getTime() === stuEnd.getTime()
                                   ? 1
@@ -662,13 +673,9 @@ export default function CourseStatusPage() {
                                     </td>
                                     <td className="px-3 py-2 text-center">
                                       <span
-                                        className={`px-2 py-1 rounded-full text-xs font-semibold border shadow-sm ${
-                                          paid
-                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                            : 'bg-rose-50 text-rose-700 border-rose-300'
-                                        }`}
+                                        className={`px-2 py-1 rounded-full text-xs font-semibold border shadow-sm ${statusClass}`}
                                       >
-                                        {paid ? 'Activo' : 'Pendiente de pago'}
+                                        {hasPay && !isPastPeriod ? 'Activo' : statusLabel}
                                       </span>
                                     </td>
                                     <td className="px-3 py-2 text-center">

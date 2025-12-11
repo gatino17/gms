@@ -8,6 +8,9 @@ type Payment = {
   id: number
   student_id?: number | null
   course_id?: number | null
+  student_name?: string | null
+  course_name?: string | null
+  teacher_name?: string | null
   amount: number
   method: 'cash' | 'card' | 'transfer' | string
   type: 'monthly' | 'single_class' | 'rental' | string

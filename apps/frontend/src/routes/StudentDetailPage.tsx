@@ -286,12 +286,14 @@ export default function StudentDetailPage(){
   }, [uniqueEnrollments])
 
   // Stats de asistencia por curso (enrollment)
-  const [courseStats, setCourseStats] = useState<Record<number, { expected:number; attended:number }>>({})
+  const [courseStats, setCourseStats] = useState<Record<number, { expected:number; attended:number; extraOutside:number }>>({})
+  const [payPage, setPayPage] = useState(1)
+  const [payPageSize, setPayPageSize] = useState(10)
   useEffect(() => {
     (async () => {
       try{
         if(!id || !(uniqueEnrollments.length)) return
-        const next: Record<number, { expected:number; attended:number }> = {}
+        const next: Record<number, { expected:number; attended:number; extraOutside:number }> = {}
         const maxYMD = (...dates: string[]) => dates.filter(Boolean).sort().slice(-1)[0] || ''
         const futureHorizon = toYMDInTZ(new Date(new Date().setMonth(new Date().getMonth() + 6)), CL_TZ)
         for (const e of uniqueEnrollments) {
@@ -301,6 +303,7 @@ export default function StudentDetailPage(){
           const courseId = e.course.id
           let attended = 0
           let expected = 0
+          let extraOutside = 0
           const endOfShownMonth = toYMDInTZ(new Date(calYear, calMonth, 0), CL_TZ)
           const latest = maxYMD(todayYMD, end, endOfShownMonth, futureHorizon)
           const months = monthsInRange(start.slice(0,7) + '-01', latest.slice(0,7) + '-01')
@@ -311,15 +314,16 @@ export default function StudentDetailPage(){
           )
           const monthsDays = await Promise.all(monthRequests)
           for (const days of monthsDays) {
-            for (const d of days as { date: string; attended_course_ids?: number[]; expected_course_ids?: number[] }[]) {
-              if (d.date >= start && d.date <= latest) {
-                const attendedHere = (d.attended_course_ids || []).includes(courseId)
-                if (attendedHere) attended++
-                if (d.date <= end && (d.expected_course_ids || []).includes(courseId)) expected++
+              for (const d of days as { date: string; attended_course_ids?: number[]; expected_course_ids?: number[] }[]) {
+                if (d.date >= start && d.date <= latest) {
+                  const attendedHere = (d.attended_course_ids || []).includes(courseId)
+                  if (attendedHere) attended++
+                  if (d.date <= end && (d.expected_course_ids || []).includes(courseId)) expected++
+                  if (attendedHere && d.date > end) extraOutside++
+                }
               }
             }
-          }
-          next[e.id] = { expected, attended }
+          next[e.id] = { expected, attended, extraOutside }
         }
         setCourseStats(next)
       }catch{}
@@ -456,8 +460,9 @@ export default function StudentDetailPage(){
                   {(uniqueEnrollments ?? []).map((e)=> {
                     const attended = (courseStats[e.id]?.attended ?? 0)
                     const expected = (courseStats[e.id]?.expected ?? 0)
+                    const extraOutside = (courseStats[e.id]?.extraOutside ?? 0)
                     const over = attended > expected
-                    const extra = over ? attended - expected : 0
+                    const extra = over ? attended - expected : extraOutside
                     const completed = expected > 0 && attended >= expected
                     const progress = expected > 0 ? Math.min(100, (attended / expected) * 100) : 0
                     const payStatus = (e as any).payment_status?.toString().toLowerCase?.() || ''

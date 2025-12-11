@@ -264,7 +264,7 @@ export default function DashboardPage() {
         }
       }
     }
-    // También consideramos alumnos sin curso activo pero con 1 año
+    // Tambien consideramos alumnos sin curso activo pero con 1 ano
     for (const st of students) {
       const joinedIso = st.joined_at || st.enrolled_since
       if (!joinedIso) continue

@@ -211,8 +211,14 @@ export default function PaymentsPage() {
         : m === 'transfer'
           ? 'Transferencia'
           : (m === 'agreement' || m === 'convenio') ? 'Convenio' : m
-  const typeLabel = (t:string) =>
-    t === 'monthly' ? 'Mensualidad' : t === 'single_class' ? 'Clase suelta' : t
+  const typeLabel = (t:string) => {
+    const v = (t || '').toLowerCase()
+    if (v === 'monthly') return 'Mensualidad'
+    if (v === 'single_class') return 'Clase suelta'
+    if (v === 'agreement' || v === 'convenio') return 'Convenio'
+    if (v === 'rental' || v === 'arriendo') return 'Arriendo'
+    return t || '-'
+  }
 
   // ---- Totales mes actual ----
   const monthTotals = useMemo(() => {
@@ -806,7 +812,7 @@ export default function PaymentsPage() {
                         <td className="px-3 py-2">{row.teacher}</td>
                         <td className="px-3 py-2">{row.periodo || '-'}</td>
                         <td className="px-3 py-2">{row.methodStr}</td>
-                        <td className="px-3 py-2 text-xs text-gray-700 capitalize">{row.p.type || '-'}</td>
+                        <td className="px-3 py-2 text-xs text-gray-700 capitalize">{row.typeStr}</td>
                         <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(Number(row.p.amount||0))}</td>
                         <td className="px-3 py-2 text-xs text-gray-700">
                           <div className="flex flex-wrap gap-2">

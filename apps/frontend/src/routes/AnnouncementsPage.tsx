@@ -120,27 +120,21 @@ export default function AnnouncementsPage() {
             <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Titulo</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-fuchsia-600">✏️</span>
-                  <input
-                    className="w-full border rounded-lg px-3 py-2 pl-9 focus:ring-2 focus:ring-fuchsia-200"
-                    value={draft.title || ''}
-                    onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                    placeholder="Ej: Fiesta de aniversario"
-                  />
-                </div>
+                <input
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
+                  value={draft.title || ''}
+                  onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                  placeholder="Ej: Fiesta de aniversario"
+                />
               </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Subtitulo</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-fuchsia-600">📝</span>
-                  <input
-                    className="w-full border rounded-lg px-3 py-2 pl-9 focus:ring-2 focus:ring-fuchsia-200"
-                    value={draft.subtitle || ''}
-                    onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })}
-                    placeholder="Texto corto"
-                  />
-                </div>
+                <input
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
+                  value={draft.subtitle || ''}
+                  onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })}
+                  placeholder="Texto corto"
+                />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700">Cuerpo</label>
@@ -154,51 +148,39 @@ export default function AnnouncementsPage() {
               </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Inicio</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-amber-600">📅</span>
-                  <input
-                    type="date"
-                    className="w-full border rounded-lg px-3 py-2 pl-10 focus:ring-2 focus:ring-fuchsia-200"
-                    value={draft.start_date || ''}
-                    onChange={(e) => setDraft({ ...draft, start_date: e.target.value })}
-                  />
-                </div>
+                <input
+                  type="date"
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
+                  value={draft.start_date || ''}
+                  onChange={(e) => setDraft({ ...draft, start_date: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Fin</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-amber-600">🗓️</span>
-                  <input
-                    type="date"
-                    className="w-full border rounded-lg px-3 py-2 pl-10 focus:ring-2 focus:ring-fuchsia-200"
-                    value={draft.end_date || ''}
-                    onChange={(e) => setDraft({ ...draft, end_date: e.target.value })}
-                  />
-                </div>
+                <input
+                  type="date"
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
+                  value={draft.end_date || ''}
+                  onChange={(e) => setDraft({ ...draft, end_date: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Imagen (URL)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-indigo-600">🌐</span>
-                  <input
-                    className="w-full border rounded-lg px-3 py-2 pl-9 focus:ring-2 focus:ring-fuchsia-200"
-                    value={draft.image_url || ''}
-                    onChange={(e) => setDraft({ ...draft, image_url: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </div>
+                <input
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
+                  value={draft.image_url || ''}
+                  onChange={(e) => setDraft({ ...draft, image_url: e.target.value })}
+                  placeholder="https://..."
+                />
               </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Enlace (opcional)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-indigo-600">🔗</span>
-                  <input
-                    className="w-full border rounded-lg px-3 py-2 pl-9 focus:ring-2 focus:ring-fuchsia-200"
-                    value={draft.link_url || ''}
-                    onChange={(e) => setDraft({ ...draft, link_url: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </div>
+                <input
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
+                  value={draft.link_url || ''}
+                  onChange={(e) => setDraft({ ...draft, link_url: e.target.value })}
+                  placeholder="https://..."
+                />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="block text-sm font-medium">Subir imagen (max 2MB)</label>

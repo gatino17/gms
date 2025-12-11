@@ -480,16 +480,26 @@ export default function CourseDetailPage() {
                                 {fmtDate(s.renewal_date)}
                               </td>
                               <td className="px-3 py-2.5">
-                                <div
-                                  className={`text-sm ${
-                                    att > expected ? 'text-rose-600 font-semibold' : 'text-gray-800'
-                                  }`}
-                                  title={`Asistencias del período: ${att} de ${expected}`}
-                                >
-                                  {att} / {expected}
-                                  {expected > 0 && (
-                                    <span className="ml-1.5 text-xs text-gray-500">
-                                      ({pct}%)
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className={`text-sm ${
+                                      att > expected ? 'text-rose-600 font-semibold' : 'text-gray-800'
+                                    }`}
+                                    title={`Asistencias del período: ${att} de ${expected}`}
+                                  >
+                                    {att} / {expected}
+                                    {expected > 0 && (
+                                      <span className="ml-1.5 text-xs text-gray-500">
+                                        ({pct}%)
+                                      </span>
+                                    )}
+                                  </div>
+                                  {att > expected && (
+                                    <span
+                                      className="inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-700 text-[11px] font-semibold px-2 py-0.5 border border-rose-100"
+                                      title="Excedió lo contratado"
+                                    >
+                                      +extra
                                     </span>
                                   )}
                                 </div>

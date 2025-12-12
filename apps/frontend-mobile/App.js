@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -126,7 +127,8 @@ async function fetchPortal(token, tenantId) {
 }
 
 async function fetchAnnouncementsApi(tenantId, token) {
-  const res = await fetch(`${BASE_URL}/api/pms/announcements`, {
+  const url = `${BASE_URL}/api/pms/announcements?active_only=false&limit=4`
+  const res = await fetch(url, {
     headers: {
       'X-Tenant-ID': String(tenantId ?? ''),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -138,6 +140,7 @@ async function fetchAnnouncementsApi(tenantId, token) {
   }
   return res.json()
 }
+const ANN_CACHE_KEY = 'announcements_cache'
 
 async function requestNotificationPermission() {
   const { status } = await Notifications.getPermissionsAsync()
@@ -269,6 +272,7 @@ export default function App() {
   const [lastSync, setLastSync] = useState(null)
   const [retryCount, setRetryCount] = useState(0)
   const [announcements, setAnnouncements] = useState([])
+  const [refreshing, setRefreshing] = useState(false)
 
   const colorScheme = useColorScheme()
   const theme = useMemo(() => {
@@ -350,11 +354,18 @@ export default function App() {
     const loadCache = async () => {
       try {
         const cached = await AsyncStorage.getItem('portal_cache')
+        const cachedAnn = await AsyncStorage.getItem(ANN_CACHE_KEY)
         if (cached) {
           const { data, lastSync: cachedSync } = JSON.parse(cached)
           setPortal(data)
           setLastSync(cachedSync || null)
           setIsOffline(true)
+        }
+        if (cachedAnn) {
+          try {
+            const parsed = JSON.parse(cachedAnn)
+            setAnnouncements(Array.isArray(parsed) ? parsed : [])
+          } catch {}
         }
       } catch (err) {
         console.log('[cache] read error', err)
@@ -382,8 +393,16 @@ export default function App() {
       try {
         const anns = await fetchAnnouncementsApi(data.student?.tenant_id ?? tid, tok)
         setAnnouncements(Array.isArray(anns) ? anns : [])
+        await AsyncStorage.setItem(ANN_CACHE_KEY, JSON.stringify(anns || []))
       } catch (e) {
         console.log('[announcements] fetch error', e)
+        try {
+          const cachedAnn = await AsyncStorage.getItem(ANN_CACHE_KEY)
+          if (cachedAnn) {
+            const parsed = JSON.parse(cachedAnn)
+            setAnnouncements(Array.isArray(parsed) ? parsed : [])
+          }
+        } catch {}
       }
       // programar notificación próxima clase
       if (data?.enrollments?.[0]?.course?.day_of_week && data.enrollments[0].course.start_time) {
@@ -401,6 +420,16 @@ export default function App() {
       }
     } finally {
       setLoadingPortal(false)
+    }
+  }
+
+  const handleRefresh = async () => {
+    if (!token || !tenantId) return
+    setRefreshing(true)
+    try {
+      await handleLoadPortal(token, tenantId)
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -457,7 +486,7 @@ export default function App() {
         nextClassDate={nextClassDate}
         nextClassTime={nextClassTime}
         nextClassImg={nextClassImg}
-        loadingPortal={loadingPortal}
+        loadingPortal={loadingPortal || refreshing}
         makeAbsolute={makeAbsolute}
         formatSchedule={formatSchedule}
         formatDate={formatDate}
@@ -471,69 +500,101 @@ export default function App() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, !loggedIn && styles.containerLoginBg]}>
       <StatusBar style="light" />
       {!loggedIn ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <LinearGradient
+          colors={['#ff2d55', '#ff7a18', '#8b5cf6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.loginScreen}
+        >
+          <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+            <View style={styles.heroLoginGradient}>
+              <View style={styles.heroLogoCircle}>
+                <Text style={styles.heroLogoText}>GMS</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroSubtitle}>Portal alumno</Text>
+                <Text style={styles.heroTitle}>{t('home_title')}</Text>
+                <Text style={styles.heroUser}>{email || 'Ingresa tu correo'}</Text>
+              </View>
+            </View>
+
+            <View style={[styles.loginCard, { marginTop: 120 }]}>
+              <Text style={[styles.cardTitle, styles.loginTitle]}>{t('login_title')}</Text>
+              <TextInput
+                style={[styles.input, styles.loginInput]}
+                placeholder="Email"
+                placeholderTextColor="#f1f5f9"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <TextInput
+                style={[styles.input, styles.loginInput]}
+                placeholder={t('code_received')}
+                placeholderTextColor="#f1f5f9"
+                value={code}
+                onChangeText={setCode}
+                keyboardType="number-pad"
+              />
+              <View style={styles.row}>
+                <TouchableOpacity
+                  style={[styles.secondaryButton, styles.loginSecondaryButton, styles.flex1]}
+                  onPress={handleRequestCode}
+                  disabled={loading}
+                >
+                  <Text style={[styles.secondaryButtonText, styles.loginSecondaryButtonText]}>
+                    {loading ? '...' : t('send_code')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.primaryButton, styles.flex1]} onPress={handleLogin} disabled={loading || !codeSent}>
+                  <Text style={styles.primaryButtonText}>{loading ? '...' : t('enter')}</Text>
+                </TouchableOpacity>
+              </View>
+              {token ? <Text style={styles.hint}>Sesion de {userEmail}</Text> : null}
+            </View>
+
+            {loading && (
+              <View style={{ paddingVertical: 12 }}>
+                <ActivityIndicator size="small" color={theme.primary} />
+              </View>
+            )}
+          </ScrollView>
+        </LinearGradient>
+      ) : (
+        <View style={styles.loggedWrapper}>
           <LinearGradient
-            colors={['#0f172a', '#111827', '#1e1b4b']}
+            colors={['#ff2d55', '#ff7a18', '#8b5cf6']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.loginHero}
+            style={{ flex: 1 }}
           >
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoText}>GMS</Text>
-            </View>
-            <Text style={styles.title}>{t('home_title')}</Text>
-            <Text style={styles.subtitle}>Portal alumno - version movil</Text>
+            <ScrollView
+              contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16, paddingTop: 12 }}
+              refreshControl={
+                loggedIn ? (
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    tintColor={theme.primary}
+                    colors={[theme.primary]}
+                  />
+                ) : undefined
+              }
+              >
+              {renderTab()}
+            </ScrollView>
           </LinearGradient>
 
-          <View style={styles.loginCard}>
-            <Text style={styles.cardTitle}>{t('login_title')}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor={theme.sub}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder={t('code_received')}
-              placeholderTextColor={theme.sub}
-              value={code}
-              onChangeText={setCode}
-              keyboardType="number-pad"
-            />
-            <View style={styles.row}>
-              <TouchableOpacity style={[styles.secondaryButton, styles.flex1]} onPress={handleRequestCode} disabled={loading}>
-                <Text style={styles.secondaryButtonText}>{loading ? '...' : t('send_code')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.primaryButton, styles.flex1]} onPress={handleLogin} disabled={loading || !codeSent}>
-                <Text style={styles.primaryButtonText}>{loading ? '...' : t('enter')}</Text>
-              </TouchableOpacity>
-            </View>
-            {token ? <Text style={styles.hint}>Sesion de {userEmail}</Text> : null}
+          <View style={styles.navBarContainer}>
+            <NavBar activeTab={activeTab} onChange={setActiveTab} styles={styles} theme={theme} t={t} />
           </View>
-
-          {loading && (
-            <View style={{ paddingVertical: 12 }}>
-              <ActivityIndicator size="small" color={theme.primary} />
-            </View>
-          )}
-        </ScrollView>
-      ) : (
-        <View style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-            {renderTab()}
-          </ScrollView>
-
-          <NavBar activeTab={activeTab} onChange={setActiveTab} styles={styles} theme={theme} t={t} />
         </View>
       )}
-    </SafeAreaView>
+      </SafeAreaView>
   )
 }
 
@@ -542,8 +603,13 @@ const makeStyles = (t) =>
     container: {
       flex: 1,
       backgroundColor: t.bg,
-      paddingHorizontal: 16,
-      paddingTop: 12,
+      paddingHorizontal: 0,
+      paddingTop: 0,
+    },
+    containerLoginBg: {
+      paddingHorizontal: 0,
+      paddingTop: 0,
+      backgroundColor: '#ff2d55',
     },
     header: { marginBottom: 12 },
     title: { fontSize: 26, fontWeight: '800', color: t.text },
@@ -559,21 +625,43 @@ const makeStyles = (t) =>
       shadowRadius: 12,
       elevation: 6,
     },
-    logoCircle: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
-      backgroundColor: '#fff',
+    loginScreen: { flex: 1, padding: 16 },
+    heroLoginGradient: {
+      marginBottom: 16,
+      padding: 16,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.15)',
+      flexDirection: 'column',
+      gap: 12,
+      alignItems: 'center',
+      backgroundColor: 'rgba(0,0,0,0.05)',
+    },
+    heroLogoCircle: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      backgroundColor: 'rgba(0,0,0,0.15)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.5)',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 8,
-      shadowColor: '#000',
-      shadowOpacity: 0.2,
-      shadowOffset: { width: 0, height: 4 },
-      shadowRadius: 8,
-      elevation: 4,
     },
-    logoText: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
+    heroLogoText: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 1 },
+    heroSubtitle: { color: '#fde68a', fontSize: 13, fontWeight: '700' },
+    heroTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginTop: 2 },
+    heroUser: { color: '#f8fafc', fontSize: 12, marginTop: 4, textAlign: 'center' },
+    loginTitle: { color: '#fff' },
+    loginInput: {
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      borderColor: 'rgba(255,255,255,0.35)',
+      color: '#fff',
+    },
+    loginSecondaryButton: {
+      backgroundColor: 'rgba(255,255,255,0.12)',
+      borderColor: 'rgba(255,255,255,0.35)',
+    },
+    loginSecondaryButtonText: { color: '#fff' },
     card: {
       backgroundColor: t.card,
       borderRadius: 14,
@@ -588,17 +676,17 @@ const makeStyles = (t) =>
       elevation: 4,
     },
     loginCard: {
-      backgroundColor: t.card,
+      backgroundColor: 'transparent',
       borderRadius: 16,
       padding: 16,
       marginBottom: 12,
-      borderWidth: 1,
-      borderColor: t.border,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.18,
-      shadowRadius: 12,
-      elevation: 5,
+      borderWidth: 0,
+      borderColor: 'transparent',
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
     },
     cardTitle: { fontSize: 16, fontWeight: '700', color: t.text, marginBottom: 8 },
     input: {
@@ -651,24 +739,27 @@ const makeStyles = (t) =>
     statusOk: { color: '#4ade80' },
     statusPending: { color: '#f87171' },
     banner: {
-      width: 220,
-      height: 110,
-      borderRadius: 12,
+      width: 280,
+      height: 160,
+      borderRadius: 14,
       overflow: 'hidden',
-      marginRight: 10,
+      marginRight: 12,
       borderWidth: 1,
       borderColor: t.border,
     },
-    bannerImg: { width: '100%', height: '100%' },
+    bannerImg: { width: '100%', height: '100%', borderRadius: 14 },
     bannerLabel: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
-      padding: 8,
-      backgroundColor: t.isDark ? 'rgba(15,23,42,0.45)' : 'rgba(255,255,255,0.55)',
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      backgroundColor: t.isDark ? 'rgba(15,23,42,0.55)' : 'rgba(0,0,0,0.55)',
+      borderBottomLeftRadius: 14,
+      borderBottomRightRadius: 14,
     },
-    bannerText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    bannerText: { color: '#fff', fontWeight: '800', fontSize: 14 },
     row: { flexDirection: 'row', gap: 8 },
     rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     flex1: { flex: 1 },
@@ -904,32 +995,98 @@ const makeStyles = (t) =>
       borderRadius: 999,
       backgroundColor: '#8b5cf6',
     },
+    navBarContainer: {
+      backgroundColor: '#ffffff',
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      overflow: 'hidden',
+      paddingTop: 8,
+      shadowColor: '#000',
+      shadowOpacity: 0.06,
+      shadowOffset: { width: 0, height: -2 },
+      shadowRadius: 5,
+      elevation: 8,
+    },
     navBar: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      backgroundColor: t.card,
-      borderTopWidth: 1,
-      borderColor: t.border,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 6,
-      elevation: 12,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      backgroundColor: '#ffffff',
+      width: '100%',
     },
     navItem: { alignItems: 'center', flex: 1 },
-    navIconWrap: {
-      width: 46,
-      height: 46,
-      borderRadius: 23,
+    navItems: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' },
+    navIconWrapInactive: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: 'transparent',
     },
-    navIconActive: { backgroundColor: '#fde2f3' },
-    navLabel: { fontSize: 12, color: t.sub, marginTop: 4 },
-    navLabelActive: { color: '#ec4899', fontWeight: '700' },
+    navActiveBubble: {
+      marginBottom: 0,
+      transform: [{ translateY: -10 }],
+      alignSelf: 'center',
+    },
+    navIconGradient: {
+      padding: 5,
+      borderRadius: 34,
+      alignSelf: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.12,
+      shadowOffset: { width: 0, height: 4 },
+      shadowRadius: 6,
+      elevation: 8,
+    },
+    navIconWrapActive: {
+      width: 62,
+      height: 62,
+      borderRadius: 31,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#ffffff',
+      shadowColor: '#000',
+      shadowOpacity: 0.12,
+      shadowOffset: { width: 0, height: 6 },
+      shadowRadius: 8,
+      elevation: 10,
+    },
+    navLabel: { fontSize: 12, color: '#bfc3c9', marginTop: 0, fontWeight: '600' },
+    navLabelActive: { color: '#ff2d55', fontWeight: '800' },
+    navCutout: {
+      position: 'absolute',
+      top: -20,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: 'transparent',
+      shadowColor: 'transparent',
+      shadowOpacity: 0,
+      shadowOffset: { width: 0, height: 0 },
+      shadowRadius: 0,
+      elevation: 0,
+    },
+    centerBadge: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: '#0b1224',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: '#ffffff',
+      shadowColor: '#000',
+      shadowOpacity: 0.12,
+      shadowOffset: { width: 0, height: 3 },
+      shadowRadius: 6,
+      elevation: 6,
+    },
+    loggedWrapper: {
+      flex: 1,
+      backgroundColor: t.bg,
+    },
     profileHero: {
       borderRadius: 16,
       paddingVertical: 22,

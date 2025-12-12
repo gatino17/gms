@@ -7,6 +7,8 @@ import {
   Text,
   View,
   TouchableOpacity,
+  TouchableWithoutFeedback,
+  Modal,
   TextInput,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -97,6 +99,8 @@ export default function HomeTab({
   const [notes, setNotes] = useState({})
   const [drafts, setDrafts] = useState({})
   const [editingId, setEditingId] = useState(null)
+  const [openBanner, setOpenBanner] = useState(null) // guarda { img, title, subtitle }
+  const showAnnouncements = (announcements || []).slice(0, 4)
 
   useEffect(() => {
     const loadNotes = async () => {
@@ -220,12 +224,12 @@ export default function HomeTab({
             <Text style={styles.streakBadgeText}>Racha actual</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.itemSub}>R\u00e9cord</Text>
-            <Text style={[styles.itemTitle, { color: '#ef4444' }]}>{streakRecord} d\u00edas</Text>
+            <Text style={styles.itemSub}>Record</Text>
+            <Text style={[styles.itemTitle, { color: '#ef4444' }]}>{streakRecord} dias</Text>
           </View>
         </View>
         <View style={styles.rowBetween}>
-          <Text style={styles.streakNumber}>{streak} d\u00edas</Text>
+          <Text style={styles.streakNumber}>{streak} dias</Text>
           <Text style={styles.itemSub}>{attendancePercent}% asistencia</Text>
         </View>
         <View style={styles.streakProgressTrack}>
@@ -247,55 +251,45 @@ export default function HomeTab({
       <View style={styles.tipCard}>
         <View style={styles.tipHeader}>
           <Ionicons name="bulb-outline" size={18} color="#f43f5e" />
-          <Text style={styles.tipTitle}>Tip del d\u00eda</Text>
+          <Text style={styles.tipTitle}>Tip del dia</Text>
         </View>
         <Text style={styles.tipText}>
-          \u201cLa conexi\u00f3n con tu pareja comienza con la escucha. El baile es una conversaci\u00f3n sin palabras.\u201d
+          "La conexion con tu pareja comienza con la escucha. El baile es una conversacion sin palabras."
         </Text>
-        <Text style={styles.tipAuthor}>— Equipo GMS</Text>
+        <Text style={styles.tipAuthor}>Equipo GMS</Text>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Novedades</Text>
-        {announcements?.length ? (
+        {showAnnouncements.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
-            {announcements.map((b) => (
-              <View key={b.id} style={styles.banner}>
-                {b.image_url ? (
-                  <Image source={{ uri: b.image_url }} style={styles.bannerImg} />
-                ) : (
-                  <View style={[styles.bannerImg, { backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' }]}>
-                    <Text style={{ color: '#fff', fontWeight: '800' }}>{b.title?.[0] || 'N'}</Text>
+            {showAnnouncements.map((b) => {
+              const img = makeAbsolute?.(b.image_url)
+              return (
+                <TouchableOpacity
+                  key={b.id}
+                  style={styles.banner}
+                  activeOpacity={0.9}
+                  onPress={() => img && setOpenBanner({ img, title: b.title, subtitle: b.subtitle })}
+                >
+                  {img ? (
+                    <Image source={{ uri: img }} style={styles.bannerImg} />
+                  ) : (
+                    <View style={[styles.bannerImg, { backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' }]}>
+                      <Text style={{ color: '#fff', fontWeight: '800' }}>{b.title?.[0] || 'N'}</Text>
+                    </View>
+                  )}
+                  <View style={styles.bannerLabel}>
+                    <Text style={styles.bannerText}>{b.title}</Text>
+                    {b.subtitle ? <Text style={[styles.bannerText, { fontSize: 12 }]}>{b.subtitle}</Text> : null}
                   </View>
-                )}
-                <View style={styles.bannerLabel}>
-                  <Text style={styles.bannerText}>{b.title}</Text>
-                  {b.subtitle ? <Text style={[styles.bannerText, { fontSize: 12 }]}>{b.subtitle}</Text> : null}
-                </View>
-              </View>
-            ))}
+                </TouchableOpacity>
+              )
+            })}
           </ScrollView>
         ) : (
           <Text style={styles.itemSub}>Sin novedades</Text>
         )}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Redes</Text>
-        <View style={[styles.row, { justifyContent: 'space-between', marginTop: 6 }]}>
-          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#fdf2f8' }]} onPress={() => Linking.openURL(INSTAGRAM_URL)}>
-            <Ionicons name="logo-instagram" size={18} color="#ec4899" />
-            <Text style={styles.socialPillText}>Instagram</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#f0f9ff' }]} onPress={() => Linking.openURL(TIKTOK_URL)}>
-            <Ionicons name="logo-tiktok" size={18} color="#0ea5e9" />
-            <Text style={styles.socialPillText}>TikTok</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#eff6ff' }]} onPress={() => Linking.openURL(FACEBOOK_URL)}>
-            <Ionicons name="logo-facebook" size={18} color="#2563eb" />
-            <Text style={styles.socialPillText}>Facebook</Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
       {portal.enrollments?.length ? (
@@ -317,7 +311,7 @@ export default function HomeTab({
             </View>
           </View>
         </View>
-      ) : null}
+    ) : null}
 
       <View style={styles.card}>
         <View style={styles.rowBetween}>
@@ -385,40 +379,7 @@ export default function HomeTab({
                     <View style={styles.courseProgressTrack}>
                       <View style={[styles.courseProgressBar, { width: `${progress || 0}%` }]} />
                     </View>
-                    <View style={[styles.rowBetween, { marginTop: 8 }]}>
-                      <TouchableOpacity
-                        style={styles.resourceBtn}
-                        onPress={() => openResource(item.course)}
-                      >
-                        <Ionicons name="logo-instagram" size={14} color="#8b5cf6" />
-                        <Text style={styles.resourceBtnText}>Instagram</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.resourceBtn, styles.noteBtn]}
-                        onPress={() => setEditingId(editingId === item.id ? null : item.id)}
-                      >
-                        <Ionicons name="create-outline" size={14} color="#0f172a" />
-                        <Text style={styles.resourceBtnText}>Notas</Text>
-                      </TouchableOpacity>
-                    </View>
-                    {editingId === item.id ? (
-                      <View style={{ marginTop: 8 }}>
-                        <TextInput
-                          style={styles.noteInput}
-                          placeholder="Escribe tu nota..."
-                          placeholderTextColor={theme.sub}
-                          value={drafts[item.id] || ''}
-                          onChangeText={(txt) => setDrafts((prev) => ({ ...prev, [item.id]: txt }))}
-                          multiline
-                        />
-                        <TouchableOpacity style={styles.saveNoteBtn} onPress={() => saveNote(item.id)}>
-                          <Text style={styles.saveNoteText}>Guardar nota</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : null}
-                    {notes[item.id] ? (
-                      <Text style={[styles.itemSub, { marginTop: 6 }]}>Nota: {notes[item.id]}</Text>
-                    ) : null}
+                    {false && editingId === item.id ? null : null}
                   </View>
                 </View>
               )
@@ -429,6 +390,82 @@ export default function HomeTab({
           <Text style={styles.itemSub}>Sin inscripciones</Text>
         ))}
       </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Redes</Text>
+        <View style={[styles.row, { justifyContent: 'space-between', marginTop: 6 }]}>
+          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#fdf2f8' }]} onPress={() => Linking.openURL(INSTAGRAM_URL)}>
+            <Ionicons name="logo-instagram" size={18} color="#ec4899" />
+            <Text style={styles.socialPillText}>Instagram</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#f0f9ff' }]} onPress={() => Linking.openURL(TIKTOK_URL)}>
+            <Ionicons name="logo-tiktok" size={18} color="#0ea5e9" />
+            <Text style={styles.socialPillText}>TikTok</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#eff6ff' }]} onPress={() => Linking.openURL(FACEBOOK_URL)}>
+            <Ionicons name="logo-facebook" size={18} color="#2563eb" />
+            <Text style={styles.socialPillText}>Facebook</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {openBanner ? (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => setOpenBanner(null)}
+        >
+          <TouchableWithoutFeedback onPress={() => setOpenBanner(null)}>
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                padding: 16,
+              }}
+            >
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View
+                  style={{
+                    width: '85%',
+                    maxWidth: 360,
+                    maxHeight: '70%',
+                    borderRadius: 18,
+                    overflow: 'hidden',
+                    backgroundColor: '#0f172a',
+                    padding: 12,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: '#f472b6',
+                  }}
+                >
+                  <Image
+                    source={{ uri: openBanner.img }}
+                    style={{
+                      width: '100%',
+                      height: undefined,
+                      aspectRatio: 3 / 4,
+                      resizeMode: 'contain',
+                      borderRadius: 14,
+                      borderWidth: 2,
+                      borderColor: '#f3f4f6',
+                    }}
+                  />
+                  <View style={{ marginTop: 10, width: '100%' }}>
+                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16, textAlign: 'center' }}>{openBanner.title}</Text>
+                    {openBanner.subtitle ? (
+                      <Text style={{ color: '#e2e8f0', fontSize: 13, textAlign: 'center', marginTop: 4 }}>{openBanner.subtitle}</Text>
+                    ) : null}
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      ) : null}
     </>
   )
 }

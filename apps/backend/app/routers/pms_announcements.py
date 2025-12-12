@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import List
-
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from sqlalchemy import or_, select, func
-from sqlalchemy.ext.asyncio import AsyncSession
 from pathlib import Path
 import secrets
+from typing import List
+
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.backend.app.pms import models, schemas
 from apps.backend.app.pms.deps import get_db_session, get_tenant_id
@@ -17,19 +17,22 @@ router = APIRouter(prefix="/api/pms/announcements", tags=["pms-announcements"])
 
 @router.get("/", response_model=List[schemas.AnnouncementOut])
 async def list_announcements(
-    tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
     active_only: bool = Query(default=True),
     date_ref: date | None = Query(default=None),
     limit: int = Query(default=4, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    x_tenant_id: int | None = Header(default=None, alias="X-Tenant-ID"),
 ):
     """
-    Lista anuncios por tenant.
+    Lista anuncios por tenant. Para el portal móvil, solo requiere X-Tenant-ID.
     - active_only: si es True, filtra por is_active y ventana de fechas.
     - date_ref: fecha de referencia para vigencia (hoy por defecto).
-    - limit/offset: paginación (por defecto muestra 4, como en la app móvil).
+    - limit/offset: paginación (por defecto 4, como la app móvil).
     """
+    if x_tenant_id is None:
+        raise HTTPException(status_code=400, detail="X-Tenant-ID header requerido")
+    tenant_id = x_tenant_id
     ref = date_ref or date.today()
     stmt = select(models.Announcement).where(models.Announcement.tenant_id == tenant_id)
     if active_only:
@@ -56,7 +59,10 @@ async def create_announcement(
     sort_order = payload.sort_order
     if sort_order is None:
         res = await db.execute(
-            select(models.Announcement.sort_order).where(models.Announcement.tenant_id == tenant_id).order_by(models.Announcement.sort_order.desc()).limit(1)
+            select(models.Announcement.sort_order)
+            .where(models.Announcement.tenant_id == tenant_id)
+            .order_by(models.Announcement.sort_order.desc())
+            .limit(1)
         )
         max_sort = res.scalar()
         sort_order = (max_sort or 0) + 1
@@ -95,8 +101,8 @@ async def upload_announcement_image(
         raise HTTPException(status_code=400, detail="Imagen supera 2 MB")
 
     from apps.backend.app.main import static_dir  # type: ignore
+
     filename = Path(file.filename or "image").name
-    # Evitar colisiones
     stem = Path(filename).stem
     ext = Path(filename).suffix or ".jpg"
     safe_name = f"{stem}_{secrets.token_hex(4)}{ext}"

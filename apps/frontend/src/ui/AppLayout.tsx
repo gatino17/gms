@@ -84,6 +84,18 @@ export default function AppLayout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.is_superuser, tenantId, user])
 
+  // Permitir que otras vistas (ej. Settings) pidan refrescar el tema sin recargar la app
+  useEffect(() => {
+    const handler = () => {
+      if (tenantId == null) return
+      api.get('/api/pms/tenants/me', { headers: { 'X-Tenant-ID': tenantId } })
+        .then((res) => setTenantInfo(res.data))
+        .catch((e) => console.debug('[layout] refresh theme error', e))
+    }
+    window.addEventListener('sidebar-theme-updated', handler)
+    return () => window.removeEventListener('sidebar-theme-updated', handler)
+  }, [tenantId])
+
   // Reordenado: Profesores y Calendario junto a Pagos al final
   const navTop = [
     { to: '/', label: 'Dashboard', icon: <HiOutlineHome /> },

@@ -19,6 +19,8 @@ class TenantOut(BaseModel):
     whatsapp_message: Optional[str] = None
     rooms_count: Optional[int] = None
     sidebar_theme: Optional[str] = None
+    navbar_theme: Optional[str] = None
+    logo_url: Optional[str] = None
     created_at: datetime
     admin_is_superuser: Optional[bool] = None
 
@@ -38,6 +40,8 @@ class TenantCreate(BaseModel):
     whatsapp_message: Optional[str] = None
     rooms_count: Optional[int] = None
     sidebar_theme: Optional[str] = None
+    navbar_theme: Optional[str] = None
+    logo_url: Optional[str] = None
     is_superuser: bool = False
 
 
@@ -52,6 +56,8 @@ class TenantUpdate(BaseModel):
     whatsapp_message: Optional[str] = None
     rooms_count: Optional[int] = None
     sidebar_theme: Optional[str] = None
+    navbar_theme: Optional[str] = None
+    logo_url: Optional[str] = None
     is_superuser: Optional[bool] = None
 
 
@@ -64,6 +70,8 @@ class TenantSelfUpdate(BaseModel):
     whatsapp_message: Optional[str] = None
     rooms_count: Optional[int] = None
     sidebar_theme: Optional[str] = None
+    navbar_theme: Optional[str] = None
+    logo_url: Optional[str] = None
 
 
 class StudentBase(BaseModel):

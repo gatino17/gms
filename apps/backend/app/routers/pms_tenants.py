@@ -1,8 +1,10 @@
 ﻿from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Header, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, delete
+from pathlib import Path
+import secrets
 
 from apps.backend.app.pms.models import Tenant
 from apps.backend.app.pms.deps import (
@@ -69,6 +71,8 @@ async def create_tenant(
         whatsapp_message=payload.whatsapp_message,
         rooms_count=payload.rooms_count,
         sidebar_theme=payload.sidebar_theme,
+        navbar_theme=payload.navbar_theme,
+        logo_url=payload.logo_url,
     )
     db.add(tenant)
     await db.flush()
@@ -149,6 +153,10 @@ async def update_tenant(
         tenant.rooms_count = data["rooms_count"]
     if "sidebar_theme" in data:
         tenant.sidebar_theme = data["sidebar_theme"]
+    if "navbar_theme" in data:
+        tenant.navbar_theme = data["navbar_theme"]
+    if "logo_url" in data:
+        tenant.logo_url = data["logo_url"]
     if "is_superuser" in data:
         if admin_user is None:
             admin_user = await db.scalar(
@@ -235,4 +243,30 @@ async def update_current_tenant(
     await db.commit()
     await db.refresh(tenant)
     return tenant
+
+
+@router.post("/upload-logo")
+async def upload_tenant_logo(
+    file: UploadFile = File(...),
+    tenant_id: int = Depends(get_tenant_id),
+):
+    ct = (file.content_type or "").lower()
+    allowed = {"image/jpeg", "image/png", "image/webp", "image/svg+xml"}
+    if ct not in allowed:
+        raise HTTPException(status_code=400, detail="Tipo no permitido. Use JPG, PNG, WEBP o SVG")
+    content = await file.read()
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Logo supera 2 MB")
+
+    from apps.backend.app.main import static_dir  # type: ignore
+
+    filename = Path(file.filename or "logo").name
+    stem = Path(filename).stem
+    ext = Path(filename).suffix or ".png"
+    safe_name = f"{stem}_{secrets.token_hex(4)}{ext}"
+    target = Path(static_dir) / "uploads" / "tenants" / str(tenant_id)
+    target.mkdir(parents=True, exist_ok=True)
+    (target / safe_name).write_bytes(content)
+    public_url = f"/static/uploads/tenants/{tenant_id}/{safe_name}"
+    return {"url": public_url}
 

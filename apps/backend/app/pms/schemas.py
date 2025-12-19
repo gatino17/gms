@@ -17,9 +17,6 @@ class TenantOut(BaseModel):
     postal_code: Optional[str] = None
     phone: Optional[str] = None
     whatsapp_message: Optional[str] = None
-    rooms_count: Optional[int] = None
-    sidebar_theme: Optional[str] = None
-    navbar_theme: Optional[str] = None
     logo_url: Optional[str] = None
     created_at: datetime
     admin_is_superuser: Optional[bool] = None
@@ -38,9 +35,6 @@ class TenantCreate(BaseModel):
     postal_code: Optional[str] = Field(default=None, max_length=20)
     phone: Optional[str] = Field(default=None, max_length=40)
     whatsapp_message: Optional[str] = None
-    rooms_count: Optional[int] = None
-    sidebar_theme: Optional[str] = None
-    navbar_theme: Optional[str] = None
     logo_url: Optional[str] = None
     is_superuser: bool = False
 
@@ -54,9 +48,6 @@ class TenantUpdate(BaseModel):
     postal_code: Optional[str] = Field(default=None, max_length=20)
     phone: Optional[str] = Field(default=None, max_length=40)
     whatsapp_message: Optional[str] = None
-    rooms_count: Optional[int] = None
-    sidebar_theme: Optional[str] = None
-    navbar_theme: Optional[str] = None
     logo_url: Optional[str] = None
     is_superuser: Optional[bool] = None
 
@@ -68,9 +59,6 @@ class TenantSelfUpdate(BaseModel):
     postal_code: Optional[str] = Field(default=None, max_length=20)
     phone: Optional[str] = Field(default=None, max_length=40)
     whatsapp_message: Optional[str] = None
-    rooms_count: Optional[int] = None
-    sidebar_theme: Optional[str] = None
-    navbar_theme: Optional[str] = None
     logo_url: Optional[str] = None
 
 
@@ -284,7 +272,5 @@ class AnnouncementOut(AnnouncementBase):
 
     class Config:
         from_attributes = True
-
-
 
 

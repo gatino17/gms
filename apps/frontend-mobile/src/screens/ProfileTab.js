@@ -1,24 +1,34 @@
 import React from 'react'
-import { Text, TouchableOpacity, View } from 'react-native'
+import { Text, TouchableOpacity, View, Image } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 
-export default function ProfileTab({ portal, styles, theme, formatDate, initials, themeMode, setThemeMode, lang, setLang, t }) {
+export default function ProfileTab({ portal, styles, theme, formatDate, initials, themeMode, setThemeMode, lang, setLang, t, makeAbsolute }) {
   const student = portal.student || {}
   const joined = student.joined_at ? formatDate(student.joined_at) : '--'
   const birth = student.birthdate ? formatDate(student.birthdate) : '--'
   const emergency = student.emergency_contact || student.emergency_phone || ''
+  const tenantLogo = makeAbsolute?.(portal?.tenant?.logo_url)
+  const tenantAddress = [portal?.tenant?.address, portal?.tenant?.city, portal?.tenant?.country].filter(Boolean).join(', ') || 'Sin direccion'
 
   return (
     <>
       <LinearGradient
-        colors={['#f472b6', '#c084fc']}
+        colors={['#fb7185', '#ef4444']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.profileHero}
       >
         <View style={styles.heroAvatar}>
-          <Text style={styles.heroAvatarText}>{initials(student.first_name, student.last_name)}</Text>
+          {tenantLogo ? (
+            <Image
+              source={{ uri: tenantLogo }}
+              style={{ width: '100%', height: '100%', borderRadius: 39 }}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={styles.heroAvatarText}>{initials(student.first_name, student.last_name)}</Text>
+          )}
         </View>
         <Text style={styles.heroName}>{student.first_name} {student.last_name}</Text>
         <View style={[styles.badge, portal.classes_active > 0 ? styles.badgeOk : styles.badgeAlert]}>
@@ -26,7 +36,7 @@ export default function ProfileTab({ portal, styles, theme, formatDate, initials
             {portal.classes_active > 0 ? 'Activo' : 'Inactivo'}
           </Text>
         </View>
-        <Text style={styles.heroSince}>Estudiante desde {joined}</Text>
+        <Text style={styles.heroSince}>Inscrito desde {joined}</Text>
       </LinearGradient>
 
       <View style={styles.profileCard}>
@@ -56,12 +66,7 @@ export default function ProfileTab({ portal, styles, theme, formatDate, initials
           styles={styles}
         />
         {student.gender ? (
-          <InfoRow
-            icon="body-outline"
-            label="Genero"
-            value={student.gender}
-            styles={styles}
-          />
+          null
         ) : null}
         {emergency ? (
           <InfoRow
@@ -71,6 +76,12 @@ export default function ProfileTab({ portal, styles, theme, formatDate, initials
             styles={styles}
           />
         ) : null}
+        <InfoRow
+          icon="location-outline"
+          label="Direccion"
+          value={tenantAddress}
+          styles={styles}
+        />
       </View>
 
       <View style={styles.profileCard}>

@@ -11,7 +11,7 @@ from datetime import datetime
 
 from apps.backend.app.core import security
 
-from apps.backend.app.pms.models import Student
+from apps.backend.app.pms.models import Student, Tenant
 from apps.backend.app.pms.models import Course, Enrollment, Attendance, Payment, Teacher
 from apps.backend.app.pms.schemas import StudentOut, StudentCreate, StudentUpdate, StudentListResponse, StudentStats
 from apps.backend.app.pms.deps import get_tenant_id, get_db_session, get_current_student
@@ -180,6 +180,9 @@ async def student_portal_summary(
     if not student:
         raise HTTPException(status_code=404, detail="Alumno no encontrado")
 
+    tres = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tres.scalar_one_or_none()
+
     eres = await db.execute(
         select(Enrollment, Course)
         .join(Course, Course.id == Enrollment.course_id)
@@ -276,6 +279,17 @@ async def student_portal_summary(
     total_paid_recent = float(pres2.scalar() or 0)
 
     return {
+        "tenant": {
+            "id": tenant.id if tenant else tenant_id,
+            "name": getattr(tenant, "name", None),
+            "slug": getattr(tenant, "slug", None),
+            "contact_email": getattr(tenant, "contact_email", None),
+            "address": getattr(tenant, "address", None),
+            "country": getattr(tenant, "country", None),
+            "city": getattr(tenant, "city", None),
+            "phone": getattr(tenant, "phone", None),
+            "logo_url": getattr(tenant, "logo_url", None),
+        },
         "student": {
             "id": student.id,
             "first_name": student.first_name,
@@ -474,7 +488,6 @@ async def attendance_calendar(
         cur += timedelta(days=1)
 
     return {"year": year, "month": month, "days": days}
-
 
 
 

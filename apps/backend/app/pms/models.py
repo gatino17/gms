@@ -47,9 +47,6 @@ class Tenant(Base):
     postal_code: Mapped[Optional[str]] = mapped_column(String(20))
     phone: Mapped[Optional[str]] = mapped_column(String(40))
     whatsapp_message: Mapped[Optional[str]] = mapped_column(Text())
-    rooms_count: Mapped[Optional[int]] = mapped_column(Integer)
-    sidebar_theme: Mapped[Optional[str]] = mapped_column(String(30))
-    navbar_theme: Mapped[Optional[str]] = mapped_column(String(30))
     logo_url: Mapped[Optional[str]] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
 

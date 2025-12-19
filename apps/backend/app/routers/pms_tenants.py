@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Header, UploadFile, File
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, delete
 from pathlib import Path
@@ -19,6 +20,7 @@ from apps.backend.app.pms import models
 
 
 router = APIRouter(prefix="/api/pms/tenants", tags=["pms-tenants"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=list[TenantOut])
@@ -69,9 +71,6 @@ async def create_tenant(
         postal_code=payload.postal_code,
         phone=payload.phone,
         whatsapp_message=payload.whatsapp_message,
-        rooms_count=payload.rooms_count,
-        sidebar_theme=payload.sidebar_theme,
-        navbar_theme=payload.navbar_theme,
         logo_url=payload.logo_url,
     )
     db.add(tenant)
@@ -149,12 +148,6 @@ async def update_tenant(
         tenant.phone = data["phone"]
     if "whatsapp_message" in data:
         tenant.whatsapp_message = data["whatsapp_message"]
-    if "rooms_count" in data:
-        tenant.rooms_count = data["rooms_count"]
-    if "sidebar_theme" in data:
-        tenant.sidebar_theme = data["sidebar_theme"]
-    if "navbar_theme" in data:
-        tenant.navbar_theme = data["navbar_theme"]
     if "logo_url" in data:
         tenant.logo_url = data["logo_url"]
     if "is_superuser" in data:
@@ -223,14 +216,29 @@ async def update_current_tenant(
     if current_user.is_superuser:
         tenant_id = header_tid if header_tid is not None else current_user.tenant_id
     else:
+        # Usuarios no super: siempre usar su tenant_id, ignorando el header (para evitar 400/403).
         if current_user.tenant_id is None:
             raise HTTPException(status_code=403, detail="Usuario sin tenant asignado")
         tenant_id = current_user.tenant_id
-        if header_tid is not None and header_tid != current_user.tenant_id:
-            raise HTTPException(status_code=403, detail="Tenant no permitido")
+        header_tid = tenant_id
 
     if not tenant_id:
-        raise HTTPException(status_code=400, detail="Tenant no asignado")
+        logger.warning(
+            "update_current_tenant: tenant_id missing",
+            extra={
+                "user_id": current_user.id,
+                "is_superuser": current_user.is_superuser,
+                "user_tenant_id": current_user.tenant_id,
+                "header_tenant_id": x_tenant_id,
+                "parsed_header_tenant_id": header_tid,
+            },
+        )
+        detail = (
+            "Tenant no asignado "
+            f"(user_id={current_user.id}, user_tenant_id={current_user.tenant_id}, "
+            f"is_superuser={current_user.is_superuser}, header={x_tenant_id}, parsed={header_tid})"
+        )
+        raise HTTPException(status_code=400, detail=detail)
 
     tenant = await db.get(Tenant, tenant_id)
     if not tenant:
@@ -269,4 +277,3 @@ async def upload_tenant_logo(
     (target / safe_name).write_bytes(content)
     public_url = f"/static/uploads/tenants/{tenant_id}/{safe_name}"
     return {"url": public_url}
-

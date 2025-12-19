@@ -448,6 +448,7 @@ export default function App() {
           lang={lang}
           setLang={setLang}
           t={t}
+          makeAbsolute={makeAbsolute}
         />
       )
     }

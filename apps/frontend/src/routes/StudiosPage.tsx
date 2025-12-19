@@ -1,5 +1,5 @@
-﻿import { FormEvent, useEffect, useState } from 'react'
-import { api } from '../lib/api'
+import { FormEvent, useEffect, useState } from 'react'
+import { api, toAbsoluteUrl } from '../lib/api'
 
 type StudioForm = {
   name: string
@@ -7,16 +7,9 @@ type StudioForm = {
   password: string
   address: string
   country: string
+  city: string
+  phone: string
   is_superuser: boolean
-}
-
-const defaultForm: StudioForm = {
-  name: '',
-  email: '',
-  password: '',
-  address: '',
-  country: '',
-  is_superuser: false,
 }
 
 type StudioUpdateForm = {
@@ -24,15 +17,10 @@ type StudioUpdateForm = {
   email: string
   address: string
   country: string
+  city: string
+  phone: string
+  logo_url: string
   is_superuser: boolean
-}
-
-const defaultEditForm: StudioUpdateForm = {
-  name: '',
-  email: '',
-  address: '',
-  country: '',
-  is_superuser: false,
 }
 
 type Studio = {
@@ -42,8 +30,38 @@ type Studio = {
   contact_email?: string | null
   address?: string | null
   country?: string | null
+  city?: string | null
+  phone?: string | null
+  logo_url?: string | null
   created_at: string
   admin_is_superuser?: boolean | null
+}
+
+const defaultForm: StudioForm = {
+  name: '',
+  email: '',
+  password: '',
+  address: '',
+  country: '',
+  city: '',
+  phone: '',
+  is_superuser: false,
+}
+
+const defaultEditForm: StudioUpdateForm = {
+  name: '',
+  email: '',
+  address: '',
+  country: '',
+  city: '',
+  phone: '',
+  logo_url: '',
+  is_superuser: false,
+}
+
+const normalizeOptional = (value: string) => {
+  const trimmed = value.trim()
+  return trimmed.length ? trimmed : undefined
 }
 
 export default function StudiosPage() {
@@ -60,6 +78,7 @@ export default function StudiosPage() {
   const [editMessage, setEditMessage] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   const fetchStudios = async () => {
     setIsLoadingStudios(true)
@@ -85,7 +104,10 @@ export default function StudiosPage() {
         email: editTarget.contact_email ?? '',
         address: editTarget.address ?? '',
         country: editTarget.country ?? '',
-        is_superuser: !!(editTarget as any).admin_is_superuser,
+        city: editTarget.city ?? '',
+        phone: editTarget.phone ?? '',
+        logo_url: editTarget.logo_url ?? '',
+        is_superuser: !!editTarget.admin_is_superuser,
       })
       setEditMessage(null)
       setEditError(null)
@@ -94,13 +116,8 @@ export default function StudiosPage() {
     }
   }, [editTarget])
 
-  const normalizeOptional = (value: string) => {
-    const trimmed = value.trim()
-    return trimmed.length ? trimmed : undefined
-  }
-
-  const handleChange = (field: keyof StudioForm, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+  const handleChange = (field: keyof StudioForm, value: string | boolean) => {
+    setForm((prev) => ({ ...prev, [field]: value as any }))
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -116,6 +133,8 @@ export default function StudiosPage() {
         password: form.password,
         address: normalizeOptional(form.address),
         country: normalizeOptional(form.country),
+        city: normalizeOptional(form.city),
+        phone: normalizeOptional(form.phone),
         is_superuser: !!form.is_superuser,
       })
       setSuccess(`Estudio creado correctamente. Tenant asignado: ${data.slug}`)
@@ -141,10 +160,14 @@ export default function StudiosPage() {
         email: editForm.email.trim(),
         address: normalizeOptional(editForm.address),
         country: normalizeOptional(editForm.country),
+        city: normalizeOptional(editForm.city),
+        phone: normalizeOptional(editForm.phone),
+        logo_url: normalizeOptional(editForm.logo_url),
         is_superuser: !!editForm.is_superuser,
       })
       setEditMessage('Estudio actualizado correctamente.')
-      setEditTarget(data)
+      setSuccess('Estudio actualizado correctamente.')
+      setEditTarget(null)
       await fetchStudios()
     } catch (err: any) {
       setEditError(err?.message || 'No se pudo actualizar el estudio.')
@@ -175,8 +198,29 @@ export default function StudiosPage() {
     }
   }
 
+  const handleUploadLogo = async (file: File) => {
+    if (!editTarget) return
+    setEditError(null)
+    setEditMessage(null)
+    try {
+      setUploadingLogo(true)
+      const formData = new FormData()
+      formData.append('file', file)
+      const { data } = await api.post<{ url: string }>('/api/pms/tenants/upload-logo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data', 'X-Tenant-ID': editTarget.id },
+      })
+      setEditForm((prev) => ({ ...prev, logo_url: data.url }))
+      setEditTarget((prev) => (prev ? { ...prev, logo_url: data.url } : prev))
+      setEditMessage('Logo actualizado.')
+    } catch (err: any) {
+      setEditError(err?.response?.data?.detail || err?.message || 'No se pudo subir el logo.')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-screen-xl mx-auto space-y-6 px-3 sm:px-6 lg:px-8">
       <div className="bg-white rounded-xl shadow p-6 space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Estudios</h1>
@@ -184,7 +228,7 @@ export default function StudiosPage() {
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del estudio</label>
               <input
@@ -223,7 +267,7 @@ export default function StudiosPage() {
                 id="is_superuser"
                 type="checkbox"
                 checked={form.is_superuser}
-                onChange={(e) => setForm((prev) => ({ ...prev, is_superuser: e.target.checked }))}
+                onChange={(e) => handleChange('is_superuser', e.target.checked)}
                 className="h-4 w-4 text-fuchsia-600 border-gray-300 rounded"
               />
               <label htmlFor="is_superuser" className="text-sm text-gray-700">Crear admin como superusuario</label>
@@ -246,6 +290,26 @@ export default function StudiosPage() {
                 onChange={(e) => handleChange('country', e.target.value)}
                 className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
                 placeholder="Chile"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+              <input
+                type="text"
+                value={form.city}
+                onChange={(e) => handleChange('city', e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                placeholder="Ciudad"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
+              <input
+                type="text"
+                value={form.phone}
+                onChange={(e) => handleChange('phone', e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                placeholder="+56 9 1234 5678"
               />
             </div>
           </div>
@@ -284,7 +348,10 @@ export default function StudiosPage() {
                     <th className="px-4 py-2 font-medium">Nombre</th>
                     <th className="px-4 py-2 font-medium">Correo</th>
                     <th className="px-4 py-2 font-medium">Direccion</th>
+                    <th className="px-4 py-2 font-medium">Ciudad</th>
                     <th className="px-4 py-2 font-medium">Pais</th>
+                    <th className="px-4 py-2 font-medium">Telefono</th>
+                    <th className="px-4 py-2 font-medium">Logo</th>
                     <th className="px-4 py-2 font-medium">Creado</th>
                     <th className="px-4 py-2 font-medium">Admin super</th>
                     <th className="px-4 py-2 font-medium text-center">Acciones</th>
@@ -292,30 +359,56 @@ export default function StudiosPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {studios.map((studio) => (
-                    <tr key={studio.id}>
-                      <td className="px-4 py-2 font-mono text-xs text-gray-700">{studio.slug}</td>
-                      <td className="px-4 py-2 text-gray-900">{studio.name}</td>
-                      <td className="px-4 py-2 text-gray-700">{studio.contact_email ?? '-'}</td>
-                      <td className="px-4 py-2 text-gray-700">{studio.address ?? '-'}</td>
-                      <td className="px-4 py-2 text-gray-700">{studio.country ?? '-'}</td>
-                      <td className="px-4 py-2 text-gray-600">{new Date(studio.created_at).toLocaleDateString()}</td>
-                      <td className="px-4 py-2 text-gray-700">{studio.admin_is_superuser ? 'Si' : 'No'}</td>
-                      <td className="px-4 py-2">
+                  <tr key={studio.id}>
+                    <td className="px-4 py-2 font-mono text-xs text-gray-700 whitespace-nowrap align-middle">{studio.slug}</td>
+                    <td className="px-4 py-2 text-gray-900 whitespace-nowrap align-middle">{studio.name}</td>
+                    <td className="px-4 py-2 text-gray-700 whitespace-nowrap align-middle">{studio.contact_email ?? '-'}</td>
+                    <td className="px-4 py-2 text-gray-700 align-middle">{studio.address ?? '-'}</td>
+                    <td className="px-4 py-2 text-gray-700 whitespace-nowrap align-middle">{studio.city ?? '-'}</td>
+                    <td className="px-4 py-2 text-gray-700 whitespace-nowrap align-middle">{studio.country ?? '-'}</td>
+                    <td className="px-4 py-2 text-gray-700 whitespace-nowrap align-middle">{studio.phone ?? '-'}</td>
+                    <td className="px-4 py-2 align-middle">
+                        {studio.logo_url ? (
+                          <img
+                            src={toAbsoluteUrl(studio.logo_url)}
+                            alt={studio.name}
+                            className="h-10 w-10 object-cover rounded-full border border-gray-200 bg-white"
+                          />
+                        ) : (
+                          <span className="text-xs text-gray-500">Sin logo</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap align-middle">{new Date(studio.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-2 text-gray-700 whitespace-nowrap align-middle">{studio.admin_is_superuser ? 'Si' : 'No'}</td>
+                      <td className="px-4 py-2 align-middle">
                         <div className="flex flex-wrap gap-2 justify-center">
                           <button
                             type="button"
-                            className="px-3 py-1 text-sm rounded border border-fuchsia-600 text-fuchsia-700 hover:bg-fuchsia-50"
+                            className="h-9 w-9 inline-flex items-center justify-center rounded border border-fuchsia-600 text-fuchsia-700 hover:bg-fuchsia-50"
                             onClick={() => setEditTarget(studio)}
+                            aria-label="Editar"
+                            title="Editar"
                           >
-                            Editar
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 11l6.732-6.732a2.5 2.5 0 113.536 3.536L12.536 14.5 9 15.5l1-3.5z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19h14" />
+                            </svg>
                           </button>
                           <button
                             type="button"
-                            className="px-3 py-1 text-sm rounded border border-red-500 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                            className="h-9 w-9 inline-flex items-center justify-center rounded border border-red-500 text-red-600 hover:bg-red-50 disabled:opacity-60"
                             onClick={() => handleDelete(studio.id)}
                             disabled={deletingId === studio.id}
+                            aria-label="Eliminar"
+                            title="Eliminar"
                           >
-                            {deletingId === studio.id ? 'Eliminando...' : 'Eliminar'}
+                            {deletingId === studio.id ? (
+                              <span className="text-xs">...</span>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-1 12a2 2 0 01-2 2h-4a2 2 0 01-2-2V7h10v12z" />
+                              </svg>
+                            )}
                           </button>
                         </div>
                       </td>
@@ -329,7 +422,7 @@ export default function StudiosPage() {
       </div>
 
       {editTarget && (
-        <div className="bg-white rounded-xl shadow p-6 space-y-4">
+      <div className="bg-white rounded-xl shadow p-6 space-y-4">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Editar estudio</h2>
@@ -345,7 +438,7 @@ export default function StudiosPage() {
           </div>
 
           <form className="space-y-4" onSubmit={handleUpdate}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del estudio</label>
                 <input
@@ -366,7 +459,7 @@ export default function StudiosPage() {
                   className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
                 />
               </div>
-                            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <input
                   id="edit_is_superuser"
                   type="checkbox"
@@ -393,6 +486,49 @@ export default function StudiosPage() {
                   onChange={(e) => setEditForm((prev) => ({ ...prev, country: e.target.value }))}
                   className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+                <input
+                  type="text"
+                  value={editForm.city}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))}
+                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
+                <input
+                  type="text"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
+                <div className="flex items-center gap-3">
+                  <div className="h-14 w-14 rounded-full border bg-white flex items-center justify-center overflow-hidden">
+                    {editForm.logo_url ? (
+                      <img src={toAbsoluteUrl(editForm.logo_url)} alt="logo" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-xs text-gray-500">Sin logo</span>
+                    )}
+                  </div>
+                  <label className="px-3 py-2 rounded border border-fuchsia-300 text-sm text-fuchsia-700 font-semibold cursor-pointer hover:bg-fuchsia-50">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        handleUploadLogo(file)
+                      }}
+                    />
+                    {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -421,4 +557,3 @@ export default function StudiosPage() {
     </div>
   )
 }
-

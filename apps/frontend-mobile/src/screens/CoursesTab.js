@@ -1,52 +1,9 @@
-import React, { useEffect, useState } from 'react'
-import { FlatList, Image, Text, View, TouchableOpacity, TextInput } from 'react-native'
+import React from 'react'
+import { FlatList, Image, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import * as Linking from 'expo-linking'
-
-const INSTAGRAM_URL = 'https://www.instagram.com/puertomonttsalsa_oficial/'
 
 export default function CoursesTab({ portal, styles, theme, formatSchedule, formatDate, makeAbsolute, t }) {
-  const [notes, setNotes] = useState({})
-  const [drafts, setDrafts] = useState({})
-  const [editingId, setEditingId] = useState(null)
-
-  useEffect(() => {
-    const loadNotes = async () => {
-      try {
-        if (!portal.enrollments?.length) return
-        const entries = await Promise.all(
-          portal.enrollments.map(async (e) => {
-            const val = await AsyncStorage.getItem(`course_note_${e.id}`)
-            return [e.id, val || '']
-          })
-        )
-        setNotes(Object.fromEntries(entries))
-        setDrafts(Object.fromEntries(entries))
-      } catch (e) {
-        console.log('[notes] load courses error', e)
-      }
-    }
-    loadNotes()
-  }, [portal.enrollments])
-
-  const saveNote = async (courseId) => {
-    try {
-      const txt = drafts[courseId] || ''
-      await AsyncStorage.setItem(`course_note_${courseId}`, txt)
-      setNotes((prev) => ({ ...prev, [courseId]: txt }))
-      setEditingId(null)
-    } catch (e) {
-      console.log('[notes] save courses error', e)
-    }
-  }
-
-  const openResource = (course) => {
-    const url = course?.playlist_url || course?.resource_url || INSTAGRAM_URL
-    Linking.openURL(url).catch((err) => console.log('open url error', err))
-  }
-
   const data = portal.enrollments || []
   return (
     <View style={styles.card}>
@@ -91,7 +48,7 @@ export default function CoursesTab({ portal, styles, theme, formatSchedule, form
                 <View style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
                   <View style={[styles.row, { alignItems: 'center', marginBottom: 6 }]}>
                     <Ionicons name="person-outline" size={14} color={theme.sub} />
-                    <Text style={[styles.itemSub, { marginLeft: 6 }]}>{item.course?.teacher_name || 'Profesor'}</Text>
+                    <Text style={[styles.itemSub, { marginLeft: 6 }]}>{item.course?.teacher_name ? `${item.course.teacher_name} (Instructor)` : 'Instructor'}</Text>
                   </View>
                   <View style={[styles.row, { alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }]}>
                     {item.course?.level ? (
@@ -99,13 +56,13 @@ export default function CoursesTab({ portal, styles, theme, formatSchedule, form
                         <Text style={styles.levelText}>{item.course.level}</Text>
                       </View>
                     ) : null}
-                    <View style={[styles.row, { alignItems: 'center', marginLeft: item.course?.level ? 8 : 0 }]}>
-                      <Ionicons name="time-outline" size={14} color={theme.sub} />
-                      <Text style={[styles.itemSub, { marginLeft: 4 }]}>{formatSchedule(item.course)}</Text>
+                    <View style={[styles.row, { alignItems: 'center', marginLeft: item.course?.level ? 8 : 0, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: 'rgba(16,185,129,0.08)', borderRadius: 10 }]}>
+                      <Ionicons name="time-outline" size={14} color="#059669" />
+                      <Text style={[styles.itemSub, { marginLeft: 6, color: '#065f46', fontWeight: '700' }]}>{formatSchedule(item.course)}</Text>
                     </View>
                   </View>
-                  <View style={{ marginBottom: 8 }}>
-                    <Text style={styles.itemSub}>
+                  <View style={{ marginBottom: 8, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(59,130,246,0.08)', borderWidth: 1, borderColor: 'rgba(59,130,246,0.15)' }}>
+                    <Text style={[styles.itemSub, { color: '#1d4ed8', fontWeight: '700' }]}>
                       Inicio: {formatDate(item.start_date || '')}  ·  Fin: {formatDate(item.end_date || '')}
                     </Text>
                   </View>
@@ -116,40 +73,6 @@ export default function CoursesTab({ portal, styles, theme, formatSchedule, form
                   <View style={styles.courseProgressTrack}>
                     <View style={[styles.courseProgressBar, { width: `${progress || 0}%` }]} />
                   </View>
-                  <View style={[styles.rowBetween, { marginTop: 8 }]}>
-                    <TouchableOpacity
-                      style={styles.resourceBtn}
-                      onPress={() => openResource(item.course)}
-                    >
-                      <Ionicons name="logo-instagram" size={14} color="#8b5cf6" />
-                      <Text style={styles.resourceBtnText}>Instagram</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.resourceBtn, styles.noteBtn]}
-                      onPress={() => setEditingId(editingId === item.id ? null : item.id)}
-                    >
-                      <Ionicons name="create-outline" size={14} color="#0f172a" />
-                      <Text style={styles.resourceBtnText}>Notas</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {editingId === item.id ? (
-                    <View style={{ marginTop: 8 }}>
-                      <TextInput
-                        style={styles.noteInput}
-                        placeholder="Escribe tu nota..."
-                        placeholderTextColor={theme.sub}
-                        value={drafts[item.id] || ''}
-                        onChangeText={(txt) => setDrafts((prev) => ({ ...prev, [item.id]: txt }))}
-                        multiline
-                      />
-                      <TouchableOpacity style={styles.saveNoteBtn} onPress={() => saveNote(item.id)}>
-                        <Text style={styles.saveNoteText}>Guardar nota</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
-                  {notes[item.id] ? (
-                    <Text style={[styles.itemSub, { marginTop: 6 }]}>Nota: {notes[item.id]}</Text>
-                  ) : null}
                 </View>
               </View>
             )

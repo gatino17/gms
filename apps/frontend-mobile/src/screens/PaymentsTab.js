@@ -8,8 +8,15 @@ const methodLabel = (method) => {
   if (m.includes('cash') || m.includes('efect')) return 'Efectivo'
   if (m.includes('card') || m.includes('tarjeta')) return 'Tarjeta'
   if (m.includes('transfer')) return 'Transferencia'
-  if (m.includes('monthly') || m.includes('mensu')) return 'Mensualidad'
+  if (m.includes('monthly') || m.includes('mensual')) return 'Mensual'
   return method
+}
+
+const normalizePeriod = (value) => {
+  if (!value) return null
+  const v = String(value).toLowerCase()
+  if (v.includes('monthly') || v.includes('mensual')) return 'Mensual'
+  return value
 }
 
 export default function PaymentsTab({ portal, styles, formatDate, t }) {
@@ -46,12 +53,12 @@ export default function PaymentsTab({ portal, styles, formatDate, t }) {
         pending.map((p, idx) => (
           <PaymentCard
             key={idx}
-            title={p.label || 'Pendiente'}
+            title={normalizePeriod(p.label) || 'Pendiente'}
             amount={p.amount}
             date={p.due_date || p.payment_date}
             status="Pendiente"
             statusVariant="pending"
-            period={p.period || null}
+            period={normalizePeriod(p.period) || null}
             periodFrom={p.period_from || defaultPeriodFrom}
             periodTo={p.period_to || defaultPeriodTo}
             styles={styles}
@@ -70,14 +77,14 @@ export default function PaymentsTab({ portal, styles, formatDate, t }) {
           scrollEnabled={false}
           renderItem={({ item }) => (
             <PaymentCard
-              title={item.label || item.type || 'Pago'}
+              title={normalizePeriod(item.label) || normalizePeriod(item.type) || 'Pago'}
               amount={item.amount}
               date={item.payment_date}
               status="Pagado"
               statusVariant="paid"
               method={item.method}
               reference={item.reference}
-              period={item.period || item.type || null}
+              period={normalizePeriod(item.period) || normalizePeriod(item.type) || null}
               periodFrom={item.period_from || defaultPeriodFrom}
               periodTo={item.period_to || defaultPeriodTo}
               styles={styles}
@@ -109,7 +116,7 @@ function SummaryPill({ label, amount, icon, styles, variant }) {
 }
 
 const periodLabel = (period, periodFrom, periodTo, formatDate) => {
-  if (period) return period
+  if (period) return normalizePeriod(period)
   if (periodFrom || periodTo) {
     const fromTxt = periodFrom ? formatDate(periodFrom) : ''
     const toTxt = periodTo ? formatDate(periodTo) : ''

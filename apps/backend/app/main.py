@@ -4,26 +4,31 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 
-from apps.backend.app.core.config import settings
-from apps.backend.app.routers import pms_students, pms_courses, pms_payments
-from apps.backend.app.routers import pms_course_status
-from apps.backend.app.routers import pms_teachers
-from apps.backend.app.routers import pms_rooms
-from apps.backend.app.routers import pms_enrollments
-from apps.backend.app.routers import pms_attendance
-from apps.backend.app.routers import pms_tenants
-from apps.backend.app.routers import pms_announcements
-from apps.backend.app.routers import auth
+from app.core.config import settings
+from app.routers import pms_students, pms_courses, pms_payments
+from app.routers import pms_course_status
+from app.routers import pms_teachers
+from app.routers import pms_rooms
+from app.routers import pms_enrollments
+from app.routers import pms_attendance
+from app.routers import pms_tenants
+from app.routers import pms_announcements
+from app.routers import auth
+from app.routers import pms_dashboard
 
 app = FastAPI(title=settings.api_title)
 
-origins = [o.strip() for o in settings.cors_origins.split(',') if o.strip()]
-if not origins or origins == ['*']:
+# CORS configuration
+cors_origins_raw = settings.cors_origins.split(',')
+origins = [o.strip() for o in cors_origins_raw if o.strip()]
+
+# If origins is '*', allow all. If empty, default to localhost for dev.
+if not origins:
     origins = ['http://localhost:5173', 'http://127.0.0.1:5173']
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,6 +46,7 @@ app.include_router(pms_attendance.router)
 app.include_router(pms_tenants.router)
 app.include_router(pms_announcements.router)
 app.include_router(auth.router, tags=["login"])
+app.include_router(pms_dashboard.router)
 
 # Static files (for uploaded images)
 static_dir = Path(__file__).resolve().parent / "static"

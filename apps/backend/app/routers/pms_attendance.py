@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta, date
 
-from apps.backend.app.pms.models import Attendance, Course, Student
-from apps.backend.app.pms.deps import get_tenant_id, get_db_session
+from app.pms.models import Attendance, Course, Student
+from app.pms.deps import get_tenant_id, get_db_session
 
 router = APIRouter(prefix="/api/pms", tags=["pms-attendance"])
 

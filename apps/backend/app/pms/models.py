@@ -16,7 +16,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from apps.backend.app.db.base import Base
+from app.db.base import Base
 
 
 class User(Base):
@@ -56,16 +56,16 @@ class Student(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
-    first_name: Mapped[str] = mapped_column(String(80), nullable=False)
-    last_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    last_name: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
     email: Mapped[Optional[str]] = mapped_column(String(255), unique=False, index=True)
     phone: Mapped[Optional[str]] = mapped_column(String(40))
     gender: Mapped[Optional[str]] = mapped_column(String(20))
     notes: Mapped[Optional[str]] = mapped_column(Text())
     photo_url: Mapped[Optional[str]] = mapped_column(String(255))
-    joined_at: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)
+    joined_at: Mapped[date] = mapped_column(Date, default=date.today, nullable=False, index=True)
     birthdate: Mapped[Optional[date]] = mapped_column(Date)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -150,8 +150,8 @@ class Enrollment(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"), index=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
     start_date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)
-    end_date: Mapped[Optional[date]] = mapped_column(Date)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -163,7 +163,7 @@ class Attendance(Base):
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"), index=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    attended_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+    attended_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False, index=True)
     marked_by: Mapped[Optional[str]] = mapped_column(String(80))
     notes: Mapped[Optional[str]] = mapped_column(Text())
 
@@ -176,7 +176,7 @@ class Payment(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="SET NULL"), nullable=True, index=True)
     course_id: Mapped[Optional[int]] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"), index=True)
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
-    payment_date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)
+    payment_date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False, index=True)
     method: Mapped[str] = mapped_column(String(30))  # cash, card, transfer
     type: Mapped[str] = mapped_column(String(30))    # monthly, single_class, rental
     reference: Mapped[Optional[str]] = mapped_column(String(120))

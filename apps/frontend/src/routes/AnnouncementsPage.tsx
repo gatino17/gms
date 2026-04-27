@@ -1,5 +1,6 @@
-﻿import { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { api, toAbsoluteUrl } from "../lib/api"
+import { HiOutlineSpeakerphone, HiOutlinePlus, HiOutlineX, HiOutlineTrash, HiOutlinePhotograph, HiOutlineExternalLink, HiOutlineCalendar, HiOutlineClock } from "react-icons/hi"
 
 type Announcement = {
   id: number
@@ -19,6 +20,7 @@ export default function AnnouncementsPage() {
   const [items, setItems] = useState<Announcement[]>([])
   const [draft, setDraft] = useState<Partial<Announcement>>({})
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadInfo, setUploadInfo] = useState<string | null>(null)
@@ -48,17 +50,17 @@ export default function AnnouncementsPage() {
 
     if (start && start > today) {
       const diff = Math.ceil((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-      return { label: `Faltan ${diff} dias`, tone: "future" as const }
+      return { label: `Comienza en ${diff} días`, tone: "future" as const }
     }
     if (end && today > end) {
       const diff = Math.floor((today.getTime() - end.getTime()) / (1000 * 60 * 60 * 24))
-      return { label: `Evento vencio hace ${diff} dias`, tone: "expired" as const }
+      return { label: `Finalizó hace ${diff} días`, tone: "expired" as const }
     }
     const base = start || created
-    if (!base) return { label: "", tone: "ok" as const }
+    if (!base) return { label: "Activo", tone: "ok" as const }
     const diffDays = Math.floor((today.getTime() - base.getTime()) / (1000 * 60 * 60 * 24))
     const weeks = Math.floor(diffDays / 7)
-    const label = diffDays < 7 ? `${diffDays} dias` : `${weeks} semanas`
+    const label = diffDays < 7 ? `${diffDays} días` : `${weeks} sem`
     const tone = diffDays >= 30 ? "warn" : "ok"
     return { label: `Publicado hace ${label}`, tone }
   }
@@ -68,18 +70,21 @@ export default function AnnouncementsPage() {
   }, [])
 
   const load = async () => {
+    setLoading(true)
     try {
       const res = await api.get<Announcement[]>("/api/pms/announcements", { params: { active_only: false, limit: 50 } })
       setItems(res.data)
     } catch (e: any) {
       setError(e?.message || "Error al cargar anuncios")
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleSave = async () => {
     setError(null)
     if (!draft.title) {
-      setError("El titulo es obligatorio")
+      setError("El título es obligatorio")
       return
     }
     if (items.length >= MAX_ITEMS) {
@@ -118,307 +123,297 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+    <div className="max-w-[1400px] mx-auto space-y-8 pb-20 px-4">
+      {/* Premium Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-bold">Novedades / Comunicados</h1>
-          <p className="text-sm text-gray-500">Publica banners, saludos o retos para que se vean en la app movil.</p>
+           <h1 className="text-4xl font-black text-gray-900 tracking-tight">Anuncios y Novedades</h1>
+           <p className="text-gray-500 font-medium mt-2">Publica banners, comunicados o retos para la app móvil de los alumnos.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">Maximo {MAX_ITEMS} avisos activos</span>
-          <button
-            className="px-4 py-2 rounded-lg text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 shadow"
-            onClick={() => setShowModal(true)}
-            disabled={items.length >= MAX_ITEMS}
-          >
-            Nueva publicacion
-          </button>
+        <div className="flex items-center gap-4">
+           <div className="px-6 py-3 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+              <span className="font-black text-gray-700 uppercase tracking-widest text-[10px]">
+                 {items.length} / {MAX_ITEMS} Activos
+              </span>
+           </div>
+           <button
+             className="px-6 py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2"
+             onClick={() => setShowModal(true)}
+             disabled={items.length >= MAX_ITEMS}
+           >
+             <HiOutlinePlus size={16} /> Crear Anuncio
+           </button>
         </div>
       </div>
 
-      {error && <div className="px-3 py-2 rounded bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
+      {error && (
+         <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-sm font-bold flex items-center gap-3">
+            <HiOutlineX className="shrink-0" /> {error}
+         </div>
+      )}
 
+      {/* Grid de Anuncios */}
+      {loading ? (
+         <div className="flex flex-col items-center justify-center py-40 gap-4">
+           <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
+           <span className="text-fuchsia-600 font-black tracking-widest text-[10px] uppercase">Cargando Tablero...</span>
+         </div>
+      ) : items.length === 0 ? (
+         <div className="bg-white rounded-[40px] shadow-xl shadow-gray-100/50 border border-gray-100 p-20 text-center flex flex-col items-center">
+            <HiOutlineSpeakerphone size={64} className="text-gray-200 mb-6" />
+            <h3 className="text-2xl font-black text-gray-900">Sin Comunicados</h3>
+            <p className="text-gray-500 mt-2 font-medium">Aún no has publicado ninguna novedad para tus alumnos.</p>
+         </div>
+      ) : (
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-8">
+            {items.map((a) => {
+               const age = ageInfo(a)
+               const toneStyles = 
+                 age.tone === 'expired' ? 'bg-rose-50 text-rose-600 border-rose-200' :
+                 age.tone === 'future' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                 age.tone === 'warn' ? 'bg-orange-50 text-orange-600 border-orange-200' :
+                 'bg-emerald-50 text-emerald-600 border-emerald-200'
+
+               return (
+                 <div key={a.id} className="bg-white rounded-[40px] shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden flex flex-col group hover:-translate-y-1 transition-all duration-300">
+                    {/* Imagen / Banner */}
+                    <div className="relative h-48 bg-gray-100 group-hover:bg-fuchsia-50 transition-colors cursor-pointer" onClick={() => a.image_url && setPreviewImage(toAbsoluteUrl(a.image_url) || null)}>
+                       {a.image_url ? (
+                          <img src={toAbsoluteUrl(a.image_url)} alt={a.title} className="w-full h-full object-cover" />
+                       ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-300">
+                             <HiOutlinePhotograph size={40} />
+                          </div>
+                       )}
+                       {/* Overlay Status */}
+                       <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm backdrop-blur-md ${toneStyles}`}>
+                             {age.label}
+                          </span>
+                          <button onClick={(e) => { e.stopPropagation(); setToggling(prev => ({...prev, [a.id]: !a.is_active})) }} className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-colors ${a.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`}>
+                             <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${a.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
+                          </button>
+                       </div>
+                    </div>
+
+                    {/* Contenido */}
+                    <div className="p-8 flex-1 flex flex-col">
+                       <h3 className="font-black text-xl text-gray-900 leading-tight mb-2 line-clamp-2">{a.title}</h3>
+                       {a.subtitle && <p className="text-sm font-bold text-fuchsia-600 mb-4">{a.subtitle}</p>}
+                       {a.body && <p className="text-sm text-gray-600 line-clamp-3 mb-6 flex-1">{a.body}</p>}
+
+                       {/* Meta & Actions */}
+                       <div className="mt-auto space-y-4">
+                          {(a.start_date || a.end_date) && (
+                             <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                                <HiOutlineCalendar size={16} />
+                                <span>{fmtDisplayDate(a.start_date) || '—'} a {fmtDisplayDate(a.end_date) || '—'}</span>
+                             </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                             {a.link_url ? (
+                                <a href={a.link_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-black text-fuchsia-600 hover:text-fuchsia-700 transition-colors">
+                                   Ver Enlace <HiOutlineExternalLink size={14} />
+                                </a>
+                             ) : <span />}
+                             
+                             <button onClick={() => handleDelete(a.id)} className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                                <HiOutlineTrash size={20} />
+                             </button>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+               )
+            })}
+         </div>
+      )}
+
+      {/* Modal Creación */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setShowModal(false)} />
-          <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-[95%] max-w-3xl p-0 border overflow-hidden">
-            <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 px-5 py-3 text-white flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Nueva publicacion</h2>
-                <p className="text-xs text-white/80">Maximo {MAX_ITEMS} avisos</p>
-              </div>
-              <button className="rounded-full hover:bg-white/10 px-2 py-1 text-2xl leading-none" onClick={() => setShowModal(false)}>x</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={() => setShowModal(false)} />
+          <div className="relative bg-white rounded-[40px] shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-gray-100">
+            {/* Header Modal */}
+            <div className="px-10 py-8 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white flex items-center justify-between shrink-0">
+               <div>
+                  <h2 className="text-2xl font-black tracking-tight">Nuevo Comunicado</h2>
+                  <p className="text-fuchsia-100 text-xs font-bold uppercase tracking-widest mt-1">Límite: {MAX_ITEMS} avisos activos</p>
+               </div>
+               <button onClick={() => setShowModal(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-colors">
+                  <HiOutlineX size={24} />
+               </button>
             </div>
-            <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Titulo</label>
-                <input
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
-                  value={draft.title || ''}
-                  onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                  placeholder="Ej: Fiesta de aniversario"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Subtitulo</label>
-                <input
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
-                  value={draft.subtitle || ''}
-                  onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })}
-                  placeholder="Texto corto"
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Cuerpo</label>
-                <textarea
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
-                  rows={4}
-                  value={draft.body || ''}
-                  onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-                  placeholder="Detalle o mensaje para los alumnos"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Inicio</label>
-                <input
-                  type="date"
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
-                  value={draft.start_date || ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setDraft({ ...draft, start_date: v, end_date: draft.end_date || v })
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Fin</label>
-                <input
-                  type="date"
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
-                  value={draft.end_date || draft.start_date || ''}
-                  onChange={(e) => setDraft({ ...draft, end_date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Imagen (URL)</label>
-                <input
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
-                  value={draft.image_url || ''}
-                  onChange={(e) => setDraft({ ...draft, image_url: e.target.value })}
-                  placeholder="https://..."
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Enlace (opcional)</label>
-                <input
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-fuchsia-200"
-                  value={draft.link_url || ''}
-                  onChange={(e) => setDraft({ ...draft, link_url: e.target.value })}
-                  placeholder="https://..."
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <label className="block text-sm font-medium">Subir imagen (max 2MB)</label>
-                <label className="group flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl bg-gradient-to-r from-fuchsia-50 to-rose-50 text-sm text-gray-600 cursor-pointer hover:border-fuchsia-300 hover:bg-rose-50 transition" title="Subir imagen">
+
+            {/* Formulario */}
+            <div className="p-10 overflow-y-auto space-y-8 custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Título Principal</label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      setUploadError(null)
-                      setUploadInfo(null)
-                      if (!file.type.startsWith('image/')) {
-                        setUploadError('Archivo no es una imagen')
-                        return
-                      }
-                      if (file.size > 2 * 1024 * 1024) {
-                        setUploadError('Maximo 2MB')
-                        return
-                      }
-                      // Validar resolución mínima 600x600
-                      const tempUrl = URL.createObjectURL(file)
-                      const img = new Image()
-                      img.src = tempUrl
-                      await new Promise<void>((resolve) => {
-                        img.onload = () => resolve()
-                        img.onerror = () => resolve()
-                      })
-                      if (img.width < 600 || img.height < 600) {
-                        setUploadError('Resolucion muy baja (min 600x600)')
-                        URL.revokeObjectURL(tempUrl)
-                        return
-                      }
-                      URL.revokeObjectURL(tempUrl)
-                      try {
-                        setUploading(true)
-                        const fd = new FormData()
-                        fd.append('file', file)
-                        const res = await api.post<{ url: string }>("/api/pms/announcements/upload-image", fd, {
-                          headers: { 'Content-Type': 'multipart/form-data' },
-                        })
-                        setDraft((d) => ({ ...d, image_url: res.data.url }))
-                        const sizeKB = (file.size / 1024).toFixed(0)
-                        setUploadInfo(`${img.width}x${img.height}px · ${sizeKB} KB`)
-                      } catch (err: any) {
-                        setUploadError(err?.response?.data?.detail || err?.message || 'No se pudo subir la imagen')
-                      } finally {
-                        setUploading(false)
-                      }
+                    className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
+                    value={draft.title || ''}
+                    onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                    placeholder="Ej: Masterclass de Verano"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Subtítulo (Opcional)</label>
+                  <input
+                    className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
+                    value={draft.subtitle || ''}
+                    onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })}
+                    placeholder="Resumen corto"
+                  />
+                </div>
+                
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Cuerpo del Mensaje</label>
+                  <textarea
+                    className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none resize-none"
+                    rows={4}
+                    value={draft.body || ''}
+                    onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+                    placeholder="Detalles para los alumnos..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fecha Inicio Visibilidad</label>
+                  <input
+                    type="date"
+                    className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
+                    value={draft.start_date || ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setDraft({ ...draft, start_date: v, end_date: draft.end_date || v })
                     }}
                   />
-                  <div className="flex items-center gap-2 text-fuchsia-700 font-semibold group-hover:translate-y-[-2px] transition">
-                    <span className="text-lg">?</span>
-                    <span>Selecciona o arrastra tu banner</span>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fecha Fin Visibilidad</label>
+                  <input
+                    type="date"
+                    className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
+                    value={draft.end_date || draft.start_date || ''}
+                    onChange={(e) => setDraft({ ...draft, end_date: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Enlace de Acción (URL Opcional)</label>
+                  <input
+                    className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
+                    value={draft.link_url || ''}
+                    onChange={(e) => setDraft({ ...draft, link_url: e.target.value })}
+                    placeholder="https://google.com/form..."
+                  />
+                </div>
+
+                {/* Zona Carga Imagen */}
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Banner Gráfico</label>
+                  <div className="relative group">
+                     {draft.image_url ? (
+                        <div className="relative w-full h-48 rounded-[24px] border-2 border-gray-100 overflow-hidden">
+                           <img src={toAbsoluteUrl(draft.image_url)} alt="preview" className="w-full h-full object-cover" />
+                           <button onClick={() => setDraft(d => ({...d, image_url: ''}))} className="absolute top-4 right-4 p-2 bg-rose-500 text-white rounded-xl shadow-lg hover:bg-rose-600 transition-colors z-10">
+                              <HiOutlineTrash size={20} />
+                           </button>
+                        </div>
+                     ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-fuchsia-200 rounded-[24px] bg-fuchsia-50/50 cursor-pointer hover:bg-fuchsia-50 hover:border-fuchsia-400 transition-colors group">
+                           <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                 const file = e.target.files?.[0]
+                                 if (!file) return
+                                 setUploadError(null)
+                                 setUploadInfo(null)
+                                 if (!file.type.startsWith('image/')) { setUploadError('Archivo no es una imagen'); return }
+                                 if (file.size > 2 * 1024 * 1024) { setUploadError('Máximo 2MB'); return }
+                                 
+                                 const tempUrl = URL.createObjectURL(file)
+                                 const img = new Image()
+                                 img.src = tempUrl
+                                 await new Promise<void>((resolve) => { img.onload = () => resolve(); img.onerror = () => resolve() })
+                                 if (img.width < 600 || img.height < 600) {
+                                    setUploadError('Resolución muy baja (mínimo 600x600px)')
+                                    URL.revokeObjectURL(tempUrl)
+                                    return
+                                 }
+                                 URL.revokeObjectURL(tempUrl)
+                                 
+                                 try {
+                                    setUploading(true)
+                                    const fd = new FormData()
+                                    fd.append('file', file)
+                                    const res = await api.post<{ url: string }>("/api/pms/announcements/upload-image", fd, {
+                                       headers: { 'Content-Type': 'multipart/form-data' },
+                                    })
+                                    setDraft((d) => ({ ...d, image_url: res.data.url }))
+                                    setUploadInfo(`${img.width}x${img.height}px · ${(file.size/1024).toFixed(0)} KB`)
+                                 } catch (err: any) {
+                                    setUploadError(err?.response?.data?.detail || err?.message || 'No se pudo subir la imagen')
+                                 } finally {
+                                    setUploading(false)
+                                 }
+                              }}
+                           />
+                           {uploading ? (
+                              <div className="w-10 h-10 border-4 border-fuchsia-200 border-t-fuchsia-600 rounded-full animate-spin" />
+                           ) : (
+                              <>
+                                 <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-fuchsia-500 mb-4 group-hover:scale-110 transition-transform">
+                                    <HiOutlinePhotograph size={32} />
+                                 </div>
+                                 <span className="font-black text-gray-600">Subir Diseño (JPG/PNG)</span>
+                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Recomendado: 1080x1080px (Max 2MB)</span>
+                              </>
+                           )}
+                        </label>
+                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">JPG/PNG, máximo 2MB</p>
-                </label>
-                {uploading && <div className="text-xs text-gray-500">Subiendo...</div>}
-                {uploadError && <div className="text-xs text-red-600">{uploadError}</div>}
-                {uploadInfo && <div className="text-xs text-gray-500">{uploadInfo}</div>}
-                {draft.image_url && (
-                  <div className="mt-2">
-                    <img src={toAbsoluteUrl(draft.image_url)} alt="preview" className="w-full max-w-xs h-32 object-cover rounded-lg border border-fuchsia-100 shadow-sm" />
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  id="is_active"
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={draft.is_active ?? true}
-                  onChange={(e) => setDraft({ ...draft, is_active: e.target.checked })}
-                />
-                <label htmlFor="is_active" className="text-sm text-gray-700">
-                  Activo
-                </label>
+                  {uploadError && <div className="text-xs font-bold text-rose-500 mt-2 flex items-center gap-1"><HiOutlineX /> {uploadError}</div>}
+                  {uploadInfo && <div className="text-xs font-bold text-emerald-500 mt-2">{uploadInfo}</div>}
+                </div>
               </div>
             </div>
-            <div className="mt-4 flex justify-end gap-2 px-5 pb-4">
-              <button className="px-4 py-2 rounded border" onClick={() => setShowModal(false)}>Cancelar</button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="px-4 py-2 rounded bg-fuchsia-600 text-white font-semibold shadow hover:bg-fuchsia-700 disabled:opacity-60"
-                disabled={items.length >= MAX_ITEMS}
-              >
-                Guardar ({items.length}/{MAX_ITEMS})
-              </button>
+
+            {/* Footer Modal */}
+            <div className="px-10 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
+               <label className="flex items-center gap-3 cursor-pointer">
+                  <div className={`w-12 h-7 rounded-full flex items-center p-1 transition-colors ${draft.is_active ?? true ? 'bg-emerald-500' : 'bg-gray-300'}`}>
+                     <div className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${draft.is_active ?? true ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </div>
+                  <span className="text-sm font-black text-gray-700">Publicar Inmediatamente</span>
+               </label>
+               
+               <div className="flex gap-4">
+                  <button onClick={() => setShowModal(false)} className="px-8 py-4 font-black uppercase tracking-widest text-[10px] text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
+                  <button
+                     onClick={handleSave}
+                     disabled={items.length >= MAX_ITEMS || uploading || !draft.title}
+                     className="px-10 py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
+                  >
+                     Crear Anuncio
+                  </button>
+               </div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-lg border shadow p-4 md:p-6">
-        <h2 className="text-lg font-semibold mb-3">Publicados</h2>
-        {items.length === 0 ? (
-          <p className="text-sm text-gray-500">Aun no hay novedades.</p>
-        ) : (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-            {items.map((a) => (
-              <div
-                key={a.id}
-                className="relative border rounded-xl p-3 shadow-sm flex flex-col gap-3 bg-gradient-to-br from-rose-300 via-rose-50 to-amber-50"
-              >
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold text-fuchsia-700 bg-fuchsia-50 border border-fuchsia-100 flex items-center gap-1">
-                    <span aria-hidden>•</span> Publicacion
-                  </span>
-                  {a.start_date || a.end_date ? (
-                    <span className="text-xs text-gray-500 text-right whitespace-nowrap flex items-center gap-1">
-                      <span aria-hidden>??</span>
-                      {fmtDisplayDate(a.start_date) || 's/inicio'} - {fmtDisplayDate(a.end_date) || 's/fin'}
-                    </span>
-                  ) : null}
-                </div>
-                {a.image_url && (
-                  <button
-                    type="button"
-                    className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-200"
-                    onClick={() => setPreviewImage(toAbsoluteUrl(a.image_url) || null)}
-                  >
-                    <img
-                      src={toAbsoluteUrl(a.image_url)}
-                      alt={a.title}
-                      className="w-full h-48 object-contain"
-                    />
-                  </button>
-                )}
-                <div className="flex justify-between items-start gap-2">
-                  <div>
-                    <h3 className="font-bold text-lg leading-snug text-gray-900">{a.title}</h3>
-                    {a.subtitle && <p className="text-sm text-gray-600">{a.subtitle}</p>}
-                  </div>
-                </div>
-                {a.body && <p className="text-sm text-gray-700 leading-relaxed">{a.body}</p>}
-                {a.link_url && (
-                  <a
-                    href={a.link_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-fuchsia-700 truncate mt-1 inline-flex items-center gap-1 hover:underline"
-                  >
-                    <span aria-hidden>?</span>
-                    {a.link_url}
-                  </a>
-                )}
-                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
-                  {a.sort_order != null && (
-                    <span className="px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-gray-700">Orden: {a.sort_order}</span>
-                  )}
-                  {a.is_active === false && <span className="px-2 py-0.5 rounded-full bg-rose-100 border border-rose-200 text-rose-700">Inactivo</span>}
-                  {(() => {
-                    const age = ageInfo(a)
-                    if (!age.label) return null
-                    const cls =
-                      age.tone === 'expired'
-                        ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                        : age.tone === 'future'
-                          ? 'bg-amber-100 text-amber-700 border border-amber-200'
-                          : age.tone === 'warn'
-                            ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    return (
-                      <span className={`px-2 py-0.5 rounded-full ${cls}`}>
-                        {age.label}
-                      </span>
-                    )
-                  })()}
-                </div>
-                <div className="mt-2 flex justify-between items-center">
-                  <label className="flex items-center gap-2 text-xs text-gray-600">
-                    <input type="checkbox" className="h-4 w-4" checked={a.is_active ?? true} onChange={(e) => handleToggleActive(a.id, e.target.checked)} />
-                    <span>{a.is_active ? 'Activo' : 'Inactivo'}</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(a.id)}
-                    className="px-3 py-1.5 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
+      {/* Image Preview Overlay */}
       {previewImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setPreviewImage(null)}
-        >
-          <button
-            className="absolute top-4 right-4 text-white text-2xl font-bold"
-            aria-label="Cerrar"
-            onClick={() => setPreviewImage(null)}
-          >
-            ×
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-md" onClick={() => setPreviewImage(null)}>
+          <button className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors" onClick={() => setPreviewImage(null)}>
+            <HiOutlineX size={40} />
           </button>
-          <img src={previewImage} alt="preview full" className="max-h-full max-w-full rounded-lg shadow-2xl" />
+          <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()} />
         </div>
       )}
     </div>

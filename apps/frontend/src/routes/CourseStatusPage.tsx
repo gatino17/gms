@@ -1,13 +1,23 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
-import { Link, useNavigate } from 'react-router-dom'
-import { MdEmail, MdClose } from 'react-icons/md'
-import { FaWhatsapp, FaBirthdayCake } from 'react-icons/fa'
+import { useNavigate } from 'react-router-dom'
+import { 
+  HiOutlineMail, 
+  HiOutlinePhone, 
+  HiOutlineSearch, 
+  HiOutlineFilter, 
+  HiOutlineRefresh, 
+  HiOutlineChevronRight, 
+  HiOutlineCake, 
+  HiOutlineViewGrid, 
+  HiOutlineViewList,
+  HiOutlineChartBar,
+  HiOutlineExclamationCircle 
+} from 'react-icons/hi'
 import { useTenant } from '../lib/tenant'
-import CourseStatusByGenderPage from '../routes/CourseStatusByGenderPage'
 
 type CourseRow = {
-  course: { id: number; name: string; level?: string; start_date?: string | null; price?: number | null; classes_per_week?: number | null }
+  course: { id: number; name: string; level?: string; start_date?: string | null; price?: number | null; classes_per_week?: number | null; day_of_week?: number | null }
   teacher?: { id: number | null; name?: string | null } | null
   counts?: { total: number; female: number; male: number }
   students: {
@@ -16,19 +26,17 @@ type CourseRow = {
     first_name: string;
     last_name: string;
     email?: string | null;
-    email_ok?: boolean;
-    gender?: string | null;
     phone?: string | null;
-    enrolled_since?: string | null;
     renewal_date?: string | null;
-    notes?: string | null;
     payment_status?: 'activo' | 'pendiente';
     attendance_count?: number;
+    expected_count?: number;
     birthday_today?: boolean;
   }[]
 }
 
-type PaymentRow = { id: number; student_id?: number | null; course_id?: number | null; payment_date?: string | null }
+const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+const fmtCLP = (n: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(n)
 
 export default function CourseStatusPage() {
   const navigate = useNavigate()
@@ -36,1281 +44,227 @@ export default function CourseStatusPage() {
   const [data, setData] = useState<CourseRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // View state: 'detailed' | 'compact' | 'summary'
+  const [viewMode, setViewMode] = useState<'detailed' | 'compact' | 'summary'>('detailed')
+  
+  // Filters
   const [courseQ, setCourseQ] = useState('')
   const [studentQ, setStudentQ] = useState('')
-  const [day, setDay] = useState<string>('') // '' = todos; 0..6 especificos
-  const [teacherQ, setTeacherQ] = useState('')
-  const [attendanceDays, setAttendanceDays] = useState<string>('365')
-  const [sortBy, setSortBy] = useState<'none' | 'att_desc' | 'att_asc'>('none')
-  const [payments, setPayments] = useState<PaymentRow[]>([])
-
-  // Modal de renovacion
-  const [showRenew, setShowRenew] = useState(false)
-  const [renewForm, setRenewForm] = useState({
-    course_id: 0,
-    student_id: 0,
-    enrollment_id: 0,
-    mode: "monthly" as "monthly" | "custom" | "single_class",
-    start_date: "",
-    end_date: "",
-    amount: "",
-    method: "cash" as "cash" | "card" | "transfer" | "agreement",
-  })
-  const [renewSaving, setRenewSaving] = useState(false)
-  const [renewError, setRenewError] = useState<string | null>(null)
- 
-  function addDays(ymd: string, days: number): string {
-    if (!ymd) return ""
-    const [y, m, d] = ymd.split("-").map(Number)
-    const dt = new Date(y, (m || 1) - 1, d || 1)
-    dt.setDate(dt.getDate() + days)
-    const yy = dt.getFullYear()
-    const mm = String(dt.getMonth() + 1).padStart(2, "0")
-    const dd = String(dt.getDate()).padStart(2, "0")
-    return `${yy}-${mm}-${dd}`
-  }
-  const fmtDisplayDate = (iso?: string | null) => {
-    if (!iso) return "-"
-    const parts = iso.split("-")
-    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
-    return iso
-  }
-  const toDate = (iso?: string | null) => {
-    if (!iso) return null
-    const parts = iso.split('-').map(Number)
-    if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) return null
-    return new Date(parts[0], parts[1] - 1, parts[2])
-  }
-  const toYMD = (d: Date) => {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const da = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${da}`
-  }
-  const monthsInRange = (startYMD: string, endYMD: string) => {
-    const out: { year: number; month: number }[] = []
-    const [sy, sm] = startYMD.split('-').map(Number)
-    const [ey, em] = endYMD.split('-').map(Number)
-    let y = sy
-    let m = sm
-    while (y < ey || (y === ey && m <= em)) {
-      out.push({ year: y, month: m })
-      m++
-      if (m > 12) {
-        m = 1
-        y++
-      }
-    }
-    return out
-  }
-  const weeksBetween = (start?: Date | null, end?: Date | null): number | null => {
-    if (!start || !end) return null
-    const s = new Date(start.getFullYear(), start.getMonth(), start.getDate())
-    const e = new Date(end.getFullYear(), end.getMonth(), end.getDate())
-    const diffMs = e.getTime() - s.getTime()
-    if (diffMs < 0) return 0
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1
-    return Math.max(1, Math.ceil(days / 7))
-  }
-
-  async function openRenew(courseId: number, studentId: number, start: string, end: string, price?: number | null) {
-    try {
-      setRenewError(null)
-      const res = await api.get('/api/pms/enrollments', { params: { course_id: courseId, student_id: studentId, active_only: true } })
-      const enr = (res.data || [])[0]
-      const start_date = start || (enr?.start_date || '')
-      const end_date = end || (enr?.end_date || '')
-      const isSingle = !!start_date && !!end_date && start_date === end_date
-      setRenewForm({
-        course_id: courseId,
-        student_id: studentId,
-        enrollment_id: enr?.id || 0,
-        mode: isSingle ? 'single_class' : 'monthly',
-        start_date,
-        end_date: end_date || (start_date ? addDays(start_date, 28) : ''),
-        amount: price != null ? String(Number(price)) : '',
-        method: 'cash',
-      })
-      setShowRenew(true)
-    } catch (e: any) {
-      setRenewError(e?.message || 'No se pudo cargar inscripcion')
-      setShowRenew(true)
-    }
-  }
-
+  const [selectedDay, setSelectedDay] = useState<string>('')
+  
   const load = async () => {
-    if (tenantId == null) { setError('Seleccione un tenant'); return }
+    if (tenantId == null) return
     setLoading(true)
-    setError(null)
     try {
-      const params: any = {}
-      if (courseQ) params.course_q = courseQ
-      if (studentQ) params.student_q = studentQ
-      if (day !== '') params.day_of_week = Number(day)
-      if (teacherQ) params.teacher_q = teacherQ
-      const attDaysNum = Number(attendanceDays) || 365
-      params.attendance_days = attDaysNum
-      const today = new Date()
-      const startRange = new Date()
-      startRange.setDate(today.getDate() - 365) // pagos del ultimo año
-      const [statusRes, payRes] = await Promise.all([
-        api.get('/api/pms/course_status', { params }),
-        api.get('/api/pms/payments', {
-          params: {
-            limit: 1000,
-            offset: 0,
-            date_from: toYMD(startRange),
-            date_to: toYMD(today),
-          },
-        }),
-      ])
-      const statusData: CourseRow[] = statusRes.data || []
-      // Recalcular asistencias para capturar extras (5/4, etc.)
-      try {
-        const latest = toYMD(today)
-        const attendancePromises: Promise<void>[] = []
-        for (const row of statusData) {
-          for (const s of row.students || []) {
-            const start = s.enrolled_since || latest
-            const end = s.renewal_date || latest
-            const horizon = toYMD(new Date(new Date().setMonth(new Date().getMonth() + 6)))
-            const maxYMD = [latest, end, horizon].sort().slice(-1)[0]
-            const months = monthsInRange(start.slice(0, 7) + '-01', maxYMD.slice(0, 7) + '-01')
-            const courseId = row.course.id
-            const studentId = s.id
-            const key = `${courseId}_${studentId}_${start}_${end}`
-            attendancePromises.push((async () => {
-              let attended = 0
-              for (const mm of months) {
-                try {
-                  const res = await api.get(`/api/pms/students/${studentId}/attendance_calendar`, { params: { year: mm.year, month: mm.month } })
-                  const days = (res.data?.days || []) as { date: string; attended_course_ids?: number[]; expected_course_ids?: number[] }[]
-                  for (const d of days) {
-                    if (d.date >= start && d.date <= maxYMD) {
-                      if ((d.attended_course_ids || []).includes(courseId)) attended++
-                    }
-                  }
-                } catch {}
-              }
-              s.attendance_count = attended
-            })())
-          }
-        }
-        await Promise.all(attendancePromises)
-      } catch {
-        // si falla, seguimos con los datos originales
-      }
-      setData(statusData)
-      setPayments((payRes.data as any)?.items ?? payRes.data ?? [])
+      const params: any = { course_q: courseQ, student_q: studentQ }
+      if (selectedDay !== '') params.day_of_week = Number(selectedDay)
+      const res = await api.get('/api/pms/course_status', { params })
+      setData(res.data || [])
     } catch (e: any) {
-      setError(e?.message ?? 'Error cargando estado de cursos')
+      setError('Error al cargar datos')
     } finally {
       setLoading(false)
     }
   }
 
+  useEffect(() => { load() }, [tenantId])
   useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId])
-
-  // Busqueda rapida por curso/alumno con debounce ligero
-  useEffect(() => {
-    const id = setTimeout(() => { load() }, 200)
+    const id = setTimeout(() => load(), 400)
     return () => clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseQ, studentQ])
+  }, [courseQ, studentQ, selectedDay])
 
-  // ====== Crear alumno rapido (estados y handlers) ======
-  const DEFAULT_MONTHLY = 25000
-  const DEFAULT_SINGLE = 7000
+  const filteredData = useMemo(() => {
+    if (!studentQ) return data
+    return data.map(row => ({
+      ...row,
+      students: row.students.filter(s => 
+        (s.first_name + ' ' + s.last_name).toLowerCase().includes(studentQ.toLowerCase())
+      )
+    })).filter(row => row.students.length > 0 || !studentQ)
+  }, [data, studentQ])
 
-  const [showCreate, setShowCreate] = useState(false)
-  const [createSaving, setCreateSaving] = useState(false)
-  const [createError, setCreateError] = useState<string|null>(null)
-  const [createCourseName, setCreateCourseName] = useState<string>('')
-  const [createForm, setCreateForm] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    gender: '',
-    joined_at: '',
-    notes: '',
-  })
-  const [createEnroll, setCreateEnroll] = useState({
-    courseId: 0,
-    start: '',
-    end: '',
-    planType: 'monthly' as 'monthly'|'single_class',
-    lessonsPerWeek: '1' as '1'|'2',
-    amount: '' as string,
-    method: '' as ''|'cash'|'card'|'transfer'|'agreement',
-  })
-
-  function todayISO() { return new Date().toISOString().slice(0,10) }
-  function computeEndDate(startISO?: string, planType?: 'monthly'|'single_class', lessonsPerWeek?: '1'|'2'){
-    if (!startISO) return ''
-    if (planType === 'single_class') return startISO
-    const perWeek = Number(lessonsPerWeek || '1')
-    const weeks = Math.max(1, Math.ceil(4 / perWeek))
-    const d = new Date(startISO)
-    const end = new Date(d.getTime())
-    end.setDate(end.getDate() + (weeks-1)*7)
-    return end.toISOString().slice(0,10)
-  }
-
-  function openCreate(courseId:number, courseName:string){
-    setCreateError(null)
-    const start = todayISO()
-    const planType: 'monthly'|'single_class' = 'monthly'
-    const lessonsPerWeek: '1'|'2' = '1'
-    setCreateCourseName(courseName)
-    setCreateForm({ first_name:'', last_name:'', email:'', phone:'', gender:'', joined_at: start, notes:'' })
-    setCreateEnroll({
-      courseId,
-      start,
-      end: computeEndDate(start, planType, lessonsPerWeek),
-      planType,
-      lessonsPerWeek,
-      amount: String(DEFAULT_MONTHLY),
-      method: ''
+  const groupedByDay = useMemo(() => {
+    const groups: Record<string, CourseRow[]> = {}
+    filteredData.forEach(row => {
+      const d = row.course.day_of_week ?? 0
+      const dayName = DAY_NAMES[d] || 'Sin día'
+      if (!groups[dayName]) groups[dayName] = []
+      groups[dayName].push(row)
     })
-    setShowCreate(true)
-  }
-
-  async function saveCreate(){
-    setCreateSaving(true)
-    setCreateError(null)
-    try{
-      const payload:any = {
-        first_name: createForm.first_name.trim(),
-        last_name: createForm.last_name.trim(),
-        email: createForm.email || undefined,
-        phone: createForm.phone || undefined,
-        gender: createForm.gender || undefined,
-        joined_at: createForm.joined_at || undefined,
-        is_active: true,
-        notes: createForm.notes || undefined,
-      }
-      const res = await api.post('/api/pms/students', payload)
-      const studentId = res.data?.id
-      if (!studentId) throw new Error('No se obtuvo ID de alumno')
-
-      const ePayload:any = {
-        student_id: studentId,
-        course_id: Number(createEnroll.courseId),
-        start_date: createEnroll.start || undefined,
-        end_date: createEnroll.planType === 'single_class' ? createEnroll.start : (createEnroll.end || undefined),
-      }
-      await api.post('/api/pms/enrollments', ePayload)
-
-      const amount = Number(createEnroll.amount || '0')
-      if (createEnroll.method && Number.isFinite(amount) && amount > 0) {
-        await api.post('/api/pms/payments', {
-          student_id: studentId,
-          course_id: Number(createEnroll.courseId),
-          amount,
-          payment_date: todayISO(),
-          method: createEnroll.method,
-          type: createEnroll.planType === 'single_class' ? 'single_class' : 'monthly',
-          notes: createEnroll.planType === 'single_class' ? 'Clase suelta' : 'Mensualidad'
-        })
-      }
-
-      setShowCreate(false)
-      // Solo refrescar la tabla de cursos; no aplicar busquedas adicionales
-      await load()
-    }catch(e:any){
-      setCreateError(e?.response?.data?.detail || e?.message || 'Error al crear alumno')
-    }finally{
-      setCreateSaving(false)
-    }
-  }
-
-  // Agrupar por dia de la semana del curso (0=Lun..6=Dom). Los sin dia van al final.
-  const dayNames = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo']
-  const groups = (() => {
-    const map = new Map<number | 'nd', { key: number | 'nd'; label: string; items: CourseRow[] }>()
-    for (const row of data) {
-      // @ts-ignore
-      const d: number | undefined = (row as any).course?.day_of_week
-      const key = (d ?? 'nd') as number | 'nd'
-      if (!map.has(key)) {
-        const label = typeof d === 'number' && d >= 0 && d <= 6 ? dayNames[d] : 'Sin dia asignado'
-        map.set(key, { key, label, items: [] })
-      }
-      map.get(key)!.items.push(row)
-    }
-    const ordered = Array.from(map.values()).sort((a, b) => {
-      const av = a.key === 'nd' ? 99 : (a.key as number)
-      const bv = b.key === 'nd' ? 99 : (b.key as number)
-      return av - bv
-    })
-    return ordered
-  })()
+    return groups
+  }, [filteredData])
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight bg-gradient-to-r from-fuchsia-600 to-purple-600 text-transparent bg-clip-text">
-          Estado de cursos
-        </h1>
-        <p className="text-sm text-gray-600">
-          Vista general por curso, con filtros y asistencia.
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Link
-            to="/course-status"
-            className="px-3 py-1.5 rounded-lg border border-fuchsia-200 bg-white text-sm text-fuchsia-700 shadow-sm"
-          >
-            Por curso (actual)
-          </Link>
-          <Link
-            to="/course-status-gender"
-            className="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-700 hover:border-fuchsia-200 hover:text-fuchsia-700"
-          >
-            Por genero
-          </Link>
-        </div>
-      </div>
-
-      {/* Filtros */}
-      <div className="rounded-2xl border bg-white p-3 md:p-4 shadow-sm">
-        <div className="flex flex-wrap gap-2 items-start">
-          <input
-            className="border rounded-lg px-3 py-2 w-full sm:w-64 lg:w-72 focus:outline-none focus:ring-2 focus:ring-fuchsia-200"
-            placeholder="Buscar por curso"
-            value={courseQ}
-            onChange={(e) => setCourseQ(e.target.value)}
-          />
-          <input
-            className="border rounded-lg px-3 py-2 w-full sm:w-64 lg:w-72 focus:outline-none focus:ring-2 focus:ring-fuchsia-200"
-            placeholder="Buscar por alumno (nombre o email)"
-            value={studentQ}
-            onChange={(e) => setStudentQ(e.target.value)}
-          />
-          <div className="flex flex-wrap gap-2">
-            <select
-              className="border rounded-lg px-3 py-2"
-              value={day}
-              onChange={(e) => setDay(e.target.value)}
-              title="Día"
-            >
-              <option value="">Todos los días</option>
-              <option value="0">Lunes</option>
-              <option value="1">Martes</option>
-              <option value="2">Miércoles</option>
-              <option value="3">Jueves</option>
-              <option value="4">Viernes</option>
-              <option value="5">Sábado</option>
-              <option value="6">Domingo</option>
-            </select>
-            <select
-              className="border rounded-lg px-3 py-2"
-              value={attendanceDays}
-              onChange={(e) => setAttendanceDays(e.target.value)}
-              title="Ventana asistencia"
-            >
-              <option value="7">7 días</option>
-              <option value="30">30 días</option>
-              <option value="90">90 días</option>
-            </select>
-            <input
-              className="border rounded-lg px-3 py-2"
-              placeholder="Profesor"
-              value={teacherQ}
-              onChange={(e) => setTeacherQ(e.target.value)}
-            />
-            <button
-              className="px-4 py-2 rounded-lg text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 shadow-sm"
-              onClick={load}
-            >
-              Buscar
-            </button>
-            <select
-              className="border rounded-lg px-3 py-2"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              title="Orden"
-            >
-              <option value="none">Sin ordenar</option>
-              <option value="att_desc">Asistencia (desc)</option>
-              <option value="att_asc">Asistencia (asc)</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {loading && <div>Cargando...</div>}
-      {error && <div className="text-red-600">{error}</div>}
-
-      {!loading && !error && data.length === 0 && (
-        <div className="text-gray-600">No hay resultados</div>
-      )}
-
-      <div className="space-y-8">
-        {groups.map((g) => (
-          <div key={String(g.key)}>
-            <div className="flex items-center gap-3 my-2">
-              <div className="text-sm font-semibold text-gray-800 whitespace-nowrap">
-                {g.label} - {g.items.length}{' '}
-                {g.items.length === 1 ? 'curso' : 'cursos'}
+    <div className="max-w-7xl mx-auto space-y-8 pb-20 px-4">
+      {/* Header & Controls */}
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+        <div>
+           <h1 className="text-4xl font-black text-gray-900 tracking-tight">Estado de Cursos</h1>
+           <div className="flex items-center gap-4 mt-2">
+              <p className="text-gray-500 font-medium">Control de inscripciones y pagos.</p>
+              <div className="h-4 w-px bg-gray-200" />
+              <div className="flex bg-gray-100 p-1 rounded-xl">
+                 <button onClick={() => setViewMode('detailed')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='detailed' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Detallada</button>
+                 <button onClick={() => setViewMode('compact')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='compact' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Compacta</button>
+                 <button onClick={() => setViewMode('summary')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='summary' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Resumen</button>
               </div>
-              <div className="flex-1 border-t border-fuchsia-200/60" />
-            </div>
+           </div>
+        </div>
 
-            <div className="space-y-4">
-              {g.items.map((row) => {
-                const expectedAttendance = Math.max(
-                  1,
-                  ((row.course as any).classes_per_week ?? 1) * 4,
-                )
+        <div className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-[28px] border border-gray-100 shadow-lg shadow-gray-100/50">
+           <div className="relative group">
+              <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input value={courseQ} onChange={e=>setCourseQ(e.target.value)} placeholder="Curso..." className="pl-10 pr-4 py-2.5 bg-gray-50 border-transparent border-2 focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none w-40" />
+           </div>
+           <div className="relative group">
+              <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input value={studentQ} onChange={e=>setStudentQ(e.target.value)} placeholder="Alumno..." className="pl-10 pr-4 py-2.5 bg-gray-50 border-transparent border-2 focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none w-40" />
+           </div>
+           <select value={selectedDay} onChange={e=>setSelectedDay(e.target.value)} className="px-4 py-2.5 bg-gray-50 border-transparent border-2 focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none appearance-none">
+              <option value="">Día...</option>
+              {DAY_NAMES.map((d,i)=><option key={i} value={i}>{d}</option>)}
+           </select>
+           <button onClick={load} className="p-2.5 bg-fuchsia-50 text-fuchsia-600 rounded-xl hover:bg-fuchsia-100 transition-all">
+              <HiOutlineRefresh size={20} className={loading?'animate-spin':''} />
+           </button>
+        </div>
+      </div>
 
-                const cmp = (a: any, b: any) => {
-                  const av = a.attendance_count ?? 0
-                  const bv = b.attendance_count ?? 0
-                  if (sortBy === 'att_desc') return bv - av
-                  if (sortBy === 'att_asc') return av - bv
-                  return 0
-                }
+      {loading && data.length === 0 ? (
+        <div className="py-40 text-center space-y-4">
+           <div className="w-10 h-10 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin mx-auto" />
+           <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest">Sincronizando...</span>
+        </div>
+      ) : (
+        <div className="space-y-12">
+           {Object.entries(groupedByDay).map(([dayName, courses]) => (
+              <div key={dayName} className="space-y-6">
+                 <div className="flex items-center gap-4 px-2">
+                    <h2 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em]">{dayName}</h2>
+                    <div className="h-px flex-1 bg-gray-100" />
+                 </div>
 
-                const studentsSorted = [...row.students].sort(cmp)
-
-                const counts =
-                  row.counts ??
-                  studentsSorted.reduce(
-                    (acc, s) => {
-                      acc.total += 1
-                      const g = (s.gender ?? '').trim().toLowerCase()
-                      if (g.startsWith('f') || g.startsWith('muj'))
-                        acc.female += 1
-                      else if (g.startsWith('m') && !g.startsWith('muj'))
-                        acc.male += 1
-                      return acc
-                    },
-                    { total: 0, female: 0, male: 0 },
-                  )
-
-                return (
-                  <div
-                    key={row.course.id}
-                    className="rounded-2xl border border-fuchsia-200/60 bg-gradient-to-br from-white via-fuchsia-50 to-purple-50 overflow-hidden shadow-sm hover:shadow-md hover:ring-1 hover:ring-fuchsia-300 transition"
-                  >
-                    {/* HEADER DEL CURSO, DISTRIBUIDO UNIFORME */}
-                    <div className="p-4 bg-gradient-to-r from-fuchsia-100 via-pink-100 to-purple-100 border-b border-fuchsia-200/60 grid grid-cols-1 md:grid-cols-5 gap-4 items-center text-center md:text-left">
-                      <div>
-                        <div className="text-lg font-semibold text-gray-900">
-                          {row.course.name}
-                        </div>
-                        <div className="text-sm text-gray-700">
-                          Nivel: {row.course.level ?? '-'}
-                        </div>
-                      </div>
-                      <div className="text-sm text-gray-800">
-                        Profesor:{' '}
-                        <span className="font-medium">
-                          {row.teacher?.name ?? '-'}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-800">
-                        Inicio:{' '}
-                        <span className="font-medium">
-                          {fmtDisplayDate(row.course.start_date)}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-800">
-                        Valor:{' '}
-                        <span className="font-medium">
-                          {row.course.price !== null &&
-                          row.course.price !== undefined &&
-                          String(row.course.price) !== '' &&
-                          !isNaN(Number(row.course.price))
-                            ? new Intl.NumberFormat('es-CL', {
-                                style: 'currency',
-                                currency: 'CLP',
-                              }).format(Number(row.course.price))
-                            : '-'}
-                        </span>
-                      </div>
-                      <div className="md:text-right">
-                        <button
-                          onClick={() =>
-                            openCreate(row.course.id, row.course.name)
-                          }
-                          className="px-4 py-2 rounded-lg text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 shadow-sm w-full md:w-auto"
-                        >
-                          Inscribir alumno
-                        </button>
-                      </div>
-
-                      <div className="md:col-span-5 mt-2 flex flex-wrap justify-center gap-2 text-xs">
-                        <span className="px-2 py-1 rounded-full bg-white border border-fuchsia-200 text-gray-700">
-                          Alumnos: {counts.total}
-                        </span>
-                        <span className="px-2 py-1 rounded-full bg-white border text-pink-700 border-pink-200">
-                          Mujeres: {counts.female}
-                        </span>
-                        <span className="px-2 py-1 rounded-full bg-white border text-blue-700 border-blue-200">
-                          Hombres: {counts.male}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* TABLA 100% ANCHO */}
-                    <div className="p-4">
-                      {row.students.length === 0 ? (
-                        <div className="text-center py-8">
-                          <div className="text-gray-600 mb-3">
-                            Sin alumnos inscritos
+                 <div className={`grid gap-6 ${viewMode === 'summary' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                    {courses.map((row) => (
+                       <div key={row.course.id} className={`bg-white border border-gray-100 shadow-sm transition-all duration-300 ${viewMode === 'summary' ? 'rounded-[32px] p-6' : 'rounded-[40px] overflow-hidden'}`}>
+                          {/* Card Header / Summary Header */}
+                          <div className={`flex items-start justify-between ${viewMode === 'summary' ? 'mb-6' : 'px-8 py-6 bg-gray-50/50 border-b border-gray-100'}`}>
+                             <div className="flex items-center gap-4">
+                                <div className={`flex items-center justify-center bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white font-black shadow-lg shadow-fuchsia-100 ${viewMode === 'summary' ? 'w-12 h-12 rounded-2xl text-lg' : 'w-14 h-14 rounded-[20px] text-xl'}`}>
+                                   {row.course.name[0]}
+                                </div>
+                                <div>
+                                   <h3 className={`font-black text-gray-900 leading-tight ${viewMode === 'summary' ? 'text-base' : 'text-xl'}`}>{row.course.name}</h3>
+                                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{row.teacher?.name || 'Academia'}</p>
+                                </div>
+                             </div>
+                             {viewMode === 'summary' ? (
+                                <span className="px-3 py-1 bg-fuchsia-50 text-fuchsia-600 text-[10px] font-black rounded-lg">{row.students.length}</span>
+                             ) : (
+                                <button onClick={() => navigate(`/courses/${row.course.id}`)} className="p-3 bg-white border border-gray-100 rounded-xl hover:text-fuchsia-600 transition-all"><HiOutlineChevronRight size={20} /></button>
+                             )}
                           </div>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
-                                <th className="px-3 py-2 text-center">#</th>
-                                <th className="px-3 py-2 text-left">Alumno</th>
-                                <th className="px-3 py-2 text-center">
-                                  Teléfono
-                                </th>
-                                <th className="px-3 py-2 text-center">
-                                  Email
-                                </th>
-                                <th className="px-3 py-2 text-center">
-                                  Inicio
-                                </th>
-                                <th className="px-3 py-2 text-center">
-                                  Renovación
-                                </th>
-                                <th className="px-3 py-2 text-center">Pago</th>
-                                <th className="px-2 py-2 text-center">
-                                  Asist.
-                                </th>
-                                <th className="px-2.5 py-2 text-center">
-                                  Renovar
-                                </th>
-                                <th className="px-3 py-2 text-center">
-                                  Acciones
-                                </th>
-                                <th className="px-3 py-2 text-left">Obs</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {studentsSorted.map((s, idx) => {
-                                const EmailIcon = MdEmail
-                                const phoneTitle =
-                                  s.phone ?? 'Sin teléfono'
-                                const emailTitle = s.email ?? 'Sin correo'
-                                  const payStatus = (s.payment_status || '').toString().toLowerCase()
-                                  const hasPay = payments.some(p => p.student_id === s.id && p.course_id === row.course.id)
-                                  const today = new Date()
-                                  const stuEnd = toDate(s.renewal_date)
-                                  const isPastPeriod = stuEnd ? today > stuEnd : false
-                                  const paid = hasPay && !isPastPeriod
-                                  let statusLabel = 'Inscrito'
-                                  let statusClass = 'bg-sky-50 text-sky-700 border-sky-200'
-                                  if (!hasPay) {
-                                    statusLabel = 'Pendiente de pago'
-                                    statusClass = 'bg-rose-50 text-rose-700 border-rose-200'
-                                  } else if (isPastPeriod) {
-                                    statusLabel = 'Pendiente de renovación'
-                                    statusClass = 'bg-amber-50 text-amber-700 border-amber-200'
-                                  }
-                                const att = s.attendance_count ?? 0
-                                const stuStart = toDate(s.enrolled_since)
-                                const weeks = weeksBetween(stuStart, stuEnd)
-                                const expected = stuStart && stuEnd && stuStart.getTime() === stuEnd.getTime()
-                                  ? 1
-                                  : weeks != null
-                                    ? Math.max(1, ((row.course as any).classes_per_week ?? 1) * weeks)
-                                    : expectedAttendance
-                                const attPct = expected > 0
-                                  ? Math.min(100, Math.round((att / expected) * 100))
-                                  : 0
-                                const over = att > expected
-                                const extra = over ? att - expected : 0
-                                const isSingleClass =
-                                  !!(
-                                    s.enrolled_since &&
-                                    s.renewal_date &&
-                                    s.enrolled_since === s.renewal_date
-                                  )
 
-                                return (
-                                  <tr
-                                    key={s.id}
-                                    className={`border-t hover:bg-fuchsia-50/40 ${
-                                      isSingleClass ? 'bg-yellow-50' : ''
-                                    }`}
-                                    title={
-                                      isSingleClass
-                                        ? 'Clase suelta'
-                                        : undefined
-                                    }
-                                  >
-                                    <td className="px-3 py-2 text-center">
-                                      {idx + 1}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      <div className="flex items-center gap-2">
-                                        <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 text-gray-700 grid place-items-center text-xs font-semibold">
-                                          {s.photo_url ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img
-                                              src={toAbsoluteUrl(s.photo_url)}
-                                              alt={`${s.first_name} ${s.last_name}`}
-                                              className="w-full h-full object-cover"
-                                            />
-                                          ) : (
-                                            <span>
-                                              {`${s.first_name?.[0] ?? ''}${s.last_name?.[0] ?? ''}`
-                                                .trim()
-                                                .toUpperCase() || 'A'}
-                                            </span>
-                                          )}
-                                        </div>
-                                        {s.birthday_today && (
-                                          <span
-                                            title="Cumpleanos hoy"
-                                            className="text-pink-600"
-                                          >
-                                            <FaBirthdayCake />
-                                          </span>
-                                        )}
-                                        <span>
-                                          {s.first_name} {s.last_name}
-                                        </span>
-                                        {isSingleClass && (
-                                          <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200">
-                                            Clase suelta
-                                          </span>
-                                        )}
+                          {/* Detailed/Compact Table */}
+                          {viewMode !== 'summary' && (
+                             <div className="overflow-x-auto">
+                                <table className="w-full">
+                                   <thead>
+                                      <tr className="text-left text-[9px] font-black text-gray-300 uppercase tracking-widest">
+                                         <th className="pl-10 pr-6 py-4">Alumno</th>
+                                         <th className="px-6 py-4 text-center">Asistencia</th>
+                                         <th className="px-6 py-4 text-center">Estado</th>
+                                         <th className="pr-10 pl-6 py-4 text-right">Contacto</th>
+                                      </tr>
+                                   </thead>
+                                   <tbody className="divide-y divide-gray-50">
+                                      {row.students.map((s) => {
+                                         const isPaid = s.payment_status === 'activo'
+                                         const progress = s.expected_count && s.expected_count > 0 ? Math.min(100, (s.attendance_count || 0) / s.expected_count * 100) : 0
+                                         
+                                         return (
+                                            <tr key={s.id} className="hover:bg-fuchsia-50/10 transition-colors group">
+                                               <td className="pl-10 pr-6 py-4">
+                                                  <div className="flex items-center gap-3">
+                                                     {viewMode === 'detailed' && (
+                                                        <div className="w-10 h-10 rounded-xl bg-fuchsia-100 overflow-hidden flex items-center justify-center text-fuchsia-600 font-black shrink-0">
+                                                           {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
+                                                        </div>
+                                                     )}
+                                                     <div className="min-w-0">
+                                                        <div className="text-sm font-black text-gray-800 truncate group-hover:text-fuchsia-600 transition-colors">{s.first_name} {s.last_name}</div>
+                                                        {s.birthday_today && <div className="text-[8px] font-black text-pink-500 uppercase flex items-center gap-1"><HiOutlineCake /> Cumple hoy</div>}
+                                                     </div>
+                                                  </div>
+                                               </td>
+                                               <td className="px-6 py-4">
+                                                  <div className="w-24 mx-auto">
+                                                     <div className="flex justify-between text-[8px] font-black text-gray-400 uppercase mb-1">
+                                                        <span>{s.attendance_count}/{s.expected_count}</span>
+                                                        <span>{Math.round(progress)}%</span>
+                                                     </div>
+                                                     <div className="h-1.5 bg-gray-50 rounded-full border border-gray-100 overflow-hidden">
+                                                        <div className={`h-full transition-all duration-700 ${progress >= 100 ? 'bg-emerald-500' : 'bg-fuchsia-500'}`} style={{ width: `${progress}%` }} />
+                                                     </div>
+                                                  </div>
+                                               </td>
+                                               <td className="px-6 py-4 text-center">
+                                                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                                     <div className={`w-1.5 h-1.5 rounded-full ${isPaid ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`} />
+                                                     {isPaid ? 'OK' : 'Pagar'}
+                                                  </div>
+                                               </td>
+                                               <td className="pr-10 pl-6 py-4 text-right">
+                                                  <div className="flex items-center justify-end gap-2">
+                                                     <a href={`https://wa.me/${s.phone}`} target="_blank" className="p-2 bg-gray-50 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"><HiOutlinePhone size={14} /></a>
+                                                     <button onClick={() => navigate(`/students/${s.id}`)} className="p-2 bg-gray-50 text-gray-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 rounded-lg transition-all"><HiOutlineChevronRight size={14} /></button>
+                                                  </div>
+                                               </td>
+                                            </tr>
+                                         )
+                                      })}
+                                   </tbody>
+                                </table>
+                             </div>
+                          )}
+
+                          {/* Summary View Content */}
+                          {viewMode === 'summary' && (
+                             <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                   <div className="bg-gray-50 p-4 rounded-2xl">
+                                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Alumnos</div>
+                                      <div className="text-xl font-black text-gray-900">{row.students.length}</div>
+                                   </div>
+                                   <div className="bg-gray-50 p-4 rounded-2xl">
+                                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Asistencia Avg</div>
+                                      <div className="text-xl font-black text-fuchsia-600">
+                                         {Math.round(row.students.reduce((acc, s) => acc + (s.expected_count ? ((s.attendance_count||0)/s.expected_count*100) : 0), 0) / (row.students.length || 1))}%
                                       </div>
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                      {s.phone ? (
-                                        <span
-                                          title={phoneTitle}
-                                          className="inline-flex items-center justify-center text-green-600"
-                                        >
-                                          <FaWhatsapp />
-                                        </span>
-                                      ) : (
-                                        <span
-                                          title={phoneTitle}
-                                          className="inline-flex items-center justify-center text-gray-400"
-                                        >
-                                          <FaWhatsapp />
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                      <span
-                                        title={emailTitle}
-                                        className={`inline-flex items-center justify-center ${
-                                          s.email_ok
-                                            ? 'text-blue-600'
-                                            : 'text-gray-400'
-                                        }`}
-                                      >
-                                        <EmailIcon />
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                      {fmtDisplayDate(s.enrolled_since)}
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                      {fmtDisplayDate(s.renewal_date)}
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                      <span
-                                        className={`px-2 py-1 rounded-full text-xs font-semibold border shadow-sm ${statusClass}`}
-                                      >
-                                        {hasPay && !isPastPeriod ? 'Activo' : statusLabel}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                      <div
-                                        className={`inline-flex flex-col items-center text-[12px] ${over ? 'text-rose-600 font-semibold' : 'text-gray-700'}`}
-                                        title={
-                                          over
-                                            ? 'Excedió lo contratado'
-                                            : `Asistencias: ${att} de ${expected}`
-                                        }
-                                      >
-                                        <span className="font-medium flex items-center gap-1">
-                                          {att} / {expected}
-                                          {over && (
-                                            <span className="px-1 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] border border-rose-200" title={`Clases extra: ${extra}`}>
-                                              +extra
-                                            </span>
-                                          )}
-                                        </span>
-                                        <span className="text-gray-500">
-                                          ({attPct}%)
-                                        </span>
-                                      </div>
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                      <button
-                                        className="px-2 py-1 rounded border text-xs bg-white hover:bg-fuchsia-50 inline-flex items-center justify-center"
-                                        onClick={() =>
-                                          openRenew(
-                                            row.course.id,
-                                            s.id,
-                                            s.enrolled_since || '',
-                                            s.renewal_date || '',
-                                            (row.course as any).price ?? null,
-                                          )
-                                        }
-                                      >
-                                        <span className="w-6 h-6 rounded-full bg-emerald-500 text-white grid place-items-center text-xs font-bold">
-                                          $
-                                        </span>
-                                      </button>
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                      <button
-                                        className="px-3 py-1.5 rounded border text-xs bg-white hover:bg-fuchsia-50"
-                                        onClick={() => navigate(`/students/${s.id}`)}
-                                      >
-                                        Ver
-                                      </button>
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      {s.notes ?? '-'}
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Modal Crear */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setShowCreate(false)}
-          />
-          <div className="relative w-full max-w-xl md:max-w-2xl overflow-hidden rounded-2xl shadow-2xl">
-            <div className="bg-gradient-to-r from-fuchsia-500 to-purple-600 px-6 py-4 text-white">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg md:text-xl font-semibold">
-                  Crear alumno
-                </h2>
-                <button
-                  className="rounded-full hover:bg-white/10 px-2 py-1"
-                  onClick={() => setShowCreate(false)}
-                  aria-label="Cerrar"
-                >
-                  <MdClose size={20} />
-                </button>
+                                   </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                   <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase tracking-widest px-1">
+                                      <span>Estado de Pagos</span>
+                                      <span>{row.students.filter(s=>s.payment_status==='activo').length}/{row.students.length}</span>
+                                   </div>
+                                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${(row.students.filter(s=>s.payment_status==='activo').length / (row.students.length || 1)) * 100}%` }} />
+                                   </div>
+                                </div>
+                                <button onClick={() => navigate(`/courses/${row.course.id}`)} className="w-full py-3 bg-fuchsia-50 text-fuchsia-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-fuchsia-600 hover:text-white transition-all flex items-center justify-center gap-2">
+                                   Ver Detalles <HiOutlineChevronRight size={14} />
+                                </button>
+                             </div>
+                          )}
+                       </div>
+                    ))}
+                 </div>
               </div>
-            </div>
-            <div className="bg-white p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">
-                    Nombre
-                  </label>
-                  <input
-                    className="w-full border rounded-md px-3 py-2"
-                    value={createForm.first_name}
-                    onChange={(e) =>
-                      setCreateForm((v) => ({
-                        ...v,
-                        first_name: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">
-                    Apellido
-                  </label>
-                  <input
-                    className="w-full border rounded-md px-3 py-2"
-                    value={createForm.last_name}
-                    onChange={(e) =>
-                      setCreateForm((v) => ({
-                        ...v,
-                        last_name: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">
-                    Email
-                  </label>
-                  <input
-                    className="w-full border rounded-md px-3 py-2"
-                    value={createForm.email}
-                    onChange={(e) =>
-                      setCreateForm((v) => ({
-                        ...v,
-                        email: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">
-                    Teléfono
-                  </label>
-                  <input
-                    className="w-full border rounded-md px-3 py-2"
-                    value={createForm.phone}
-                    onChange={(e) =>
-                      setCreateForm((v) => ({
-                        ...v,
-                        phone: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">
-                    Género
-                  </label>
-                  <select
-                    className="w-full border rounded-md px-3 py-2"
-                    value={createForm.gender}
-                    onChange={(e) =>
-                      setCreateForm((v) => ({
-                        ...v,
-                        gender: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">-</option>
-                    <option value="Femenino">Femenino</option>
-                    <option value="Masculino">Masculino</option>
-                    <option value="Otro">Otro</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">
-                    Ingreso
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full border rounded-md px-3 py-2"
-                    value={createForm.joined_at}
-                    onChange={(e) =>
-                      setCreateForm((v) => ({
-                        ...v,
-                        joined_at: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="mt-2">
-                <div className="mb-2 text-sm font-semibold text-gray-800">
-                  Inscripción
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Curso
-                    </label>
-                    <input
-                      className="w-full border rounded-md px-3 py-2 bg-gray-50"
-                      value={createCourseName || String(createEnroll.courseId)}
-                      disabled
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Plan
-                    </label>
-                    <select
-                      className="w-full border rounded-md px-3 py-2"
-                      value={createEnroll.planType}
-                      onChange={(e) => {
-                        const plan =
-                          e.target.value as 'monthly' | 'single_class'
-                        setCreateEnroll((v) => ({
-                          ...v,
-                          planType: plan,
-                          lessonsPerWeek:
-                            plan === 'single_class' ? '1' : v.lessonsPerWeek,
-                          end: computeEndDate(
-                            v.start,
-                            plan,
-                            plan === 'single_class'
-                              ? '1'
-                              : v.lessonsPerWeek,
-                          ),
-                          amount:
-                            plan === 'single_class'
-                              ? String(DEFAULT_SINGLE)
-                              : String(DEFAULT_MONTHLY),
-                        }))
-                      }}
-                    >
-                      <option value="monthly">Mensualidad</option>
-                      <option value="single_class">Clase suelta</option>
-                    </select>
-                  </div>
-                  {createEnroll.planType === 'monthly' && (
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">
-                        Clases/semana
-                      </label>
-                      <select
-                        className="w-full border rounded-md px-3 py-2"
-                        value={createEnroll.lessonsPerWeek}
-                        onChange={(e) => {
-                          const l = e.target.value as '1' | '2'
-                          setCreateEnroll((v) => ({
-                            ...v,
-                            lessonsPerWeek: l,
-                            end: computeEndDate(
-                              v.start,
-                              v.planType,
-                              l,
-                            ),
-                          }))
-                        }}
-                      >
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                      </select>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Inicio
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full border rounded-md px-3 py-2"
-                      value={createEnroll.start}
-                      onChange={(e) => {
-                        const start = e.target.value
-                        setCreateEnroll((v) => ({
-                          ...v,
-                          start,
-                          end: computeEndDate(
-                            start,
-                            v.planType,
-                            v.lessonsPerWeek,
-                          ),
-                        }))
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Fin (auto)
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full border rounded-md px-3 py-2"
-                      value={
-                        createEnroll.planType === 'single_class'
-                          ? createEnroll.start
-                          : createEnroll.end
-                      }
-                      onChange={(e) =>
-                        setCreateEnroll((v) => ({
-                          ...v,
-                          end: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Monto
-                    </label>
-                    <input
-                      type="number"
-                      className="w-full border rounded-md px-3 py-2"
-                      value={createEnroll.amount}
-                      onChange={(e) =>
-                        setCreateEnroll((v) => ({
-                          ...v,
-                          amount: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Método de pago
-                    </label>
-                    <select
-                      className="w-full border rounded-md px-3 py-2"
-                      value={createEnroll.method}
-                      onChange={(e) =>
-                        setCreateEnroll((v) => ({
-                          ...v,
-                          method: e.target.value as any,
-                        }))
-                      }
-                    >
-                      <option value="">Sin pago ahora</option>
-                      <option value="cash">Efectivo</option>
-                      <option value="card">Tarjeta</option>
-                      <option value="transfer">Transferencia</option>
-                      <option value="agreement">Convenio</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {createError && (
-                <div className="text-sm text-red-600">
-                  {createError}
-                </div>
-              )}
-            </div>
-            <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-2 border-t">
-              <button
-                className="px-4 py-2 rounded-lg border"
-                onClick={() => setShowCreate(false)}
-                disabled={createSaving}
-              >
-                Cancelar
-              </button>
-              <button
-                className="px-4 py-2 rounded-lg text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 disabled:opacity-60"
-                disabled={createSaving}
-                onClick={saveCreate}
-              >
-                {createSaving ? 'Guardando...' : 'Crear e inscribir'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Renovación */}
-      {showRenew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setShowRenew(false)}
-          />
-          <div className="relative bg-white rounded-2xl shadow-xl w-[95%] max-w-xl p-4">
-            <div className="text-lg font-semibold mb-2">
-              Renovar inscripción
-            </div>
-            {renewError && (
-              <div className="text-sm text-rose-700 mb-2">
-                {renewError}
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="md:col-span-3">
-                <div className="text-xs text-gray-600 mb-1">Modo</div>
-                <div className="flex flex-col gap-2 text-sm">
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="mode"
-                      checked={renewForm.mode === 'monthly'}
-                      onChange={() =>
-                        setRenewForm((f) => ({
-                          ...f,
-                          mode: 'monthly',
-                          end_date: f.start_date
-                            ? addDays(f.start_date, 28)
-                            : f.end_date,
-                        }))
-                      }
-                    />
-                    Mensual (4 semanas)
-                  </label>
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="mode"
-                      checked={renewForm.mode === 'single_class'}
-                      onChange={() =>
-                        setRenewForm((f) => ({
-                          ...f,
-                          mode: 'single_class',
-                          end_date: f.start_date || f.end_date,
-                        }))
-                      }
-                    />
-                    Clase suelta (1 día)
-                  </label>
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="mode"
-                      checked={renewForm.mode === 'custom'}
-                      onChange={() =>
-                        setRenewForm((f) => ({
-                          ...f,
-                          mode: 'custom',
-                        }))
-                      }
-                    />
-                    Personalizada (elige rango)
-                  </label>
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 mb-1">Inicio</div>
-                <input
-                  className="w-full border rounded px-3 py-2"
-                  type="date"
-                  value={renewForm.start_date}
-                  onChange={(e) =>
-                    setRenewForm((f) => ({
-                      ...f,
-                      start_date: e.target.value,
-                      end_date:
-                        f.mode === 'monthly' && e.target.value
-                          ? addDays(e.target.value, 28)
-                          : f.mode === 'single_class'
-                            ? e.target.value
-                            : f.end_date,
-                    }))
-                  }
-                />
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 mb-1">Término</div>
-                <input
-                  className="w-full border rounded px-3 py-2"
-                  type="date"
-                  value={renewForm.end_date}
-                  onChange={(e) =>
-                    setRenewForm((f) => ({
-                      ...f,
-                      end_date: e.target.value,
-                    }))
-                  }
-                  disabled={renewForm.mode === 'monthly' || renewForm.mode === 'single_class'}
-                />
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 mb-1">
-                  Precio/Monto
-                </div>
-                <input
-                  className="w-full border rounded px-3 py-2"
-                  type="number"
-                  min={0}
-                  value={renewForm.amount}
-                  onChange={(e) =>
-                    setRenewForm((f) => ({
-                      ...f,
-                      amount: e.target.value,
-                    }))
-                  }
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 mb-1">Método</div>
-                <select
-                  className="w-full border rounded px-3 py-2"
-                  value={renewForm.method}
-                  onChange={(e) =>
-                    setRenewForm((f) => ({
-                      ...f,
-                      method: e.target.value as any,
-                    }))
-                  }
-                >
-                  <option value="cash">Efectivo</option>
-                  <option value="debit">Débito</option>
-                  <option value="transfer">Transferencia</option>
-                  <option value="agreement">Convenio</option>
-                </select>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                className="px-3 py-2 rounded-lg border"
-                onClick={() => setShowRenew(false)}
-                disabled={renewSaving}
-              >
-                Cancelar
-              </button>
-              <button
-                className="px-4 py-2 rounded-lg text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 shadow-sm disabled:opacity-60"
-                disabled={
-                  renewSaving ||
-                  !renewForm.enrollment_id ||
-                  !renewForm.start_date ||
-                  !renewForm.end_date
-                }
-                onClick={async () => {
-                  try {
-                    setRenewSaving(true)
-                    setRenewError(null)
-                    if (!renewForm.enrollment_id) {
-                      const res = await api.get(
-                        '/api/pms/enrollments',
-                        {
-                          params: {
-                            course_id: renewForm.course_id,
-                            student_id: renewForm.student_id,
-                            active_only: true,
-                          },
-                        },
-                      )
-                      const enr = (res.data || [])[0]
-                      if (!enr?.id)
-                        throw new Error('Inscripción no encontrada')
-                      renewForm.enrollment_id = enr.id
-                    }
-                    if (
-                      !renewForm.start_date ||
-                      !renewForm.end_date
-                    )
-                      throw new Error('Fechas incompletas')
-                    const payload: any = {
-                      start_date: renewForm.start_date,
-                      end_date: renewForm.mode === 'single_class'
-                        ? renewForm.start_date
-                        : renewForm.end_date,
-                    }
-                    await api.put(
-                      `/api/pms/enrollments/${renewForm.enrollment_id}`,
-                      payload,
-                    )
-                    await load()
-                    setShowRenew(false)
-                  } catch (e: any) {
-                    setRenewError(
-                      e?.message || 'No se pudo renovar',
-                    )
-                  } finally {
-                    setRenewSaving(false)
-                  }
-                }}
-              >
-                {renewSaving ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
-          </div>
+           ))}
         </div>
       )}
     </div>
   )
 }
-

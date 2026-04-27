@@ -5,9 +5,9 @@ from pathlib import Path
 # Add the project root to the python path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from apps.backend.app.db.session import SessionLocal
-from apps.backend.app.pms.models import User
-from apps.backend.app.core.security import get_password_hash
+from app.db.session import SessionLocal
+from app.pms.models import User
+from app.core.security import get_password_hash
 
 async def create_superuser():
     async with SessionLocal() as session:

@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.pms.models import Enrollment, Student, Course
-from apps.backend.app.pms.deps import get_tenant_id, get_db_session
+from app.pms.models import Enrollment, Student, Course
+from app.pms.deps import get_tenant_id, get_db_session
 from pydantic import BaseModel
 
 

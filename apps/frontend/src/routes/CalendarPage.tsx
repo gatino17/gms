@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import { useTenant } from '../lib/tenant'
+import { HiOutlineCalendar, HiOutlineClock, HiOutlineUser, HiOutlineTag } from 'react-icons/hi'
 
 type Course = {
   id: number
@@ -12,7 +13,7 @@ type Course = {
   teacher_name?: string | null
 }
 
-const DAY_NAMES = ['Lunes','Martes','Miercoles','Jueves','Viernes','Sabado','Domingo']
+const DAY_NAMES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
 const hhmm = (t?: string | null) => (t ? String(t).slice(0,5) : '--:--')
 const fmtDateISO = (d?: string | null) => {
   if (!d) return '—'
@@ -27,30 +28,31 @@ const toHour = (t?: string | null) => {
 }
 const pad2 = (n:number) => String(n).padStart(2,'0')
 
-// Paleta de degradés (un color por profesor)
+// Premium Gradient Palette for Teachers
 const THEME_GRADIENTS: { from: string; to: string }[] = [
-  { from: 'hsl(220 90% 60%)', to: 'hsl(290 85% 60%)' }, // azul→púrpura
-  { from: 'hsl(300 90% 60%)', to: 'hsl(255 90% 60%)' }, // fucsia→violeta
-  { from: 'hsl(190 95% 50%)', to: 'hsl(225 90% 55%)' }, // cian→azul
-  { from: 'hsl(90 80% 55%)',  to: 'hsl(150 80% 50%)' }, // lima→verde
-  { from: 'hsl(20 95% 55%)',  to: 'hsl(335 90% 60%)' }, // naranja→rosa
-  { from: 'hsl(170 80% 45%)', to: 'hsl(265 85% 60%)' }, // teal→violeta
+  { from: '#3b82f6', to: '#8b5cf6' }, // Blue to Purple
+  { from: '#ec4899', to: '#d946ef' }, // Pink to Fuchsia
+  { from: '#0ea5e9', to: '#3b82f6' }, // Sky to Blue
+  { from: '#10b981', to: '#059669' }, // Emerald to Green
+  { from: '#f59e0b', to: '#ef4444' }, // Amber to Red
+  { from: '#14b8a6', to: '#8b5cf6' }, // Teal to Purple
 ]
+
 const hashString = (s: string) => { let h=0; for (let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0 } return Math.abs(h) }
 const teacherGradient = (name: string | null | undefined) => {
   const { from, to } = THEME_GRADIENTS[hashString(name || 'teacher') % THEME_GRADIENTS.length]
   return `linear-gradient(135deg, ${from}, ${to})`
 }
 
-export default function CalendarWeekResponsive() {
+export default function CalendarPage() {
   const { tenantId } = useTenant()
   const [data, setData] = useState<Course[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Load cursos
   useEffect(() => {
     const load = async () => {
+      if (!tenantId) return
       setLoading(true); setError(null)
       try {
         const res = await api.get('/api/pms/courses', { params: { limit: 500 } })
@@ -66,7 +68,7 @@ export default function CalendarWeekResponsive() {
         }))
         setData(norm)
       } catch (e:any) {
-        setError(e?.message ?? 'Error cargando calendario')
+        setError(e?.message ?? 'Error al cargar el calendario')
       } finally {
         setLoading(false)
       }
@@ -74,7 +76,6 @@ export default function CalendarWeekResponsive() {
     load()
   }, [tenantId])
 
-  // Rangos y matrices para vista semanal
   const { hoursAsc } = useMemo(() => {
     let minH = 23, maxH = 0
     for (const c of data) {
@@ -103,13 +104,12 @@ export default function CalendarWeekResponsive() {
     return m
   }, [data, hoursAsc])
 
-  // Agrupado por día para vista listado (móvil)
   const groupedMobile = useMemo(() => {
     const map = new Map<number | 'nd', { label: string, items: Course[] }>()
     for (const c of data) {
       const k = (typeof c.day_of_week === 'number' ? c.day_of_week : 'nd') as number | 'nd'
       if (!map.has(k)) {
-        map.set(k, { label: k === 'nd' ? 'Sin día' : DAY_NAMES[k], items: [] })
+        map.set(k, { label: k === 'nd' ? 'Horario a Definir' : DAY_NAMES[k], items: [] })
       }
       map.get(k)!.items.push(c)
     }
@@ -122,171 +122,148 @@ export default function CalendarWeekResponsive() {
   }, [data])
 
   return (
-    <div className="space-y-5">
-      {/* Header estilo "Crear curso" */}
-      <div className="rounded-2xl shadow overflow-hidden">
-        <div className="px-6 py-4 bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white flex items-center justify-between">
-          <h1 className="text-lg md:text-2xl font-semibold tracking-tight">
-            Calendario — Semana
-          </h1>
-          <div className="text-sm md:text-base font-medium">
-            {new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}
-          </div>
+    <div className="max-w-[1400px] mx-auto space-y-8 pb-20 px-4">
+      {/* Premium Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+           <h1 className="text-4xl font-black text-gray-900 tracking-tight">Calendario Semanal</h1>
+           <p className="text-gray-500 font-medium mt-1">Horarios y distribución de programas académicos.</p>
+        </div>
+        <div className="px-6 py-3 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+           <HiOutlineCalendar className="text-fuchsia-600" size={20} />
+           <span className="font-black text-gray-700 uppercase tracking-widest text-[10px]">
+              {new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}
+           </span>
         </div>
       </div>
 
-      {loading && (
-        <div className="rounded-2xl border bg-white p-6 animate-pulse shadow-sm">
-          <div className="h-4 w-48 bg-gray-200 rounded mb-4" />
-          <div className="h-48 bg-gray-100 rounded" />
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-40 gap-4">
+          <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
+          <span className="text-fuchsia-600 font-black tracking-widest text-[10px] uppercase">Cargando Horarios...</span>
         </div>
-      )}
-      {error && <div className="text-red-600">{error}</div>}
-
-      {/* ===== Vista Semana (desktop / lg+) ===== */}
-      {!loading && !error && (
-        <div className="hidden lg:block">
-          <div className="w-full overflow-x-auto">
-            <div className="min-w-[1100px] rounded-2xl border shadow-sm overflow-hidden bg-white">
-              {/* Cabecera días (suave) */}
-              <div className="grid sticky top-0 z-10" style={{ gridTemplateColumns: `160px repeat(7, 1fr)` }}>
-                <div className="px-3 py-3 bg-white border-b">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[12px] text-slate-700">
-                    Horario
+      ) : error ? (
+        <div className="p-6 bg-rose-50 border border-rose-100 rounded-[30px] text-rose-600 font-bold text-center">
+          {error}
+        </div>
+      ) : (
+        <>
+          {/* ===== Vista Desktop (Grilla) ===== */}
+          <div className="hidden lg:block bg-white rounded-[40px] shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden">
+            <div className="w-full overflow-x-auto custom-scrollbar">
+              <div className="min-w-[1200px]">
+                {/* Cabecera Días */}
+                <div className="grid sticky top-0 z-10 border-b border-gray-100 bg-gray-50/80 backdrop-blur-md" style={{ gridTemplateColumns: `100px repeat(7, 1fr)` }}>
+                  <div className="p-4 flex items-center justify-center border-r border-gray-100">
+                    <HiOutlineClock className="text-gray-400" size={24} />
                   </div>
-                </div>
-                {DAY_NAMES.map((d, i) => (
-                  <div key={i} className="px-3 py-3 bg-white border-b text-sm font-semibold text-slate-700 text-center">
-                    <div className="inline-flex items-center gap-2">
-                      <span>{d}</span>
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: `hsl(${(i*38)%360} 70% 55%)`, opacity: 0.35 }} />
+                  {DAY_NAMES.map((d, i) => (
+                    <div key={i} className="p-4 flex flex-col items-center justify-center gap-1 border-r border-gray-100 last:border-0">
+                      <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{d}</span>
+                      <div className="w-8 h-1 rounded-full" style={{ backgroundColor: THEME_GRADIENTS[i % THEME_GRADIENTS.length].from, opacity: 0.5 }} />
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              {/* Cuerpo */}
-              <div className="bg-white">
-                {hoursAsc.map((h, rowIdx) => {
-                  const label = `${pad2(h)}:00 – ${pad2(h+1)}:00`
-                  return (
-                    <div key={h} className="grid" style={{ gridTemplateColumns: `160px repeat(7, 1fr)` }}>
-                      {/* Gutter de horas */}
-                      <div className={`px-3 py-2 border-r ${rowIdx===0 ? '' : 'border-t'}`}>
-                        <div className="flex items-center justify-center">
-                          <div className="rounded-full px-3 py-1.5 bg-slate-50 text-slate-700 border border-slate-200 text-[12px] font-mono">
+                {/* Cuerpo del Calendario */}
+                <div className="bg-white">
+                  {hoursAsc.map((h, rowIdx) => {
+                    const label = `${pad2(h)}:00`
+                    return (
+                      <div key={h} className="grid border-b border-gray-50 last:border-0" style={{ gridTemplateColumns: `100px repeat(7, 1fr)` }}>
+                        {/* Gutter Horas */}
+                        <div className="p-3 border-r border-gray-50 flex items-start justify-center">
+                          <div className="px-3 py-1.5 bg-gray-50 rounded-xl text-[10px] font-black text-gray-500 uppercase tracking-widest mt-2">
                             {label}
                           </div>
                         </div>
-                      </div>
 
-                      {/* Celdas diarias */}
-                      {DAY_NAMES.map((_, dayIdx) => {
-                        const items = (matrix[h]?.[dayIdx] ?? [])
-                        return (
-                          <div
-                            key={dayIdx}
-                            className={`px-2 py-2 ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'} ${rowIdx===0 ? 'border-t' : ''} ${dayIdx===6 ? '' : 'border-r'} border-slate-100`}
-                          >
-                            {items.length === 0 ? (
-                              <div className="h-12 rounded-xl border border-dashed border-slate-200 bg-white/70" />
-                            ) : (
-                              <div className="flex flex-col gap-2">
+                        {/* Celdas */}
+                        {DAY_NAMES.map((_, dayIdx) => {
+                          const items = (matrix[h]?.[dayIdx] ?? [])
+                          return (
+                            <div key={dayIdx} className={`p-3 border-r border-gray-50 last:border-0 min-h-[120px] transition-colors ${items.length > 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                              <div className="flex flex-col gap-3">
                                 {items.map((c) => (
                                   <div
                                     key={c.id}
-                                    className="px-3 py-2 rounded-2xl text-white shadow-sm border border-white/20 hover:shadow-md transition"
+                                    className="p-4 rounded-[20px] text-white shadow-lg transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:shadow-xl group"
                                     style={{ background: teacherGradient(c.teacher_name) }}
-                                    title={`${c.name} · ${hhmm(c.start_time)}${c.end_time ? `–${hhmm(c.end_time)}` : ''}`}
                                   >
-                                    {/* Sin hora adentro (hora va en el gutter) */}
-                                    <div className="text-[13px] font-semibold leading-5 truncate">{c.name}</div>
-                                    <div className="mt-1 text-[12px] opacity-95 space-x-3 flex items-center flex-wrap">
+                                    <h4 className="text-sm font-black leading-tight drop-shadow-sm line-clamp-2">{c.name}</h4>
+                                    
+                                    <div className="mt-3 space-y-1.5">
+                                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-white/90">
+                                        <HiOutlineClock size={12} className="opacity-70" />
+                                        <span>{hhmm(c.start_time)} - {hhmm(c.end_time)}</span>
+                                      </div>
+                                      
                                       {c.teacher_name && (
-                                        <span className="inline-flex items-center gap-1">
-                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z" fill="currentColor"/></svg>
-                                          {c.teacher_name}
-                                        </span>
-                                      )}
-                                      {c.start_date && (
-                                        <span className="inline-flex items-center gap-1">
-                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7 2v2H5a2 2 0 0 0-2 2v2h18V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2Zm14 8H3v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Zm-12 3h2v2H9Zm4 0h2v2h-2Zm-4 4h2v2H9Zm4 0h2v2h-2Z" fill="currentColor"/></svg>
-                                          Inicio: {fmtDateISO(c.start_date)}
-                                        </span>
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-white/90">
+                                          <HiOutlineUser size={12} className="opacity-70" />
+                                          <span className="truncate">{c.teacher_name}</span>
+                                        </div>
                                       )}
                                     </div>
                                   </div>
                                 ))}
                               </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ===== Vista Listado (móvil) ===== */}
-      {!loading && !error && (
-        <div className="block lg:hidden">
-          <div className="space-y-4">
+          {/* ===== Vista Mobile (Lista Agrupada) ===== */}
+          <div className="block lg:hidden space-y-6">
             {groupedMobile.map((g, gi) => (
-              <div key={gi} className="rounded-xl border bg-white shadow-sm overflow-hidden">
-                {/* Encabezado de día (neutro) */}
-                <div className="px-4 py-2 border-b bg-white flex items-center justify-between">
-                  <div className="text-sm font-semibold text-slate-700">{g.label}</div>
-                  <div className="text-xs text-slate-500">
-                    {g.items.length} {g.items.length === 1 ? 'curso' : 'cursos'}
-                  </div>
+              <div key={gi} className="bg-white rounded-[30px] border border-gray-100 shadow-xl shadow-gray-100/50 overflow-hidden">
+                <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="text-sm font-black text-gray-700 uppercase tracking-widest">{g.label}</h3>
+                  <span className="px-3 py-1 bg-white rounded-full text-[10px] font-black text-gray-400 uppercase shadow-sm border border-gray-100">
+                    {g.items.length} {g.items.length === 1 ? 'Clase' : 'Clases'}
+                  </span>
                 </div>
-
-                {/* Listado de tarjetas por curso (sin hora adentro) */}
-                <div className="p-3 space-y-3">
+                
+                <div className="p-4 space-y-4">
                   {g.items.length === 0 ? (
-                    <div className="text-slate-500 text-sm">Sin cursos</div>
-                  ) : g.items.map((c) => (
-                    <div
-                      key={c.id}
-                      className="px-3 py-2 rounded-2xl text-white shadow-sm border border-white/20"
-                      style={{ background: teacherGradient(c.teacher_name) }}
-                    >
-                      <div className="text-[14px] font-semibold leading-5">{c.name}</div>
-                      <div className="mt-1 text-[12px] opacity-95 space-x-3 flex items-center flex-wrap">
-                        {c.teacher_name && (
-                          <span className="inline-flex items-center gap-1">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z" fill="currentColor"/></svg>
-                            {c.teacher_name}
-                          </span>
-                        )}
-                        {c.start_date && (
-                          <span className="inline-flex items-center gap-1">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7 2v2H5a2 2 0 0 0-2 2v2h18V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2Zm14 8H3v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Zm-12 3h2v2H9Zm4 0h2v2h-2Zm-4 4h2v2H9Zm4 0h2v2h-2Z" fill="currentColor"/></svg>
-                            Inicio: {fmtDateISO(c.start_date)}
-                          </span>
-                        )}
-                        {/* Si quieres mostrar hora en móvil, descomenta:
-                        {c.start_time && (
-                          <span className="inline-flex items-center gap-1">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 1a11 11 0 1 0 11 11A11 11 0 0 0 12 1Zm1 11H7v-2h4V5h2Z" fill="currentColor"/></svg>
-                            {hhmm(c.start_time)}{c.end_time ? `–${hhmm(c.end_time)}` : ''}
-                          </span>
-                        )} */}
+                    <div className="text-center py-6 text-gray-400 font-medium text-sm">No hay clases programadas</div>
+                  ) : (
+                    g.items.map((c) => (
+                      <div
+                        key={c.id}
+                        className="p-5 rounded-[24px] text-white shadow-md relative overflow-hidden"
+                        style={{ background: teacherGradient(c.teacher_name) }}
+                      >
+                        <div className="relative z-10">
+                          <h4 className="text-base font-black leading-tight drop-shadow-sm">{c.name}</h4>
+                          <div className="mt-4 flex flex-wrap gap-3">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest bg-black/10 px-3 py-1.5 rounded-xl backdrop-blur-sm">
+                              <HiOutlineClock size={14} />
+                              <span>{hhmm(c.start_time)} - {hhmm(c.end_time)}</span>
+                            </div>
+                            {c.teacher_name && (
+                              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest bg-black/10 px-3 py-1.5 rounded-xl backdrop-blur-sm">
+                                <HiOutlineUser size={14} />
+                                <span className="truncate max-w-[120px]">{c.teacher_name}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </>
       )}
     </div>
   )
 }
-
-

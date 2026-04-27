@@ -7,16 +7,16 @@ from sqlalchemy import select, func, and_, delete
 from pathlib import Path
 import secrets
 
-from apps.backend.app.pms.models import Tenant
-from apps.backend.app.pms.deps import (
+from app.pms.models import Tenant
+from app.pms.deps import (
     get_tenant_id,
     get_db_session,
     get_current_active_superuser,
     get_current_user,
 )
-from apps.backend.app.pms.schemas import TenantOut, TenantCreate, TenantUpdate, TenantSelfUpdate
-from apps.backend.app.core import security
-from apps.backend.app.pms import models
+from app.pms.schemas import TenantOut, TenantCreate, TenantUpdate, TenantSelfUpdate
+from app.core import security
+from app.pms import models
 
 
 router = APIRouter(prefix="/api/pms/tenants", tags=["pms-tenants"])
@@ -266,7 +266,7 @@ async def upload_tenant_logo(
     if len(content) > 2 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Logo supera 2 MB")
 
-    from apps.backend.app.main import static_dir  # type: ignore
+    from app.main import static_dir  # type: ignore
 
     filename = Path(file.filename or "logo").name
     stem = Path(filename).stem

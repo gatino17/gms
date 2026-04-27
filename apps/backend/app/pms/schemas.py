@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import date, time, datetime
 from typing import Optional
@@ -180,15 +180,13 @@ class CourseListItem(BaseModel):
     day_of_week_5: Optional[int] = None
     start_time_5: Optional[time] = None
     end_time_5: Optional[time] = None
-    day_of_week_2: Optional[int] = None
-    start_time_2: Optional[time] = None
-    end_time_2: Optional[time] = None
-    start_date: Optional[date] = None
-    price: Optional[Decimal] = None
-    class_price: Optional[Decimal] = None
     is_active: Optional[bool] = True
     teacher_name: Optional[str] = None
     room_name: Optional[str] = None
+    student_count: Optional[int] = 0
+    start_date: Optional[date] = None
+    price: Optional[Decimal] = None
+    class_price: Optional[Decimal] = None
 
 class CourseListResponse(BaseModel):
     items: list[CourseListItem]

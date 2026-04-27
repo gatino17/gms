@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
@@ -12,643 +12,197 @@ import {
   HiOutlineEye,
   HiOutlinePencil,
   HiOutlineTrash,
-  HiOutlineChevronLeft,
-  HiOutlineChevronRight,
   HiOutlineCheckCircle,
-  HiOutlineMinusCircle
+  HiOutlineXCircle,
+  HiOutlinePlus
 } from 'react-icons/hi'
 
 import CreateStudentModal from "../components/CreateStudentModal"
 import EditStudentModal   from "../components/EditStudentModal"
 import AddCourseModal from "../components/AddCourseModal"
 
-const fmtDisplayDate = (iso?: string | null) => {
-  if (!iso) return '-'
-  const parts = iso.split('-')
-  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
-  return iso
-}
-
-
 type Student = {
   id: number
-  tenant_id: number
   first_name: string
   last_name: string
   email?: string | null
   phone?: string | null
   gender?: string | null
-  notes?: string | null
   photo_url?: string | null
   joined_at?: string | null
-  birthdate?: string | null
   is_active?: boolean
-  created_at?: string
-  updated_at?: string
 }
-
-export type CourseLite = {
-  id:number; name:string;
-  image_url?: string|null;
-  level?: string|null;
-  course_type?: string|null;
-  classes_per_week?: number|null;
-  day_of_week?: number|null; start_time?: string|null; end_time?: string|null;
-  day_of_week_2?: number|null; start_time_2?: string|null; end_time_2?: string|null;
-  day_of_week_3?: number|null; start_time_3?: string|null; end_time_3?: string|null;
-  day_of_week_4?: number|null; start_time_4?: string|null; end_time_4?: string|null;
-  day_of_week_5?: number|null; start_time_5?: string|null; end_time_5?: string|null;
-  start_date?: string|null;
-  price?: number|string|null; class_price?: number|string|null;
-  teacher_name?: string|null; room_name?: string|null;
-}
-
-type EnrollItem = {
-  courseId: string
-  planType: 'monthly'|'single_class'
-  lessonsPerWeek: '1'|'2'
-  start: string
-  end: string
-  endAuto: boolean
-  payNow: boolean
-  paymentAmount: string
-  paymentMethod: 'cash'|'card'|'transfer'
-  paymentDate: string
-  paymentDiscount: string
-}
-
-const newEnrollItem = (): EnrollItem => ({
-  courseId: '',
-  planType: 'monthly',
-  lessonsPerWeek: '1',
-  start: '',
-  end: '',
-  endAuto: true,
-  payNow: false,
-  paymentAmount: '',
-  paymentMethod: 'cash',
-  paymentDate: '',
-  paymentDiscount: ''
-})
 
 export default function StudentsPage() {
   const navigate = useNavigate()
   const { tenantId } = useTenant()
 
   const [data, setData] = useState<Student[]>([])
-  const [total, setTotal] = useState(0)
-  const [stats, setStats] = useState({ total_active: 0, total_inactive: 0, female: 0, male: 0, new_this_week: 0 })
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const [q, setQ] = useState('')
-
-  // Crear vs Editar
+  const [stats, setStats] = useState({ total_active: 0, total_inactive: 0, female: 0, male: 0, new_this_week: 0 })
+  
   const [showCreate, setShowCreate] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
-  const [editId, setEditId] = useState<number | null>(null)
+  const [showAddCourse, setShowAddCourse] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
 
-  // Guardado / errores globales de modal
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-
-  // Form compartido
-  const [form, setForm] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    gender: '',
-    notes: '',
-    photo_url: '',
-    joined_at: '',
-    birthdate: '',
-    is_active: true,
-  })
-
-  // Imagen (ambos modales)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imageError, setImageError] = useState<string | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-
-  // Cursos e inscripci�n
-  const [courses, setCourses] = useState<CourseLite[]>([])
-  const [enrollItems, setEnrollItems] = useState<EnrollItem[]>([newEnrollItem()])
-  const [summaryMethod, setSummaryMethod] = useState<'cash'|'card'|'transfer'|'convenio'>('cash')
-  const [summaryDiscount, setSummaryDiscount] = useState<string>('')
-  const [summaryPaymentDate, setSummaryPaymentDate] = useState<string>('')
-  const [paymentMode, setPaymentMode] = useState<'none'|'total'|'per_course'>('none')
-  const [summaryReference, setSummaryReference] = useState<string>('')
-
-  // AddCourseModal (placeholder)
-  const [showEnrollModal, setShowEnrollModal] = useState(false)
-  const [enrollTarget, setEnrollTarget] = useState<{ id:number; name:string }|null>(null)
-
-  // Paginaci�n
-  const [page, setPage] = useState<number>(1)
-  const pageSize = 10
-
-  const load = async (pageOverride?: number) => {
+  const load = async () => {
     setLoading(true)
-    setError(null)
     try {
-      const currentPage = pageOverride ?? page
-      const params: any = { limit: pageSize, offset: (currentPage - 1) * pageSize }
-      if (q) params.q = q
-      const res = await api.get('/api/pms/students', { params })
-      const items = res.data?.items ?? (Array.isArray(res.data) ? res.data : [])
-      setData(items)
-      setTotal(res.data?.total ?? items.length)
-      if (res.data?.stats) {
-        const st = res.data.stats
-        setStats({
-          total_active: st.total_active ?? 0,
-          total_inactive: st.total_inactive ?? 0,
-          female: st.female ?? 0,
-          male: st.male ?? 0,
-          new_this_week: st.new_this_week ?? 0,
-        })
-      }
-    } catch (e: any) {
-      setError(e?.message ?? 'Error cargando alumnos')
-    } finally {
-      setLoading(false)
-    }
+      const res = await api.get('/api/pms/students', { params: { q, limit: 100 } })
+      setData(res.data.items)
+      setStats(res.data.stats)
+    } finally { setLoading(false) }
   }
 
+  useEffect(() => { load() }, [tenantId])
   useEffect(() => {
-    const id = setTimeout(() => { load() }, 250)
+    const id = setTimeout(() => load(), 300)
     return () => clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, page, tenantId])
+  }, [q, tenantId])
 
-  useEffect(() => {
-    const loadCourses = async () => {
-      try {
-        const res = await api.get('/api/pms/courses')
-        const items = res.data?.items ?? (Array.isArray(res.data) ? res.data : [])
-        setCourses(items.map((c:any):CourseLite=>({
-          id:c.id, name:c.name, image_url:c.image_url ?? null, level:c.level ?? null,
-          course_type:c.course_type ?? null, classes_per_week:c.classes_per_week ?? null,
-          day_of_week:c.day_of_week ?? null,
-          start_time:c.start_time ? String(c.start_time).slice(0,5) : null,
-          end_time:c.end_time ? String(c.end_time).slice(0,5) : null,
-          day_of_week_2:c.day_of_week_2 ?? null,
-          start_time_2:c.start_time_2 ? String(c.start_time_2).slice(0,5) : null,
-          end_time_2:c.end_time_2 ? String(c.end_time_2).slice(0,5) : null,
-          day_of_week_3:(c as any).day_of_week_3 ?? null,
-          start_time_3:(c as any).start_time_3 ? String((c as any).start_time_3).slice(0,5) : null,
-          end_time_3:(c as any).end_time_3 ? String((c as any).end_time_3).slice(0,5) : null,
-          day_of_week_4:(c as any).day_of_week_4 ?? null,
-          start_time_4:(c as any).start_time_4 ? String((c as any).start_time_4).slice(0,5) : null,
-          end_time_4:(c as any).end_time_4 ? String((c as any).end_time_4).slice(0,5) : null,
-          day_of_week_5:(c as any).day_of_week_5 ?? null,
-          start_time_5:(c as any).start_time_5 ? String((c as any).start_time_5).slice(0,5) : null,
-          end_time_5:(c as any).end_time_5 ? String((c as any).end_time_5).slice(0,5) : null,
-          start_date:c.start_date ?? null, price:c.price ?? null, class_price:c.class_price ?? null,
-          teacher_name:c.teacher_name ?? null, room_name:c.room_name ?? null,
-        })))
-      } catch {}
-    }
-    loadCourses()
-  }, [tenantId])
-
-  useEffect(() => {
-    if (imageFile) {
-      const url = URL.createObjectURL(imageFile)
-      setImagePreview(url)
-      return () => URL.revokeObjectURL(url)
-    }
-    setImagePreview(form.photo_url || null)
-  }, [imageFile, form.photo_url])
-
-  const getCourse = (cid: string) => courses.find(c => String(c.id) === cid)
-  const computeEnd = (start: string, lessons: '1'|'2', plan: 'monthly'|'single_class', courseId?: string) => {
-    if (!start) return ''
-    if (plan === 'single_class') return start
-
-    const course = courseId ? getCourse(courseId) : undefined
-    const scheduledDays = [
-      course?.day_of_week,
-      course?.day_of_week_2,
-      course?.day_of_week_3,
-      course?.day_of_week_4,
-      course?.day_of_week_5,
-    ].filter((v): v is number => typeof v === 'number')
-    const neededClasses = lessons === '2' ? 8 : 4
-
-    // Si tenemos horario, contamos clases reales hasta completar las 8 (o 4)
-    if (scheduledDays.length > 0) {
-      const d = new Date(start)
-      let taken = 0
-      let guard = 0
-      while (taken < neededClasses && guard < 400) {
-        if (scheduledDays.includes(d.getDay())) {
-          taken += 1
-          if (taken === neededClasses) break
-        }
-        d.setDate(d.getDate() + 1)
-        guard += 1
-      }
-      return d.toISOString().slice(0,10)
-    }
-
-    // Fallback: asumimos 4 semanas de duración
-    const weeksNeeded = Math.ceil(neededClasses / (lessons === '2' ? 2 : 1))
-    const d = new Date(start)
-    d.setDate(d.getDate() + (weeksNeeded - 1) * 7)
-    return d.toISOString().slice(0,10)
-  }
-  const updateEnroll = (idx: number, patch: Partial<EnrollItem>) => {
-    setEnrollItems(list => {
-      const next = [...list]
-      const cur = { ...next[idx], ...patch }
-      if (patch.courseId !== undefined && cur.planType === 'monthly') {
-        const c = getCourse(cur.courseId)
-        const cpw = (c?.classes_per_week ?? 1)
-        cur.lessonsPerWeek = cpw >= 2 ? '2' : '1'
-      }
-      if (patch.planType === 'single_class') cur.lessonsPerWeek = '1'
-      const needEndAuto = patch.start !== undefined || patch.lessonsPerWeek !== undefined || patch.planType !== undefined || patch.courseId !== undefined
-      if (needEndAuto && cur.endAuto) cur.end = computeEnd(cur.start, cur.lessonsPerWeek, cur.planType, cur.courseId)
-      if ((patch.courseId !== undefined || patch.planType !== undefined) && cur.payNow) {
-        const c = getCourse(cur.courseId)
-        const suggested = cur.planType === 'single_class' ? c?.class_price : c?.price
-        if (suggested != null && !Number.isNaN(Number(suggested))) cur.paymentAmount = String(suggested)
-      }
-      next[idx] = cur
-      return next
-    })
-  }
-  const suggestedAmountFor = (it: EnrollItem): number | null => {
-    const c = getCourse(it.courseId)
-    if (!c) return null
-    const raw = it.planType === 'single_class' ? c.class_price : c.price
-    const n = Number(raw)
-    return Number.isFinite(n) ? n : null
-  }
-
-  const metrics = {
-    totalActive: stats.total_active,
-    totalInactive: stats.total_inactive,
-    female: stats.female,
-    male: stats.male,
-    newThisWeek: stats.new_this_week,
-  }
-
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const pagedData = data
-  useEffect(() => {
-    const tp = Math.max(1, Math.ceil(total / pageSize))
-    if (page > tp) setPage(tp)
-  }, [total, pageSize, page])
-
-  // ? NUEVO: callback cuando se crea un alumno desde el modal
-  const handleCreated = async () => {
-    setShowCreate(false)
-    setQ('')                 // limpia buscador
-    setPage(1)
-    await load(1)            // recarga lista completa
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur()
+  const handleDelete = async (id: number) => {
+    if (confirm('¿Eliminar alumno permanentemente?')) {
+      await api.delete(`/api/pms/students/${id}`)
+      load()
     }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="h-1 rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-purple-600" />
-
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-fuchsia-500 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
-          <HiOutlineUserGroup className="text-fuchsia-500/80" />
-          Alumnos
-        </h1>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white shadow-sm transition bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
-            onClick={() => {
-              // Reset para CREAR
-              setEditId(null)
-              setSaveError(null)
-              setForm({ first_name:'', last_name:'', email:'', phone:'', gender:'', notes:'', photo_url:'', joined_at:'', birthdate:'', is_active:true })
-              setImageFile(null); setImageError(null); setEnrollItems([newEnrollItem()])
-              setSummaryMethod('cash'); setSummaryDiscount(''); setSummaryPaymentDate(''); setPaymentMode('none'); setSummaryReference('')
-              setShowCreate(true)
-            }}
-            title="Agregar alumno"
-          >
-            <HiOutlineUserAdd /> Agregar
-          </button>
+    <div className="max-w-7xl mx-auto space-y-8 pb-20">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Alumnos</h1>
+          <p className="text-gray-500 font-medium">Gestión centralizada de tu comunidad.</p>
         </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="px-8 py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black rounded-2xl shadow-xl shadow-fuchsia-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+        >
+          <HiOutlineUserAdd size={20} /> Registrar Alumno
+        </button>
       </div>
 
-      {/* M�tricas */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="p-3 bg-white rounded-xl border">
-          <div className="text-xs text-gray-500 flex items-center gap-1"><HiOutlineCheckCircle /> Activos</div>
-          <div className="text-xl font-semibold text-emerald-600">{metrics.totalActive}</div>
-        </div>
-        <div className="p-3 bg-white rounded-xl border">
-          <div className="text-xs text-gray-500 flex items-center gap-1"><HiOutlineMinusCircle /> Inactivos</div>
-          <div className="text-xl font-semibold text-rose-600">{metrics.totalInactive}</div>
-        </div>
-        <div className="p-3 bg-white rounded-xl border">
-          <div className="text-xs text-gray-500 flex items-center gap-1">Mujeres</div>
-          <div className="text-xl font-semibold text-pink-600">{metrics.female}</div>
-        </div>
-        <div className="p-3 bg-white rounded-xl border">
-          <div className="text-xs text-gray-500 flex items-center gap-1">Hombres</div>
-          <div className="text-xl font-semibold text-blue-600">{metrics.male}</div>
-        </div>
-        <div className="p-3 bg-white rounded-xl border">
-          <div className="text-xs text-gray-500 flex items-center gap-1"><HiOutlineCalendar /> Nuevos (7 dias)</div>
-          <div className="text-xl font-semibold">{metrics.newThisWeek}</div>
-        </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {[
+          { label: 'Total Activos', value: stats.total_active, icon: HiOutlineCheckCircle, color: 'emerald' },
+          { label: 'Inactivos', value: stats.total_inactive, icon: HiOutlineXCircle, color: 'gray' },
+          { label: 'Nuevos (Semana)', value: stats.new_this_week, icon: HiOutlineUserAdd, color: 'fuchsia' },
+          { label: 'Mujeres / Hombres', value: `${stats.female} / ${stats.male}`, icon: HiOutlineUserGroup, color: 'blue' },
+        ].map((s, i) => (
+          <div key={i} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div className={`p-3 w-12 h-12 rounded-2xl bg-${s.color}-50 text-${s.color}-600 mb-4 flex items-center justify-center`}>
+              <s.icon size={24} />
+            </div>
+            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
+            <div className="text-2xl font-black text-gray-900">{s.value}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Buscador */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            className="w-64 sm:w-80 border rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-200"
-            placeholder="Buscar (nombre o email)"
-            value={q}
-            onChange={(e) => { setQ(e.target.value); setPage(1) }}
-            autoComplete="off"
-            name="q"
-          />
-        </div>
-        <button className="px-4 py-2 rounded-lg border hover:bg-white" onClick={load}>Buscar</button>
+      {/* Search Bar */}
+      <div className="relative group">
+        <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={24} />
+        <input
+          className="w-full bg-white border-2 border-gray-100 rounded-3xl pl-14 pr-6 py-5 text-lg font-medium focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 transition-all outline-none"
+          placeholder="Buscar por nombre, apellido o correo..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
       </div>
 
-      {loading && <div className="mt-3">Cargando...</div>}
-      {error && <div className="mt-3 text-red-600">{error}</div>}
-
-      {!loading && !error && (
-        <>
-          <div className="bg-white rounded-xl border shadow-sm overflow-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="text-left">
-                  <th className="px-3 py-2 bg-gray-50/80">#</th>
-                  <th className="px-3 py-2 bg-gray-50/80">Foto</th>
-                  <th className="px-3 py-2 bg-gray-50/80">Nombre</th>
-                  <th className="px-3 py-2 bg-gray-50/80">Email</th>
-                  <th className="px-3 py-2 bg-gray-50/80">Telefono</th>
-                  <th className="px-3 py-2 bg-gray-50/80">Ingreso</th>
-                  <th className="px-3 py-2 bg-gray-50/80">Estado</th>
-                  <th className="px-3 py-2 bg-gray-50/80">Acciones</th>
+      {/* Table */}
+      <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
+        {loading ? (
+          <div className="flex flex-col items-center py-20 gap-4">
+             <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
+             <span className="font-bold text-fuchsia-600/60 uppercase tracking-widest text-xs">Sincronizando...</span>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50/50 text-left border-b border-gray-100">
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno</th>
+                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contacto</th>
+                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
+                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Ingreso</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {data.map((s) => (
+                <tr key={s.id} className="hover:bg-fuchsia-50/20 transition-colors group">
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center font-black overflow-hidden border-2 border-white shadow-sm">
+                        {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
+                      </div>
+                      <div>
+                        <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors">{s.first_name} {s.last_name}</div>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase">ID: #{s.id}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                        <HiOutlineMail className="text-fuchsia-400" /> {s.email || '-'}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                        <HiOutlinePhone className="text-fuchsia-400" /> {s.phone || '-'}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6 text-center">
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${s.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {s.is_active ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-6 text-center font-bold text-sm text-gray-500">
+                    {s.joined_at ? new Date(s.joined_at).toLocaleDateString('es-CL') : '-'}
+                  </td>
+                  <td className="px-8 py-6 text-right space-x-2">
+                    <button
+                      onClick={() => navigate(`/students/${s.id}`)}
+                      className="p-3 bg-fuchsia-50 text-fuchsia-600 rounded-xl hover:bg-fuchsia-100 transition-all"
+                      title="Ver Perfil"
+                    >
+                      <HiOutlineEye size={18} />
+                    </button>
+                    <button
+                      onClick={() => { setSelectedStudent(s); setShowEdit(true) }}
+                      className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-gray-600 hover:bg-gray-100 transition-all"
+                      title="Editar"
+                    >
+                      <HiOutlinePencil size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(s.id)}
+                      className="p-3 bg-rose-50 text-rose-400 rounded-xl hover:text-rose-600 hover:bg-rose-100 transition-all"
+                      title="Eliminar"
+                    >
+                      <HiOutlineTrash size={18} />
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {pagedData.map((s, idx) => {
-                  const missingData = !s.email || !s.phone || !s.photo_url
-                  return (
-                  <tr key={s.id} className="border-t">
-                    <td className="px-3 py-2">{(page - 1) * pageSize + idx + 1}</td>
-                    <td className="px-3 py-2">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center ring-2 ring-fuchsia-100">
-                        {s.photo_url ? (
-                          <img src={toAbsoluteUrl(s.photo_url)} alt={`${s.first_name} ${s.last_name}`} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xs text-gray-500 select-none">
-                            {`${(s.first_name||'').charAt(0)}${(s.last_name||'').charAt(0)}`.toUpperCase() || '�'}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="font-semibold text-fuchsia-700 flex items-center gap-2">
-                        {s.first_name} {s.last_name}
-                        {missingData && (
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-rose-700 border border-rose-200 bg-gradient-to-r from-rose-50 via-rose-100 to-rose-50"
-                            title="Faltan datos de contacto o foto"
-                          >
-                            Datos incompletos
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-500 flex items-center gap-1">
-                        {s.gender && <span>{s.gender}</span>}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="inline-flex items-center gap-1 text-gray-700">
-                        <HiOutlineMail className="text-gray-400" />
-                        {s.email ?? '-'}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="inline-flex items-center gap-1 text-gray-700">
-                        <HiOutlinePhone className="text-gray-400" />
-                        {s.phone ?? '-'}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="inline-flex items-center gap-1 text-gray-700">
-                        <HiOutlineCalendar className="text-gray-400" />
-                        {fmtDisplayDate(s.joined_at)}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <button
-                        className={`px-2 py-1 rounded-lg text-xs font-medium inline-flex items-center gap-1 transition
-                          ${s.is_active !== false
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                            : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'}`}
-                        onClick={async () => {
-                          try {
-                            await api.put(`/api/pms/students/${s.id}`, { is_active: !(s.is_active !== false) })
-                            await load()
-                          } catch {}
-                        }}
-                        title="Alternar estado"
-                      >
-                        {s.is_active !== false ? <HiOutlineCheckCircle /> : <HiOutlineMinusCircle />}
-                        {s.is_active !== false ? 'Activo' : 'Inactivo'}
-                      </button>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          className="px-3 py-1.5 text-sm rounded-lg border hover:bg-white inline-flex items-center gap-1"
-                          onClick={() => navigate(`/students/${s.id}`)}
-                          title="Ver detalle"
-                        >
-                          <HiOutlineEye /> Ver
-                        </button>
-                        <button
-                          className="px-3 py-1.5 text-sm rounded-lg border hover:bg-white inline-flex items-center gap-1"
-                          onClick={async () => {
-                            try {
-                              const res = await api.get(`/api/pms/students/${s.id}`)
-                              const x = res.data as Student
-                              setForm({
-                                first_name: x.first_name ?? '',
-                                last_name: x.last_name ?? '',
-                                email: x.email ?? '',
-                                phone: x.phone ?? '',
-                                gender: x.gender ?? '',
-                                notes: x.notes ?? '',
-                                photo_url: x.photo_url ?? '',
-                                joined_at: x.joined_at ?? '',
-                                birthdate: x.birthdate ?? '',
-                                is_active: x.is_active !== false,
-                              })
-                              setEditId(s.id)
-                              setSaveError(null)
-                              setImageFile(null); setImageError(null)
-                              setShowEdit(true)
-                            } catch {}
-                          }}
-                          title="Editar"
-                        >
-                          <HiOutlinePencil /> Editar
-                        </button>
-                        <button
-                          className="px-3 py-1.5 text-sm rounded-lg border border-red-300 text-red-700 hover:bg-red-50 inline-flex items-center gap-1"
-                          onClick={async ()=>{ if(!confirm('�Eliminar alumno?')) return; try{ await api.delete(`/api/pms/students/${s.id}`); await load(); } catch{} }}
-                          title="Eliminar"
-                        >
-                          <HiOutlineTrash /> Eliminar
-                        </button>
-                        <button
-                          className="px-3 py-1.5 text-sm rounded-lg border hover:bg-white inline-flex items-center gap-1"
-                          title="Agregar curso"
-                          onClick={() => {
-                            const name = `${s.first_name||''} ${s.last_name||''}`.trim() || `Alumno ${s.id}`
-                            setEnrollTarget({ id: s.id, name })
-                            setShowEnrollModal(true)
-                          }}
-                        >
-                          <HiOutlineUserAdd /> Agregar curso
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )})}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-          {/* Paginacion */}
-          <div className="flex items-center justify-between mt-3">
-            <div className="text-sm text-gray-600">
-              Mostrando {(total === 0 ? 0 : (page - 1) * pageSize + 1)}-{Math.min(page * pageSize, total)} de {total}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border disabled:opacity-50 hover:bg-white"
-                disabled={page <= 1}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-              >
-                <HiOutlineChevronLeft /> Anterior
-              </button>
-              <span className="text-sm">Pagina {page} de {totalPages}</span>
-              <button
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border disabled:opacity-50 hover:bg-white"
-                disabled={page >= totalPages}
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              >
-                Siguiente <HiOutlineChevronRight />
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Modales */}
-      {showCreate && (
-        <CreateStudentModal
-          showCreate={showCreate}
-          setShowCreate={setShowCreate}
-          saving={saving}
-          setSaving={setSaving}
-          saveError={saveError}
-          setSaveError={setSaveError}
-          form={form}
-          setForm={setForm}
-          imageFile={imageFile}
-          setImageFile={setImageFile}
-          imageError={imageError}
-          setImageError={setImageError}
-          imagePreview={imagePreview}
-          enrollItems={enrollItems}
-          setEnrollItems={setEnrollItems}
-          summaryMethod={summaryMethod}
-          setSummaryMethod={setSummaryMethod}
-          summaryDiscount={summaryDiscount}
-          setSummaryDiscount={setSummaryDiscount}
-          paymentMode={paymentMode}
-          setPaymentMode={setPaymentMode}
-          summaryPaymentDate={summaryPaymentDate}
-          setSummaryPaymentDate={setSummaryPaymentDate}
-          summaryReference={summaryReference}
-          setSummaryReference={setSummaryReference}
-          getCourse={getCourse}
-          suggestedAmountFor={suggestedAmountFor}
-          updateEnroll={updateEnroll}
-          computeEnd={computeEnd}
-          courses={courses}
-          load={load}
-          onCreated={handleCreated}   // ? NUEVO
-        />
-      )}
-
-      {showEdit && (
+      {/* Modals */}
+      {showCreate && <CreateStudentModal onClose={() => setShowCreate(false)} onSuccess={() => { setShowCreate(false); load() }} />}
+      {showEdit && selectedStudent && (
         <EditStudentModal
-          editId={editId}
-          setEditId={setEditId}
-          showEdit={showEdit}
-          setShowEdit={setShowEdit}
-          saving={saving}
-          setSaving={setSaving}
-          saveError={saveError}
-          setSaveError={setSaveError}
-          form={form}
-          setForm={setForm}
-          imageFile={imageFile}
-          setImageFile={setImageFile}
-          imageError={imageError}
-          setImageError={setImageError}
-          imagePreview={imagePreview}
-          load={load}
+          student={selectedStudent as any}
+          onClose={() => { setShowEdit(false); setSelectedStudent(null) }}
+          onSuccess={() => { setShowEdit(false); setSelectedStudent(null); load() }}
         />
       )}
-
-      {showEnrollModal && enrollTarget && (
-        <AddCourseModal
-          open={showEnrollModal}
-          onClose={()=> setShowEnrollModal(false)}
-          studentId={enrollTarget.id}
-          studentName={enrollTarget.name}
-          courses={courses}
-          getCourse={getCourse}
-          suggestedAmountFor={(it)=> suggestedAmountFor({
-            courseId: it.courseId,
-            planType: it.planType,
-            lessonsPerWeek: it.lessonsPerWeek,
-            start: it.start,
-            end: it.end,
-            endAuto: it.endAuto,
-            payNow: it.payNow,
-            paymentAmount: it.paymentAmount,
-            paymentDate: it.paymentDate,
-          } as any)}
-          computeEnd={computeEnd}
-          load={load}
-        />
-      )}
-
     </div>
   )
 }
-
-
-
-
-
-

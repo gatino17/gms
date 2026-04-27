@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Uplo
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.pms import models, schemas
-from apps.backend.app.pms.deps import get_db_session, get_tenant_id
+from app.pms import models, schemas
+from app.pms.deps import get_db_session, get_tenant_id
 
 router = APIRouter(prefix="/api/pms/announcements", tags=["pms-announcements"])
 
@@ -100,7 +100,7 @@ async def upload_announcement_image(
     if len(content) > 2 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Imagen supera 2 MB")
 
-    from apps.backend.app.main import static_dir  # type: ignore
+    from app.main import static_dir  # type: ignore
 
     filename = Path(file.filename or "image").name
     stem = Path(filename).stem

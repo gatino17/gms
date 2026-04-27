@@ -9,6 +9,10 @@ type StudioForm = {
   country: string
   city: string
   phone: string
+  instagram_url: string
+  tiktok_url: string
+  facebook_url: string
+  website_url: string
   is_superuser: boolean
 }
 
@@ -20,6 +24,10 @@ type StudioUpdateForm = {
   city: string
   phone: string
   logo_url: string
+  instagram_url: string
+  tiktok_url: string
+  facebook_url: string
+  website_url: string
   is_superuser: boolean
 }
 
@@ -33,6 +41,10 @@ type Studio = {
   city?: string | null
   phone?: string | null
   logo_url?: string | null
+  instagram_url?: string | null
+  tiktok_url?: string | null
+  facebook_url?: string | null
+  website_url?: string | null
   created_at: string
   admin_is_superuser?: boolean | null
 }
@@ -45,6 +57,10 @@ const defaultForm: StudioForm = {
   country: '',
   city: '',
   phone: '',
+  instagram_url: '',
+  tiktok_url: '',
+  facebook_url: '',
+  website_url: '',
   is_superuser: false,
 }
 
@@ -56,6 +72,10 @@ const defaultEditForm: StudioUpdateForm = {
   city: '',
   phone: '',
   logo_url: '',
+  instagram_url: '',
+  tiktok_url: '',
+  facebook_url: '',
+  website_url: '',
   is_superuser: false,
 }
 
@@ -79,6 +99,8 @@ export default function StudiosPage() {
   const [editError, setEditError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [createLogoFile, setCreateLogoFile] = useState<File | null>(null)
+  const [createLogoPreview, setCreateLogoPreview] = useState<string>('')
 
   const fetchStudios = async () => {
     setIsLoadingStudios(true)
@@ -107,6 +129,10 @@ export default function StudiosPage() {
         city: editTarget.city ?? '',
         phone: editTarget.phone ?? '',
         logo_url: editTarget.logo_url ?? '',
+        instagram_url: editTarget.instagram_url ?? '',
+        tiktok_url: editTarget.tiktok_url ?? '',
+        facebook_url: editTarget.facebook_url ?? '',
+        website_url: editTarget.website_url ?? '',
         is_superuser: !!editTarget.admin_is_superuser,
       })
       setEditMessage(null)
@@ -135,10 +161,25 @@ export default function StudiosPage() {
         country: normalizeOptional(form.country),
         city: normalizeOptional(form.city),
         phone: normalizeOptional(form.phone),
+        instagram_url: normalizeOptional(form.instagram_url),
+        tiktok_url: normalizeOptional(form.tiktok_url),
+        facebook_url: normalizeOptional(form.facebook_url),
+        website_url: normalizeOptional(form.website_url),
         is_superuser: !!form.is_superuser,
       })
-      setSuccess(`Estudio creado correctamente. Tenant asignado: ${data.slug}`)
+      if (createLogoFile) {
+        try {
+          await uploadLogoForTenant(data.id, createLogoFile)
+          setSuccess(`Estudio creado correctamente. Tenant asignado: ${data.slug} (logo subido)`)
+        } catch (e: any) {
+          setSuccess(`Estudio creado correctamente. Tenant asignado: ${data.slug} (logo no se pudo subir)`)
+        }
+      } else {
+        setSuccess(`Estudio creado correctamente. Tenant asignado: ${data.slug}`)
+      }
       setForm(defaultForm)
+      setCreateLogoFile(null)
+      setCreateLogoPreview('')
       await fetchStudios()
     } catch (err: any) {
       setError(err?.message || 'No se pudo crear el estudio.')
@@ -163,6 +204,10 @@ export default function StudiosPage() {
         city: normalizeOptional(editForm.city),
         phone: normalizeOptional(editForm.phone),
         logo_url: normalizeOptional(editForm.logo_url),
+        instagram_url: normalizeOptional(editForm.instagram_url),
+        tiktok_url: normalizeOptional(editForm.tiktok_url),
+        facebook_url: normalizeOptional(editForm.facebook_url),
+        website_url: normalizeOptional(editForm.website_url),
         is_superuser: !!editForm.is_superuser,
       })
       setEditMessage('Estudio actualizado correctamente.')
@@ -217,6 +262,14 @@ export default function StudiosPage() {
     } finally {
       setUploadingLogo(false)
     }
+  }
+
+  const uploadLogoForTenant = async (tenantId: number, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    await api.post<{ url: string }>('/api/pms/tenants/upload-logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data', 'X-Tenant-ID': tenantId },
+    })
   }
 
   return (
@@ -311,6 +364,84 @@ export default function StudiosPage() {
                 className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
                 placeholder="+56 9 1234 5678"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
+              <input
+                type="text"
+                value={form.instagram_url}
+                onChange={(e) => handleChange('instagram_url', e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                placeholder="https://instagram.com/tuestudio"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">TikTok</label>
+              <input
+                type="text"
+                value={form.tiktok_url}
+                onChange={(e) => handleChange('tiktok_url', e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                placeholder="https://tiktok.com/@tuestudio"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Facebook</label>
+              <input
+                type="text"
+                value={form.facebook_url}
+                onChange={(e) => handleChange('facebook_url', e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                placeholder="https://facebook.com/tuestudio"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sitio web</label>
+              <input
+                type="text"
+                value={form.website_url}
+                onChange={(e) => handleChange('website_url', e.target.value)}
+                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                placeholder="https://www.tuestudio.cl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Logo (opcional)</label>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full border bg-white flex items-center justify-center overflow-hidden">
+                  {createLogoPreview ? (
+                    <img src={createLogoPreview} alt="logo preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-gray-500">Sin logo</span>
+                  )}
+                </div>
+                <label className="px-3 py-2 rounded border border-fuchsia-300 text-sm text-fuchsia-700 font-semibold cursor-pointer hover:bg-fuchsia-50">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      setCreateLogoFile(file)
+                      setCreateLogoPreview(URL.createObjectURL(file))
+                    }}
+                  />
+                  Subir logo
+                </label>
+                {createLogoPreview && (
+                  <button
+                    type="button"
+                    className="text-xs text-gray-600 hover:text-gray-800"
+                    onClick={() => {
+                      setCreateLogoFile(null)
+                      setCreateLogoPreview('')
+                    }}
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -502,6 +633,42 @@ export default function StudiosPage() {
                   type="text"
                   value={editForm.phone}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
+                <input
+                  type="text"
+                  value={editForm.instagram_url}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, instagram_url: e.target.value }))}
+                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">TikTok</label>
+                <input
+                  type="text"
+                  value={editForm.tiktok_url}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, tiktok_url: e.target.value }))}
+                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Facebook</label>
+                <input
+                  type="text"
+                  value={editForm.facebook_url}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, facebook_url: e.target.value }))}
+                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sitio web</label>
+                <input
+                  type="text"
+                  value={editForm.website_url}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, website_url: e.target.value }))}
                   className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
                 />
               </div>

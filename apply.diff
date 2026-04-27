@@ -1,0 +1,38 @@
+﻿*** Begin Patch
+*** Update File: apps/backend/app/pms/deps.py
+@@
+-async def get_tenant_id(
+-    x_tenant_id: int | None = Header(default=None, alias="X-Tenant-ID"),
+-    current_user: models.User = Depends(get_current_user),
+-) -> int:
+-    if x_tenant_id is None:
+-        if current_user.is_superuser and current_user.tenant_id:
+-            return current_user.tenant_id
+-        raise HTTPException(status_code=400, detail="X-Tenant-ID header requerido")
+-    if not current_user.is_superuser:
+-        if current_user.tenant_id is None:
+-            raise HTTPException(status_code=403, detail="Usuario sin tenant asignado")
+-        if x_tenant_id != current_user.tenant_id:
+-            raise HTTPException(status_code=403, detail="Tenant no permitido")
+-    return x_tenant_id
++async def get_tenant_id(
++    x_tenant_id: int | None = Header(default=None, alias="X-Tenant-ID"),
++    current_user: models.User = Depends(get_current_user),
++) -> int:
++    # Superusuario: si no envía header, permitir usando su tenant_id si existe; si no, debe especificar.
++    if current_user.is_superuser:
++        if x_tenant_id is not None:
++            return x_tenant_id
++        if current_user.tenant_id:
++            return current_user.tenant_id
++        raise HTTPException(status_code=400, detail="X-Tenant-ID requerido para superusuario sin tenant asignado")
++
++    # Usuarios no superuser: requieren header y debe coincidir con su tenant asignado.
++    if x_tenant_id is None:
++        raise HTTPException(status_code=400, detail="X-Tenant-ID header requerido")
++    if current_user.tenant_id is None:
++        raise HTTPException(status_code=403, detail="Usuario sin tenant asignado")
++    if x_tenant_id != current_user.tenant_id:
++        raise HTTPException(status_code=403, detail="Tenant no permitido")
++    return x_tenant_id
+*** End Patch

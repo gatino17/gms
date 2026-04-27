@@ -149,43 +149,52 @@ export default function SettingsPage() {
   const logoSrc = toAbsoluteUrl(settings.logo_url)
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Configuracion del estudio</h1>
-        <p className="text-gray-600">Vista informativa de tu tenant y gestion de salas.</p>
-      </div>
-
-      <div className="bg-white rounded-xl shadow p-6 space-y-5 border">
-        <div className="flex flex-wrap items-center gap-6">
-          <div className="h-24 w-24 rounded-full bg-white border border-dashed border-amber-200 shadow-inner flex items-center justify-center overflow-hidden">
+    <div className="max-w-5xl mx-auto space-y-6 px-4 pb-6">
+      <div className="bg-gradient-to-r from-fuchsia-600 via-purple-500 to-indigo-500 text-white rounded-2xl p-6 shadow-lg flex flex-col gap-4">
+        <div className="flex items-center gap-4">
+          <div className="h-20 w-20 rounded-full bg-white/10 border border-white/30 shadow-inner flex items-center justify-center overflow-hidden">
             {logoSrc ? (
               <img src={logoSrc} alt="Logo" className="h-full w-full object-contain" />
             ) : (
-              <span className="text-sm text-gray-500">Logo</span>
+              <span className="text-sm text-white/80">Logo</span>
             )}
           </div>
-          <div className="space-y-1">
-            <p className="text-lg font-semibold text-gray-900">{settings.name || 'Sin nombre'}</p>
-            <p className="text-sm text-gray-600">{settings.contact_email || 'Sin correo'}</p>
-            <p className="text-xs text-gray-500">Datos en solo lectura</p>
+          <div className="flex-1">
+            <p className="text-xl font-semibold">{settings.name || 'Sin nombre'}</p>
+            <p className="text-sm text-white/80">{settings.contact_email || 'Sin correo'}</p>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+              {settings.city ? <span className="px-3 py-1 rounded-full bg-white/15 border border-white/20">{settings.city}</span> : null}
+              {settings.country ? <span className="px-3 py-1 rounded-full bg-white/15 border border-white/20">{settings.country}</span> : null}
+              {settings.phone ? <span className="px-3 py-1 rounded-full bg-white/15 border border-white/20">{settings.phone}</span> : null}
+            </div>
           </div>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <InfoItem label="Direccion" value={settings.address} compact onDark />
+          <InfoItem label="Codigo postal" value={settings.postal_code} compact onDark />
+          <InfoItem label="Ciudad" value={settings.city} compact onDark />
+          <InfoItem label="Pais" value={settings.country} compact onDark />
+        </div>
+      </div>
 
+      <div className="bg-white rounded-2xl shadow p-6 space-y-5 border border-gray-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Contacto y WhatsApp</h2>
+            <p className="text-sm text-gray-600">Mensajes y vias de comunicacion.</p>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InfoItem label="Direccion" value={settings.address} />
-          <InfoItem label="Ciudad" value={settings.city} />
-          <InfoItem label="Pais" value={settings.country} />
-          <InfoItem label="Codigo postal" value={settings.postal_code} />
           <InfoItem label="Telefono" value={settings.phone} />
+          <InfoItem label="Correo" value={settings.contact_email} />
           <div className="md:col-span-2">
             <InfoItem label="Mensaje WhatsApp" value={settings.whatsapp_message} multiline />
           </div>
         </div>
-
         {error && <div className="rounded-md bg-red-50 text-red-800 px-4 py-2">{error}</div>}
       </div>
 
-      <div className="bg-white rounded-xl shadow p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow p-6 space-y-4 border border-gray-100">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Salas</h2>
@@ -255,16 +264,32 @@ export default function SettingsPage() {
   )
 }
 
-function InfoItem({ label, value, multiline = false }: { label: string; value?: string | null; multiline?: boolean }) {
+function InfoItem({
+  label,
+  value,
+  multiline = false,
+  compact = false,
+  onDark = false,
+}: {
+  label: string
+  value?: string | null
+  multiline?: boolean
+  compact?: boolean
+  onDark?: boolean
+}) {
+  const wrapperClasses = compact
+    ? 'rounded-lg px-3 py-2 border border-white/20 bg-white/10 text-white'
+    : `rounded border ${onDark ? 'border-white/20 bg-white/10 text-white' : 'border-gray-200 bg-gray-50 text-gray-800'} px-3 py-2`
+  const labelClasses = onDark ? 'text-xs text-white/80' : 'text-sm text-gray-500'
   return (
     <div className="space-y-1">
-      <p className="text-sm text-gray-500">{label}</p>
+      <p className={labelClasses}>{label}</p>
       {multiline ? (
-        <div className="min-h-[60px] rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 whitespace-pre-wrap">
+        <div className={`${wrapperClasses} min-h-[60px] whitespace-pre-wrap text-sm`}>
           {value || '--'}
         </div>
       ) : (
-        <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
+        <div className={`${wrapperClasses} text-sm`}>
           {value || '--'}
         </div>
       )}

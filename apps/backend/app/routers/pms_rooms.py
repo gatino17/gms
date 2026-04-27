@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from apps.backend.app.pms.models import Room
-from apps.backend.app.pms.deps import get_tenant_id, get_db_session
+from app.pms.models import Room
+from app.pms.deps import get_tenant_id, get_db_session
 from pydantic import BaseModel
 from typing import Optional
 

@@ -9,12 +9,12 @@ from sqlalchemy.orm import selectinload
 import secrets
 from datetime import datetime
 
-from apps.backend.app.core import security
+from app.core import security
 
-from apps.backend.app.pms.models import Student, Tenant
-from apps.backend.app.pms.models import Course, Enrollment, Attendance, Payment, Teacher
-from apps.backend.app.pms.schemas import StudentOut, StudentCreate, StudentUpdate, StudentListResponse, StudentStats
-from apps.backend.app.pms.deps import get_tenant_id, get_db_session, get_current_student
+from app.pms.models import Student, Tenant
+from app.pms.models import Course, Enrollment, Attendance, Payment, Teacher
+from app.pms.schemas import StudentOut, StudentCreate, StudentUpdate, StudentListResponse, StudentStats
+from app.pms.deps import get_tenant_id, get_db_session, get_current_student
 
 router = APIRouter(prefix="/api/pms/students", tags=["pms-students"])
 
@@ -26,7 +26,7 @@ _portal_codes: dict[tuple[str, int | None], dict[str, object]] = {}
 async def list_students(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
-    q: str | None = Query(default=None, description="Filtro por nombre o email"),
+    q: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
 ):
@@ -35,36 +35,38 @@ async def list_students(
         like = f"%{q}%"
         conditions.append((Student.first_name.ilike(like)) | (Student.last_name.ilike(like)) | (Student.email.ilike(like)))
 
-    stmt = select(Student).where(*conditions)
-    res = await db.execute(
-        stmt.order_by(Student.created_at.desc()).offset(offset).limit(limit)
-    )
+    # Fetch items
+    stmt = select(Student).where(*conditions).order_by(Student.created_at.desc()).offset(offset).limit(limit)
+    res = await db.execute(stmt)
     items = res.scalars().all()
 
-    total = await db.scalar(select(func.count()).select_from(Student).where(*conditions)) or 0
-
+    # Combine total count and stats into ONE query
     lower_gender = func.lower(Student.gender)
     female_case = case((lower_gender.like('f%'), 1), (lower_gender.like('muj%'), 1), else_=0)
     male_case = case((lower_gender.like('m%'), 1), (lower_gender.like('hombre%'), 1), (lower_gender.like('masculino%'), 1), else_=0)
     week_cut = date.today() - timedelta(days=7)
+    
     stats_stmt = select(
-        func.sum(case((Student.is_active == True, 1), else_=0)).label('total_active'),
-        func.sum(case((Student.is_active == False, 1), else_=0)).label('total_inactive'),
+        func.count().label('total'),
+        func.sum(case((Student.is_active == True, 1), else_=0)).label('active'),
+        func.sum(case((Student.is_active == False, 1), else_=0)).label('inactive'),
         func.sum(female_case).label('female'),
         func.sum(male_case).label('male'),
-        func.sum(case(((Student.joined_at != None) & (Student.joined_at >= week_cut), 1), else_=0)).label('new_this_week'),
+        func.sum(case(((Student.joined_at != None) & (Student.joined_at >= week_cut), 1), else_=0)).label('new_week'),
     ).where(*conditions)
+    
     sres = await db.execute(stats_stmt)
-    srow = sres.one()
+    row = sres.one()
+    
     stats = StudentStats(
-        total_active=int(srow.total_active or 0),
-        total_inactive=int(srow.total_inactive or 0),
-        female=int(srow.female or 0),
-        male=int(srow.male or 0),
-        new_this_week=int(srow.new_this_week or 0),
+        total_active=int(row.active or 0),
+        total_inactive=int(row.inactive or 0),
+        female=int(row.female or 0),
+        male=int(row.male or 0),
+        new_this_week=int(row.new_week or 0),
     )
 
-    return {"items": items, "total": int(total), "stats": stats}
+    return {"items": items, "total": int(row.total or 0), "stats": stats}
 
 
 @router.get("/{student_id}", response_model=StudentOut)
@@ -146,8 +148,8 @@ async def upload_student_photo(
     if not obj:
         raise HTTPException(status_code=404, detail="Alumno no encontrado")
 
-    # Use the same static dir mounted in main
-    from apps.backend.app.main import static_dir  # type: ignore
+    # Compute static_dir locally to avoid circular import
+    static_dir = Path(__file__).resolve().parent.parent / "static"
     target = static_dir / "uploads" / "students" / str(tenant_id) / str(student_id)
     target.mkdir(parents=True, exist_ok=True)
     filename = Path(file.filename or "photo").name
@@ -491,3 +493,93 @@ async def attendance_calendar(
 
 
 
+@router.get("/{student_id}/full_stats")
+async def get_student_full_stats(
+    student_id: int,
+    tenant_id: int = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    from datetime import date, timedelta
+    
+    # Obtener todas las matrículas del alumno con sus cursos
+    eres = await db.execute(
+        select(Enrollment, Course)
+        .join(Course, Course.id == Enrollment.course_id)
+        .where(Enrollment.tenant_id == tenant_id, Enrollment.student_id == student_id)
+    )
+    enrolls = eres.all()
+    
+    if not enrolls:
+        return {}
+
+    # Fecha límite para cálculo (hoy + 6 meses para horizonte futuro)
+    today = date.today()
+    future_horizon = today + timedelta(days=180)
+    
+    results = {}
+    
+    for e, c in enrolls:
+        start = e.start_date
+        end = e.end_date
+        if not start:
+            continue
+            
+        course_id = c.id
+        
+        # Días de la semana del curso
+        dows = []
+        for attr in ("day_of_week", "day_of_week_2", "day_of_week_3", "day_of_week_4", "day_of_week_5"):
+            v = getattr(c, attr, None)
+            if v is not None:
+                dows.append(int(v))
+        
+        if not dows:
+            continue
+
+        # 1. Calcular Esperados (dentro del periodo de matrícula)
+        expected_count = 0
+        if end:
+            for target_dow in dows:
+                cur = start
+                # Alinear al primer día de clase
+                diff = (target_dow - cur.weekday() + 7) % 7
+                cur += timedelta(days=diff)
+                while cur <= end:
+                    expected_count += 1
+                    cur += timedelta(days=7)
+
+        # 2. Calcular Asistidos (desde inicio hasta horizonte futuro)
+        ares = await db.execute(
+            select(func.count(Attendance.id))
+            .where(
+                Attendance.tenant_id == tenant_id,
+                Attendance.student_id == student_id,
+                Attendance.course_id == course_id,
+                Attendance.attended_at >= start,
+                Attendance.attended_at <= future_horizon
+            )
+        )
+        attended_count = ares.scalar() or 0
+        
+        # 3. Calcular Extra Outside (asistencias después del fin de matrícula)
+        extra_outside = 0
+        if end:
+            a_extra_res = await db.execute(
+                select(func.count(Attendance.id))
+                .where(
+                    Attendance.tenant_id == tenant_id,
+                    Attendance.student_id == student_id,
+                    Attendance.course_id == course_id,
+                    Attendance.attended_at > end,
+                    Attendance.attended_at <= future_horizon
+                )
+            )
+            extra_outside = a_extra_res.scalar() or 0
+
+        results[e.id] = {
+            "expected": expected_count,
+            "attended": attended_count,
+            "extraOutside": extra_outside
+        }
+
+    return results

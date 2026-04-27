@@ -16,16 +16,20 @@ import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Linking from 'expo-linking'
 
-const INSTAGRAM_URL = 'https://www.instagram.com/puertomonttsalsa_oficial/'
-const TIKTOK_URL = 'https://www.tiktok.com/@puertomonttsalsa'
-const FACEBOOK_URL = 'https://www.facebook.com/puertomonttsalsa'
-
 const jsDayFromCourse = (dow) => {
   if (dow === undefined || dow === null) return null
   const num = Number(dow)
   if (Number.isNaN(num)) return null
   // app usa 0=Lun...6=Dom, JS usa 0=Dom
   return (num + 1) % 7
+}
+
+const ensureUrl = (value) => {
+  if (!value) return null
+  const v = String(value).trim()
+  if (!v) return null
+  if (v.startsWith('http://') || v.startsWith('https://')) return v
+  return `https://${v}`
 }
 
 const getNextClassDateTime = (enrollment) => {
@@ -148,6 +152,12 @@ export default function HomeTab({
   const monthClasses = portal.attendance?.recent?.length ?? 0
   const totalClasses = portal.attendance?.total ?? monthClasses
   const nextClassLabel = nextClassDate ? `${nextClassDate}${nextClassTime ? ` · ${nextClassTime}` : ''}` : null
+  const socialLinks = {
+    instagram: ensureUrl(portal?.tenant?.instagram_url),
+    tiktok: ensureUrl(portal?.tenant?.tiktok_url),
+    facebook: ensureUrl(portal?.tenant?.facebook_url),
+    website: ensureUrl(portal?.tenant?.website_url),
+  }
 
   return (
     <>
@@ -471,19 +481,42 @@ export default function HomeTab({
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Redes</Text>
-        <View style={[styles.row, { justifyContent: 'space-between', marginTop: 6 }]}>
-          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#fdf2f8' }]} onPress={() => Linking.openURL(INSTAGRAM_URL)}>
-            <Ionicons name="logo-instagram" size={18} color="#ec4899" />
-            <Text style={styles.socialPillText}>Instagram</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#f0f9ff' }]} onPress={() => Linking.openURL(TIKTOK_URL)}>
-            <Ionicons name="logo-tiktok" size={18} color="#0ea5e9" />
-            <Text style={styles.socialPillText}>TikTok</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.socialPill, { backgroundColor: '#eff6ff' }]} onPress={() => Linking.openURL(FACEBOOK_URL)}>
-            <Ionicons name="logo-facebook" size={18} color="#2563eb" />
-            <Text style={styles.socialPillText}>Facebook</Text>
-          </TouchableOpacity>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
+          {[
+            { key: 'instagram', label: 'Instagram', icon: 'logo-instagram', bg: '#fdf2f8', color: '#ec4899', url: socialLinks.instagram },
+            { key: 'tiktok', label: 'TikTok', icon: 'logo-tiktok', bg: '#f0f9ff', color: '#0ea5e9', url: socialLinks.tiktok },
+            { key: 'facebook', label: 'Facebook', icon: 'logo-facebook', bg: '#eff6ff', color: '#2563eb', url: socialLinks.facebook },
+            { key: 'website', label: 'Web', icon: 'globe-outline', bg: '#f5f5f5', color: '#4b5563', url: socialLinks.website },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.key}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                borderRadius: 14,
+                backgroundColor: item.bg,
+                borderWidth: 1,
+                borderColor: item.url ? 'transparent' : '#e5e7eb',
+                opacity: item.url ? 1 : 0.6,
+                minWidth: 150,
+              }}
+              disabled={!item.url}
+              onPress={() => item.url && Linking.openURL(item.url)}
+            >
+              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.04)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={item.icon} size={18} color={item.color} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.socialPillText, { color: '#111827', fontWeight: '700' }]}>{item.label}</Text>
+                {!item.url ? (
+                  <Text style={[styles.socialPillText, { fontSize: 11, color: '#9ca3af' }]}>No configurado</Text>
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 

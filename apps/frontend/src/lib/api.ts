@@ -1,6 +1,6 @@
-﻿import axios, { AxiosError } from 'axios'
+import axios, { AxiosError } from 'axios'
 
-export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8002'
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
 const TENANT_KEY = 'tenantId'
 
 export const api = axios.create({
@@ -70,13 +70,9 @@ api.interceptors.response.use(
 /** Convierte URL relativa a absoluta usando BASE_URL. */
 export function toAbsoluteUrl(pathOrUrl?: string | null): string | undefined {
   if (!pathOrUrl) return undefined
-  try {
-    const u = new URL(pathOrUrl) // ya es absoluta
-    return u.toString()
-  } catch {
-    // Relativa: normaliza slashes
-    const left = BASE_URL.replace(/\/+$/, '')
-    const right = String(pathOrUrl).replace(/^\/+/, '')
-    return `${left}/${right}`
-  }
+  if (pathOrUrl.startsWith('http')) return pathOrUrl
+  
+  const left = BASE_URL.replace(/\/+$/, '')
+  const right = String(pathOrUrl).replace(/^\/+/, '')
+  return `${left}/${right}`
 }

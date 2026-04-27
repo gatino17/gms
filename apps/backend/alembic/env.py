@@ -24,8 +24,8 @@ if BASE_DIR not in sys.path:
 # Load app metadata
 def get_target_metadata():
     # Import models to register them on Base.metadata
-    from apps.backend.app.db.base import Base
-    import apps.backend.app.pms.models  # noqa: F401
+    from app.db.base import Base
+    import app.pms.models  # noqa: F401
 
     return Base.metadata
 
@@ -35,7 +35,7 @@ target_metadata = get_target_metadata()
 
 def _get_database_url() -> str:
     # Prefer env var if present; fallback to app settings
-    from apps.backend.app.core.config import settings
+    from app.core.config import settings
 
     url = os.getenv("DATABASE_URL", settings.database_url)
     # Alembic needs sync driver; convert asyncpg URL if necessary

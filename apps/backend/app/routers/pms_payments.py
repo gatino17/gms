@@ -5,9 +5,9 @@ from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case
 
-from apps.backend.app.pms.models import Payment, Course, Teacher
-from apps.backend.app.pms.schemas import PaymentOut, PaymentCreate, PaymentUpdate, PaymentListResponse, PaymentByTeacherListResponse
-from apps.backend.app.pms.deps import get_tenant_id, get_db_session
+from app.pms.models import Payment, Course, Teacher
+from app.pms.schemas import PaymentOut, PaymentCreate, PaymentUpdate, PaymentListResponse, PaymentByTeacherListResponse
+from app.pms.deps import get_tenant_id, get_db_session
 
 router = APIRouter(prefix="/api/pms/payments", tags=["pms-payments"])
 

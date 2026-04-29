@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react'
 import { api, toAbsoluteUrl, getTenant } from '../lib/api'
 import { useTenant } from '../lib/tenant'
+import { 
+  HiOutlineOfficeBuilding, 
+  HiOutlineMail, 
+  HiOutlinePhone, 
+  HiOutlineLocationMarker, 
+  HiOutlineChatAlt2, 
+  HiOutlinePlus, 
+  HiOutlineTrash, 
+  HiOutlineCog,
+  HiOutlineSparkles,
+  HiOutlineUserGroup
+} from 'react-icons/hi'
 
 type TenantSettings = {
   id: number
@@ -54,7 +66,7 @@ export default function SettingsPage() {
       })()
       if (resolvedTenantId == null) {
         setLoading(false)
-        setError('Selecciona un tenant para cargar la configuracion.')
+        setError('Selecciona un tenant para cargar la configuración.')
         return
       }
       setLoading(true)
@@ -70,7 +82,7 @@ export default function SettingsPage() {
         }))
         await loadRooms(resolvedTenantId)
       } catch (e: any) {
-        setError(e?.message || 'No se pudo cargar la configuracion.')
+        setError(e?.message || 'No se pudo cargar la configuración.')
       } finally {
         setLoading(false)
       }
@@ -143,156 +155,199 @@ export default function SettingsPage() {
   }
 
   if (loading) {
-    return <div className="text-gray-700">Cargando configuracion...</div>
+    return (
+      <div className="py-40 text-center space-y-4">
+        <div className="w-10 h-10 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin mx-auto" />
+        <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest">Sincronizando ajustes...</span>
+      </div>
+    )
   }
 
   const logoSrc = toAbsoluteUrl(settings.logo_url)
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 px-4 pb-6">
-      <div className="bg-gradient-to-r from-fuchsia-600 via-purple-500 to-indigo-500 text-white rounded-2xl p-6 shadow-lg flex flex-col gap-4">
-        <div className="flex items-center gap-4">
-          <div className="h-20 w-20 rounded-full bg-white/10 border border-white/30 shadow-inner flex items-center justify-center overflow-hidden">
-            {logoSrc ? (
-              <img src={logoSrc} alt="Logo" className="h-full w-full object-contain" />
-            ) : (
-              <span className="text-sm text-white/80">Logo</span>
-            )}
+    <div className="max-w-6xl mx-auto space-y-10 pb-20 animate-in fade-in duration-700">
+      {/* Header */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Configuración</span>
+          <div className="h-1 w-1 rounded-full bg-gray-300" />
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Panel de Control</span>
+        </div>
+        <h1 className="text-4xl font-black text-gray-900 tracking-tight">Ajustes del Estudio</h1>
+        <p className="text-gray-500 font-medium">Gestiona la identidad de tu academia y la infraestructura física.</p>
+      </div>
+
+      {/* Profile Card */}
+      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm overflow-hidden relative group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-fuchsia-500/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-fuchsia-500/10 transition-all duration-700" />
+        
+        <div className="p-10 relative flex flex-col md:flex-row gap-10 items-center">
+          <div className="relative group/logo">
+             <div className="h-40 w-40 rounded-[40px] bg-gray-50 border-4 border-white shadow-2xl flex items-center justify-center overflow-hidden transition-transform duration-500 group-hover/logo:scale-105">
+                {logoSrc ? (
+                  <img src={logoSrc} alt="Logo" className="h-full w-full object-cover" />
+                ) : (
+                  <HiOutlineSparkles className="text-gray-200" size={60} />
+                )}
+             </div>
+             <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center text-fuchsia-600 border border-fuchsia-50">
+                <HiOutlineCog size={24} />
+             </div>
           </div>
-          <div className="flex-1">
-            <p className="text-xl font-semibold">{settings.name || 'Sin nombre'}</p>
-            <p className="text-sm text-white/80">{settings.contact_email || 'Sin correo'}</p>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs">
-              {settings.city ? <span className="px-3 py-1 rounded-full bg-white/15 border border-white/20">{settings.city}</span> : null}
-              {settings.country ? <span className="px-3 py-1 rounded-full bg-white/15 border border-white/20">{settings.country}</span> : null}
-              {settings.phone ? <span className="px-3 py-1 rounded-full bg-white/15 border border-white/20">{settings.phone}</span> : null}
+
+          <div className="flex-1 space-y-6 text-center md:text-left">
+            <div>
+              <h2 className="text-3xl font-black text-gray-900 tracking-tight">{settings.name || 'Estudio sin nombre'}</h2>
+              <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mt-1">{settings.city || 'Ciudad'}, {settings.country || 'País'}</p>
+            </div>
+
+            <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+               {settings.phone && (
+                 <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl text-xs font-black text-gray-600 uppercase tracking-widest">
+                   <HiOutlinePhone className="text-fuchsia-500" /> {settings.phone}
+                 </div>
+               )}
+               {settings.contact_email && (
+                 <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl text-xs font-black text-gray-600 uppercase tracking-widest">
+                   <HiOutlineMail className="text-fuchsia-500" /> {settings.contact_email}
+                 </div>
+               )}
+            </div>
+            
+            <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gray-50/50 p-5 rounded-3xl border border-gray-100 group-hover:bg-white transition-colors">
+                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Dirección Física</div>
+                 <div className="text-sm font-black text-gray-700 flex items-center gap-2">
+                   <HiOutlineLocationMarker className="text-fuchsia-400" /> {settings.address || '--'}
+                 </div>
+              </div>
+              <div className="bg-gray-50/50 p-5 rounded-3xl border border-gray-100 group-hover:bg-white transition-colors">
+                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Código Postal</div>
+                 <div className="text-sm font-black text-gray-700 flex items-center gap-2">
+                   <HiOutlineOfficeBuilding className="text-fuchsia-400" /> {settings.postal_code || '--'}
+                 </div>
+              </div>
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-          <InfoItem label="Direccion" value={settings.address} compact onDark />
-          <InfoItem label="Codigo postal" value={settings.postal_code} compact onDark />
-          <InfoItem label="Ciudad" value={settings.city} compact onDark />
-          <InfoItem label="Pais" value={settings.country} compact onDark />
+      </div>
+
+      {/* Communication Card */}
+      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+             <HiOutlineChatAlt2 className="text-2xl" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Comunicación Pro</h2>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Mensajería Automática</p>
+          </div>
+        </div>
+
+        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-3">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Mensaje Predeterminado WhatsApp</span>
+            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Activo</span>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 text-gray-700 text-sm font-medium leading-relaxed italic shadow-inner">
+            {settings.whatsapp_message || 'No se ha configurado un mensaje predeterminado.'}
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow p-6 space-y-5 border border-gray-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Contacto y WhatsApp</h2>
-            <p className="text-sm text-gray-600">Mensajes y vias de comunicacion.</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InfoItem label="Telefono" value={settings.phone} />
-          <InfoItem label="Correo" value={settings.contact_email} />
-          <div className="md:col-span-2">
-            <InfoItem label="Mensaje WhatsApp" value={settings.whatsapp_message} multiline />
-          </div>
-        </div>
-        {error && <div className="rounded-md bg-red-50 text-red-800 px-4 py-2">{error}</div>}
-      </div>
-
-      <div className="bg-white rounded-2xl shadow p-6 space-y-4 border border-gray-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Salas</h2>
-            <p className="text-sm text-gray-600">Crea y administra salas para asignarlas a cursos.</p>
+      {/* Rooms Section */}
+      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+               <HiOutlineOfficeBuilding className="text-2xl" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-900 tracking-tight">Infraestructura</h2>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Gestión de Salas y Espacios</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={addRoom}
-            className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60"
+            className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700 shadow-xl shadow-emerald-100 transition-all disabled:opacity-40 active:scale-95"
             disabled={!roomName.trim()}
           >
-            Agregar sala
+            <HiOutlinePlus size={18} /> Agregar Sala
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Nombre (obligatorio)"
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-          />
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Ubicacion"
-            value={roomLocation}
-            onChange={(e) => setRoomLocation(e.target.value)}
-          />
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Capacidad"
-            type="number"
-            min="0"
-            value={roomCapacity}
-            onChange={(e) => setRoomCapacity(e.target.value)}
-          />
-        </div>
-
-        {roomsError && <div className="text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded">{roomsError}</div>}
-        {roomsLoading ? (
-          <div className="text-sm text-gray-500">Cargando salas...</div>
-        ) : rooms.length === 0 ? (
-          <div className="text-sm text-gray-500">No hay salas creadas.</div>
-        ) : (
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            {rooms.map((r) => (
-              <div key={r.id} className="border rounded-lg p-3 flex items-center justify-between bg-gray-50">
-                <div>
-                  <div className="font-semibold text-gray-900">{r.name}</div>
-                  <div className="text-xs text-gray-600">
-                    {r.location ? `Ubicacion: ${r.location}` : 'Sin ubicacion'} · {r.capacity ? `${r.capacity} cupos` : 'Capacidad no definida'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => deleteRoom(r.id)}
-                  className="text-sm text-red-600 border border-red-200 rounded px-3 py-1 hover:bg-red-50"
-                >
-                  Eliminar
-                </button>
-              </div>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-2">
+             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Nombre de Sala</label>
+             <input
+               className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl font-bold text-gray-700 outline-none transition-all"
+               placeholder="Ej: Sala de Ballet"
+               value={roomName}
+               onChange={(e) => setRoomName(e.target.value)}
+             />
           </div>
-        )}
-      </div>
-    </div>
-  )
-}
+          <div className="space-y-2">
+             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Ubicación / Piso</label>
+             <input
+               className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl font-bold text-gray-700 outline-none transition-all"
+               placeholder="Ej: Segundo Piso"
+               value={roomLocation}
+               onChange={(e) => setRoomLocation(e.target.value)}
+             />
+          </div>
+          <div className="space-y-2">
+             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Capacidad Máxima</label>
+             <input
+               className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl font-bold text-gray-700 outline-none transition-all"
+               placeholder="Ej: 15"
+               type="number"
+               min="0"
+               value={roomCapacity}
+               onChange={(e) => setRoomCapacity(e.target.value)}
+             />
+          </div>
+        </div>
 
-function InfoItem({
-  label,
-  value,
-  multiline = false,
-  compact = false,
-  onDark = false,
-}: {
-  label: string
-  value?: string | null
-  multiline?: boolean
-  compact?: boolean
-  onDark?: boolean
-}) {
-  const wrapperClasses = compact
-    ? 'rounded-lg px-3 py-2 border border-white/20 bg-white/10 text-white'
-    : `rounded border ${onDark ? 'border-white/20 bg-white/10 text-white' : 'border-gray-200 bg-gray-50 text-gray-800'} px-3 py-2`
-  const labelClasses = onDark ? 'text-xs text-white/80' : 'text-sm text-gray-500'
-  return (
-    <div className="space-y-1">
-      <p className={labelClasses}>{label}</p>
-      {multiline ? (
-        <div className={`${wrapperClasses} min-h-[60px] whitespace-pre-wrap text-sm`}>
-          {value || '--'}
+        {roomsError && <div className="text-xs font-black text-rose-600 bg-rose-50 px-4 py-3 rounded-xl border border-rose-100">{roomsError}</div>}
+        
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 pt-6 border-t border-gray-50">
+          {roomsLoading ? (
+             <div className="col-span-full py-10 text-center animate-pulse text-gray-400 font-bold uppercase tracking-widest text-xs">Cargando salas...</div>
+          ) : rooms.length === 0 ? (
+             <div className="col-span-full py-20 text-center flex flex-col items-center justify-center gap-4">
+                <HiOutlineOfficeBuilding size={40} className="text-gray-100" />
+                <p className="text-xs font-black text-gray-300 uppercase tracking-[0.2em]">No hay salas registradas</p>
+             </div>
+          ) : rooms.map((r) => (
+            <div key={r.id} className="bg-gray-50/50 border border-gray-100 rounded-3xl p-6 hover:bg-white hover:shadow-xl hover:border-emerald-100 transition-all group">
+               <div className="flex items-start justify-between mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-black">
+                     {r.name[0]}
+                  </div>
+                  <button
+                    onClick={() => deleteRoom(r.id)}
+                    className="p-2 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                  >
+                    <HiOutlineTrash size={18} />
+                  </button>
+               </div>
+               <div>
+                 <div className="text-lg font-black text-gray-900 group-hover:text-emerald-600 transition-colors">{r.name}</div>
+                 <div className="flex flex-col gap-1 mt-2">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                       <HiOutlineLocationMarker /> {r.location || 'Sin ubicación'}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                       <HiOutlineUserGroup /> {r.capacity || 'Capacidad libre'} cupos
+                    </div>
+                 </div>
+               </div>
+            </div>
+          ))}
         </div>
-      ) : (
-        <div className={`${wrapperClasses} text-sm`}>
-          {value || '--'}
-        </div>
-      )}
+      </div>
     </div>
   )
 }

@@ -1,8 +1,30 @@
-﻿import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import * as XLSX from 'xlsx'
+import { 
+  HiOutlineSearch, 
+  HiOutlineDownload, 
+  HiOutlineFilter, 
+  HiOutlineCalendar, 
+  HiOutlineCash, 
+  HiOutlineCreditCard, 
+  HiOutlineSwitchHorizontal, 
+  HiOutlineCheckCircle,
+  HiOutlinePencil,
+  HiOutlineTrash,
+  HiOutlineTag,
+  HiOutlineChevronLeft,
+  HiOutlineChevronRight,
+  HiOutlineViewGrid,
+  HiOutlineViewList,
+  HiOutlineUserGroup,
+  HiOutlineCurrencyDollar,
+  HiOutlineArrowRight,
+  HiOutlineX
+} from 'react-icons/hi'
+import EditPaymentModal from '../components/EditPaymentModal'
 
 type Payment = {
   id: number
@@ -12,1051 +34,558 @@ type Payment = {
   course_name?: string | null
   teacher_name?: string | null
   amount: number
-  method: 'cash' | 'card' | 'transfer' | string
-  type: 'monthly' | 'single_class' | 'rental' | string
+  method: string
+  type: string
   reference?: string | null
   notes?: string | null
-  payment_date: string // YYYY-MM-DD
+  payment_date: string
 }
 
-type CourseRef = {
-  id:number; name:string; teacher_name?: string | null
-  // anadimos campos opcionales para mostrar "Sabado 14:00" si existen
-  day_of_week?: number|null
-  start_time?: string|null
+type PaymentStats = {
+  total_amount: number
+  cash_amount: number
+  card_amount: number
+  transfer_amount: number
+  agreement_amount: number
 }
-type StudentRef = { id:number; name:string }
-type Enrollment = { id:number; student_id:number; course_id:number; start_date:string; end_date?:string|null; is_active:boolean }
+
+type CourseRef = { id: number; name: string; teacher_name?: string | null; day_of_week?: number | null; start_time?: string | null }
+type StudentRef = { id: number; name: string }
+type Enrollment = { id: number; student_id: number; course_id: number; start_date: string; end_date?: string | null; is_active: boolean }
 
 const CL_TZ = 'America/Santiago'
 const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' })
-const DN = ['Lunes','Martes','Miercoles','Jueves','Viernes','Sabado','Domingo']
+const DN = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo']
 
-// ---------- Utilidades de fecha ----------
-function toYMDInTZ(d: Date, tz = CL_TZ): string {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' })
+// --- Utils ---
+function toYMDInTZ(d: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: CL_TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
     .formatToParts(d)
-    .reduce<Record<string,string>>((acc, p) => { if (p.type !== 'literal') acc[p.type] = p.value; return acc }, {})
+    .reduce<Record<string, string>>((acc, p) => { if (p.type !== 'literal') acc[p.type] = p.value; return acc }, {})
   return `${parts.year}-${parts.month}-${parts.day}`
 }
-function toDDMMYYYY(ymd?: string) {
-  return ymd ? `${ymd.split('-')[2]}-${ymd.split('-')[1]}-${ymd.split('-')[0]}` : ''
-}
-function ymdInCL(d: Date) { return toYMDInTZ(d, CL_TZ) }
-
-function daysInMonth(year:number, month0:number) { return new Date(year, month0 + 1, 0).getDate() }
+function toDDMMYYYY(ymd?: string) { return ymd ? ymd.split('-').reverse().join('-') : '' }
+function daysInMonth(year: number, month0: number) { return new Date(year, month0 + 1, 0).getDate() }
 function monthRangeFor(date = new Date()) {
   const y = date.getFullYear(); const m = date.getMonth()
-  const start = new Date(y, m, 1); const end = new Date(y, m + 1, 0)
-  return { start: ymdInCL(start), end: ymdInCL(end) }
-}
-function monthRangeOffset(offsetMonths = 0) {
-  const ref = new Date(); ref.setMonth(ref.getMonth() + offsetMonths)
-  return monthRangeFor(ref)
-}
-function nextMonthOf(yyyy_mm: string) {
-  const [ys, ms] = yyyy_mm.split('-'); let y = +ys; let m = +ms; m += 1; if (m===13){m=1;y+=1}
-  return `${y}-${String(m).padStart(2,'0')}`
+  return { start: toYMDInTZ(new Date(y, m, 1)), end: toYMDInTZ(new Date(y, m + 1, 0)) }
 }
 function cycleFromMonth(yyyy_mm: string, anchorDay: number) {
   const [ys, ms] = yyyy_mm.split('-'); const y = +ys; const m = +ms
-  const startDay = Math.min(anchorDay, daysInMonth(y, m-1))
-  const start = `${y}-${String(m).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`
-  const next = nextMonthOf(yyyy_mm); const [nyS, nmS] = next.split('-'); const ny = +nyS; const nm = +nmS
-  const endDay = Math.min(anchorDay-1, daysInMonth(ny, nm-1))
-  const end = `${ny}-${String(nm).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`
+  const startDay = Math.min(anchorDay, daysInMonth(y, m - 1))
+  const start = `${y}-${String(m).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`
+  const nextDate = new Date(y, m, 1); const ny = nextDate.getFullYear(); const nm = nextDate.getMonth() + 1
+  const endDay = Math.min(anchorDay - 1, daysInMonth(ny, nm - 1))
+  const end = `${ny}-${String(nm).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
   return { start, end }
-}
-
-// Detecta pagos que cuentan como "Convenio"
-function isAgreementPayment(p: Payment): boolean {
-  const notes = String(p.notes || '').toLowerCase()
-  const typeStr = String(p.type || '').toLowerCase()
-  const methodStr = String(p.method || '').toLowerCase()
-  const hasConvenioWord = notes.includes('convenio') || typeStr.includes('convenio') || methodStr.includes('convenio')
-  return hasConvenioWord || typeStr === 'agreement' || methodStr === 'agreement'
 }
 
 type ViewMode = 'detalle' | 'resumen-diario' | 'resumen-profesor'
 
 export default function PaymentsPage() {
   const { tenantId } = useTenant()
-  const [payments, setPayments] = useState<Payment[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<Payment[]>([])
   const [courses, setCourses] = useState<Record<number, CourseRef>>({})
   const [students, setStudents] = useState<Record<number, StudentRef>>({})
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // rango de fechas base
-  const todayYMD = toYMDInTZ(new Date(), CL_TZ)
-  const [dateFrom, setDateFrom] = useState<string>(todayYMD)
-  const [dateTo, setDateTo] = useState<string>(todayYMD)
-
-  // filtros
-  const [fMethod, setFMethod] = useState<string>("")
-  const [fType, setFType] = useState<string>("")
-  const [q, setQ] = useState<string>("")
-  const [debouncedQ, setDebouncedQ] = useState<string>("")
-  const [debouncedFrom, setDebouncedFrom] = useState<string>(todayYMD)
-  const [debouncedTo, setDebouncedTo] = useState<string>(todayYMD)
-  const [debouncedMethod, setDebouncedMethod] = useState<string>("")
-  const [debouncedType, setDebouncedType] = useState<string>("")
-  const [page, setPage] = useState<number>(1) 
-  const [pageSize, setPageSize] = useState<number>(20)
-  const [total, setTotal] = useState<number>(0)
-
-  // rango rapido
-  const [quickRange, setQuickRange] = useState<string>('dia_hoy')
-  const [pickMonth, setPickMonth] = useState<string>('')   // YYYY-MM
-  const [cycleMonth, setCycleMonth] = useState<string>('') // YYYY-MM
-
-  // vista
-  const [viewMode, setViewMode] = useState<ViewMode>('detalle')
-  const [tableLoading, setTableLoading] = useState(false)
-  const [firstLoad, setFirstLoad] = useState(true)
-  const [reloadKey, setReloadKey] = useState(0)
-
-  // modal edición/eliminación
-  const [editing, setEditing] = useState<Payment | null>(null)
-  const [editAmount, setEditAmount] = useState<string>('')
-  const [editMethod, setEditMethod] = useState<string>('cash')
-  const [editType, setEditType] = useState<string>('monthly')
-  const [editDate, setEditDate] = useState<string>('')
-  const [editReference, setEditReference] = useState<string>('')
-  const [editSaving, setEditSaving] = useState(false)
-  const [editError, setEditError] = useState<string | null>(null)
-
-  // Reset page when filters change
-  useEffect(() => { setPage(1) }, [q, fMethod, fType, dateFrom, dateTo, tenantId])
-
-  // debounce entradas para evitar múltiples fetch mientras se escribe
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      setDebouncedQ(q)
-      setDebouncedFrom(dateFrom)
-      setDebouncedTo(dateTo)
-      setDebouncedMethod(fMethod)
-      setDebouncedType(fType)
-    }, 280)
-    return () => clearTimeout(handle)
-  }, [q, dateFrom, dateTo, fMethod, fType])
-
-  useEffect(() => {
-    const load = async () => {
-      // solo mostramos loading fuerte en el primer render; luego usamos tableLoading ligero
-      setError(null)
-      if (firstLoad) setLoading(true)
-      setTableLoading(true)
-      try {
-        const params: any = {
-          limit: pageSize,
-          offset: (page - 1) * pageSize,
-        }
-        if (debouncedMethod) params.method = debouncedMethod
-        if (debouncedType) params.type = debouncedType
-        if (debouncedQ) params.q = debouncedQ
-        if (debouncedFrom) params.date_from = debouncedFrom
-        if (debouncedTo) params.date_to = debouncedTo
-
-        const [pres, cres, sres, eres] = await Promise.all([
-          api.get('/api/pms/payments', { params }),
-          api.get('/api/pms/courses'),
-          api.get('/api/pms/students'),
-          api.get('/api/pms/enrollments'),
-        ])
-        const paymentItems = (pres.data as any)?.items ?? pres.data ?? []
-        const paymentTotal = (pres.data as any)?.total ?? paymentItems.length
-        setPayments(paymentItems)
-        setTotal(paymentTotal)
-
-        const cMap: Record<number, CourseRef> = {}
-        for (const c of ( (cres.data as any)?.items ?? cres.data ?? [] )) {
-          cMap[c.id] = {
-            id:c.id,
-            name:c.name,
-            teacher_name:c.teacher_name,
-            day_of_week: ('day_of_week' in c) ? c.day_of_week : null,
-            start_time: ('start_time' in c && c.start_time) ? String(c.start_time).slice(0,5) : null,
-          }
-        }
-        setCourses(cMap)
-
-        const sMap: Record<number, StudentRef> = {}
-        for (const s of ((sres.data as any)?.items ?? sres.data ?? [])) sMap[s.id] = { id:s.id, name:`${s.first_name} ${s.last_name}`.trim() }
-        setStudents(sMap)
-
-        setEnrollments((eres.data || []).map((e:any)=>({
-          id:e.id, student_id:e.student_id, course_id:e.course_id,
-          start_date:e.start_date, end_date:e.end_date, is_active:!!e.is_active
-        })))
-      } catch (e:any) {
-        setError(e?.message || 'Error cargando pagos')
-      } finally {
-        setLoading(false)
-        setTableLoading(false)
-        setFirstLoad(false)
-      }
+  const [stats, setStats] = useState<PaymentStats>({ total_amount: 0, cash_amount: 0, card_amount: 0, transfer_amount: 0, agreement_amount: 0 })
+  
+  // Rango y Filtros
+  const { todayYMD, monthStartYMD } = useMemo(() => {
+    const d = new Date()
+    return { 
+      todayYMD: toYMDInTZ(d),
+      monthStartYMD: toYMDInTZ(new Date(d.getFullYear(), d.getMonth(), 1))
     }
-    load()
-  }, [tenantId, debouncedMethod, debouncedType, debouncedQ, page, pageSize, debouncedFrom, debouncedTo, reloadKey])
-
-  // Si cambian manualmente fechas ? personalizado
-  useEffect(() => {
-    if (quickRange !== 'mes_elegir' && quickRange !== 'ciclo_6a5') setQuickRange('personalizado')
-  }, [dateFrom, dateTo])
-
-  const methodLabel = (m:string) =>
-    m === 'cash'
-      ? 'Efectivo'
-      : m === 'card'
-        ? 'Tarjeta/Débito'
-        : m === 'transfer'
-          ? 'Transferencia'
-          : (m === 'agreement' || m === 'convenio') ? 'Convenio' : m
-  const typeLabel = (t:string) => {
-    const v = (t || '').toLowerCase()
-    if (v === 'monthly') return 'Mensualidad'
-    if (v === 'single_class') return 'Clase suelta'
-    if (v === 'agreement' || v === 'convenio') return 'Convenio'
-    if (v === 'rental' || v === 'arriendo') return 'Arriendo'
-    return t || '-'
-  }
-
-  // ---- Totales mes actual ----
-  const monthTotals = useMemo(() => {
-    const { start: monthStart, end: monthEnd } = monthRangeOffset(0)
-    let monthTotal = 0
-    const monthByMethod: Record<string, number> = { cash:0, card:0, transfer:0 }
-    let monthAgreement = 0
-    for (const p of payments) {
-      if (p.payment_date >= monthStart && p.payment_date <= monthEnd) {
-        const amt = Number(p.amount || 0)
-        monthTotal += amt
-        if (p.method in monthByMethod) monthByMethod[p.method] += amt
-        if (isAgreementPayment(p)) monthAgreement += amt
-      }
-    }
-    return { monthTotal, monthByMethod, monthAgreement }
-  }, [payments])
-
-  // ---- Totales del RANGO ----
-  const rangeTotals = useMemo(() => {
-    const from = dateFrom || '0000-01-01'
-    const to = dateTo || '9999-12-31'
-    let total = 0
-    const byMethod: Record<string, number> = { cash:0, card:0, transfer:0 }
-    let agreement = 0
-    for (const p of payments) {
-      if (p.payment_date >= from && p.payment_date <= to) {
-        const amt = Number(p.amount || 0)
-        total += amt
-        if (p.method in byMethod) byMethod[p.method] += amt
-        if (isAgreementPayment(p)) agreement += amt
-      }
-    }
-    return { total, byMethod, agreement }
-  }, [payments, dateFrom, dateTo])
-
-  function findPeriodForPayment(p: Payment): { start?: string, end?: string } {
-    if (!p.student_id || !p.course_id) return {}
-    const ymd = p.payment_date
-    const matches = enrollments.filter(e => e.student_id === p.student_id && e.course_id === p.course_id)
-    let best = matches.find(e => {
-      const s = e.start_date
-      const eend = e.end_date || e.start_date
-      return ymd >= s && ymd <= eend
-    })
-    if (!best) best = matches.filter(e => e.start_date <= ymd).sort((a,b)=> b.start_date.localeCompare(a.start_date))[0]
-    if (!best && matches.length > 0) {
-      best = matches.slice().sort((a,b)=> a.start_date.localeCompare(b.start_date))[0]
-    }
-    return best ? { start: best.start_date, end: best.end_date || best.start_date } : {}
-  }
-
-  // Texto corto de curso: "Nombre, Sabado 14:00"
-  function courseShort(c?: CourseRef): string {
-    if (!c) return '-'
-    const day = (typeof c.day_of_week === 'number') ? DN[Math.max(0, Math.min(6, c.day_of_week))] : null
-    const hh = c.start_time ? String(c.start_time).slice(0,5) : null
-    if (day && hh) return `${c.name}, ${day} ${hh}`
-    return c.name
-  }
-
-  // Normalizador (acentos y espacios)
-  const normalize = useCallback((s: string) => {
-    const lower = (s || '').toLowerCase().trim()
-    let noAccents = lower
-    try {
-      noAccents = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    } catch {
-      // normalize no disponible
-    }
-    return noAccents.replace(/\s+/g, ' ')
   }, [])
 
-  // Mapea pago -> fila normalizada
-  const mapPaymentToRow = useCallback((p: Payment) => {
-    const c = p.course_id ? courses[p.course_id!] : undefined
-    const student = p.student_name || (p.student_id ? (students[p.student_id!]?.name || '-') : '-') || '-'
-    const courseShortLabel  = courseShort(c)
-    const course  = p.course_name || courseShortLabel
-    const teacher = p.teacher_name || c?.teacher_name || '-'
-    const typeStr = typeLabel(p.type)
-    const methodStr = methodLabel(p.method)
-    let periodo = ''
-    if (p.type === 'monthly' || isAgreementPayment(p)) {
-      const per = findPeriodForPayment(p)
-      if (per.start && per.end) periodo = `${toDDMMYYYY(per.start)} a ${toDDMMYYYY(per.end)}`
-    } else if (p.type === 'single_class') {
-      periodo = `${toDDMMYYYY(p.payment_date)}`
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [q, setQ] = useState('')
+  const [fMethod, setFMethod] = useState('')
+  const [fType, setFType] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
+
+  // Vista
+  const [viewMode, setViewMode] = useState<ViewMode>('detalle')
+  const [quickRange, setQuickRange] = useState('todo')
+  const [pickMonth, setPickMonth] = useState('')
+  const [cycleMonth, setCycleMonth] = useState('')
+
+  // Modals
+  const [editing, setEditing] = useState<Payment | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const load = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const params: any = {
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+        q: q || undefined,
+        method: fMethod || undefined,
+        type: fType || undefined
+      }
+
+      const [pres, cres, sres, eres] = await Promise.all([
+        api.get('/api/pms/payments', { params }),
+        api.get('/api/pms/courses'),
+        api.get('/api/pms/students'),
+        api.get('/api/pms/enrollments')
+      ])
+
+      if (pres.data && pres.data.items) {
+        setData(pres.data.items)
+        setTotalItems(pres.data.total)
+        setStats(pres.data.stats)
+      } else {
+        // Fallback for old API format if somehow still active
+        setData(Array.isArray(pres.data) ? pres.data : [])
+        setTotalItems(Array.isArray(pres.data) ? pres.data.length : 0)
+      }
+
+      const cMap: Record<number, CourseRef> = {}
+      const coursesData = cres.data.items || cres.data || []
+      coursesData.forEach((c: any) => {
+        cMap[c.id] = { id: c.id, name: c.name, teacher_name: c.teacher_name, day_of_week: c.day_of_week, start_time: c.start_time }
+      })
+      setCourses(cMap)
+
+      const sMap: Record<number, StudentRef> = {}
+      const studentsData = sres.data.items || sres.data || []
+      studentsData.forEach((s: any) => {
+        sMap[s.id] = { id: s.id, name: `${s.first_name} ${s.last_name}`.trim() }
+      })
+      setStudents(sMap)
+
+      setEnrollments(eres.data || [])
+    } catch (err: any) {
+      console.error(err)
+      setError(err.response?.data?.detail || err.message || 'Error al cargar datos de pagos')
+    } finally {
+      setLoading(false)
     }
-    const searchText = normalize(
-      `${student} ${course} ${courseShortLabel} ${teacher} ${typeStr} ${methodStr} ${periodo} ${p.notes || ''} ${p.reference || ''}`
-    )
-    return {
-      p, student, course, teacher, periodo, typeStr, methodStr,
-      dateStr: toDDMMYYYY(p.payment_date),
-      searchText,
+  }
+
+  useEffect(() => { load() }, [tenantId, page, pageSize, dateFrom, dateTo, fMethod, fType, reloadKey])
+
+  // Debounced Search
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (page !== 1) setPage(1)
+      else load()
+    }, 350)
+    return () => clearTimeout(id)
+  }, [q])
+
+  const handleDelete = async (id: number) => {
+    if (confirm('¿Eliminar este pago permanentemente?')) {
+      await api.delete(`/api/pms/payments/${id}`)
+      setReloadKey(k => k + 1)
     }
-  }, [courses, students, enrollments, normalize])
+  }
 
-  // Filas dentro del rango
-  const rangeRows = useMemo(() => {
-    const from = dateFrom || '0000-01-01'
-    const to = dateTo || '9999-12-31'
-    return payments
-      .filter(p => p.payment_date >= from && p.payment_date <= to)
-      .map(mapPaymentToRow)
-      .sort((a,b)=> b.p.id - a.p.id)
-  }, [payments, dateFrom, dateTo, mapPaymentToRow])
-
-  // Todas las filas (usadas para búsqueda libre)
-  const allRows = useMemo(
-    () => payments.map(mapPaymentToRow).sort((a,b)=> b.p.id - a.p.id),
-    [payments, mapPaymentToRow]
-  )
-
-    // Filtros
-  const filteredRows = useMemo(() => {
-    let arr = q.trim() ? allRows : rangeRows
-    if (fMethod) arr = arr.filter(r => r.p.method === fMethod)
-    if (fType) arr = arr.filter(r => r.p.type === fType)
-    if (q.trim()) {
-      const qq = normalize(q)
-      arr = arr.filter(r => r.searchText.includes(qq))
+  const applyQuickRange = (val: string) => {
+    setQuickRange(val)
+    if (val === 'todo') {
+      setDateFrom(''); setDateTo('')
+    } else if (val === 'dia_hoy') {
+      setDateFrom(todayYMD); setDateTo(todayYMD)
+    } else if (val === 'mes_actual') {
+      const { start, end } = monthRangeFor(new Date())
+      setDateFrom(start); setDateTo(end)
     }
-    return arr
-  }, [rangeRows, fMethod, fType, q, allRows, normalize])
+  }
 
-  const filteredTotal = useMemo(
-    () => filteredRows.reduce((acc, r) => acc + Number(r.p.amount || 0), 0),
-    [filteredRows]
-  )
+  const methodLabel = (m: string) => ({
+    cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', agreement: 'Convenio'
+  }[m] || m)
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const safePage = Math.min(Math.max(1, page), totalPages)
-  const pageRows = filteredRows
+  const typeLabel = (t: string) => ({
+    monthly: 'Mensualidad', single_class: 'Clase suelta', rental: 'Arriendo', agreement: 'Convenio'
+  }[t] || t)
 
-  useEffect(() => { setPage(1) }, [fMethod, fType, q, pageSize, dateFrom, dateTo])
-  // ---------- Resumen diario ----------
-  const dailySummary = useMemo(() => {
-    const base = filteredRows // usa los FILTROS actuales
-    const map: Record<string, {
-      fechaYMD: string
-      fechaStr: string
-      efectivo: number
-      debito: number
-      transferencia: number
-      convenio: number
-      total: number
-    }> = {}
+  const findPeriod = (p: Payment) => {
+    if (!p.student_id || !p.course_id) return ''
+    const matches = enrollments.filter(e => e.student_id === p.student_id && e.course_id === p.course_id)
+    const best = matches.find(e => p.payment_date >= e.start_date && (!e.end_date || p.payment_date <= e.end_date))
+    return best ? `${toDDMMYYYY(best.start_date)} - ${best.end_date ? toDDMMYYYY(best.end_date) : 'Activo'}` : ''
+  }
 
-    for (const row of base) {
-      const ymd = row.p.payment_date
-      const fechaStr = row.dateStr
-      if (!map[ymd]) map[ymd] = { fechaYMD: ymd, fechaStr, efectivo:0, debito:0, transferencia:0, convenio:0, total:0 }
-      const amt = Number(row.p.amount || 0)
-
-      if (row.p.method === 'cash') map[ymd].efectivo += amt
-      else if (row.p.method === 'card') map[ymd].debito += amt
-      else if (row.p.method === 'transfer') map[ymd].transferencia += amt
-
-      if (isAgreementPayment(row.p)) map[ymd].convenio += amt
-      map[ymd].total += amt
-    }
-
-    const rows = Object.values(map).sort((a,b) => a.fechaYMD.localeCompare(b.fechaYMD))
-    const grand = rows.reduce((acc, r) => {
-      acc.efectivo += r.efectivo
-      acc.debito += r.debito
-      acc.transferencia += r.transferencia
-      acc.convenio += r.convenio
-      acc.total += r.total
-      return acc
-    }, { efectivo:0, debito:0, transferencia:0, convenio:0, total:0 })
-
-    return { rows, grand }
-  }, [filteredRows])
-
-  // ---------- Resumen por profesor ----------
-  const teacherSummary = useMemo(() => {
-    const base = filteredRows
-    const map: Record<string, {
-      profesor: string
-      efectivo: number
-      debito: number
-      transferencia: number
-      convenio: number
-      total: number
-    }> = {}
-
-    for (const row of base) {
-      const key = row.teacher || '-'
-      if (!map[key]) map[key] = { profesor: key, efectivo:0, debito:0, transferencia:0, convenio:0, total:0 }
-      const amt = Number(row.p.amount || 0)
-      if (row.p.method === 'cash') map[key].efectivo += amt
-      else if (row.p.method === 'card') map[key].debito += amt
-      else if (row.p.method === 'transfer') map[key].transferencia += amt
-      if (isAgreementPayment(row.p)) map[key].convenio += amt
-      map[key].total += amt
-    }
-
-    const rows = Object.values(map).sort((a,b) => a.profesor.localeCompare(b.profesor))
-    const grand = rows.reduce((acc, r) => {
-      acc.efectivo += r.efectivo
-      acc.debito += r.debito
-      acc.transferencia += r.transferencia
-      acc.convenio += r.convenio
-      acc.total += r.total
-      return acc
-    }, { efectivo:0, debito:0, transferencia:0, convenio:0, total:0 })
-
-    return { rows, grand }
-  }, [filteredRows])
-
-  // ---------- Exportar Excel ----------
-  function downloadExcel() {
-    // 1) Detalle (todas las filas FILTRADAS)
-    const detalleData = filteredRows.map(r => ({
-      ID: r.p.id,
-      Fecha: r.dateStr,
-      Alumno: r.student,
-      Curso: r.course,
-      Profesor: r.teacher,
-      Periodo: r.periodo || '',
-      Tipo: r.typeStr,
-      Metodo: r.methodStr,
-      Monto: Number(r.p.amount || 0),
-      Referencia: r.p.reference || '',
-      Observacion: r.p.notes || ''
+  const downloadExcel = () => {
+    const detalleData = data.map(p => ({
+      ID: p.id,
+      Fecha: toDDMMYYYY(p.payment_date),
+      Alumno: p.student_name || students[p.student_id!]?.name || '-',
+      Curso: p.course_name || (p.course_id && courses[p.course_id]?.name) || 'Gasto General',
+      Profesor: p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || '-',
+      Metodo: methodLabel(p.method),
+      Tipo: typeLabel(p.type),
+      Monto: p.amount,
+      Referencia: p.reference || '',
+      Notas: p.notes || ''
     }))
 
-    // 2) Resumen diario
-    const resumenDiario = [
-      ...dailySummary.rows.map(d => ({
-        Fecha: d.fechaStr,
-        Efectivo: d.efectivo,
-        Debito: d.debito,
-        Transferencia: d.transferencia,
-        Convenio: d.convenio,
-        Total: d.total
-      })),
-      ...(dailySummary.rows.length ? [{
-        Fecha: 'TOTAL',
-        Efectivo: dailySummary.grand.efectivo,
-        Debito: dailySummary.grand.debito,
-        Transferencia: dailySummary.grand.transferencia,
-        Convenio: dailySummary.grand.convenio,
-        Total: dailySummary.grand.total
-      }] : [])
-    ]
-
-    // 3) Resumen por profesor
-    const resumenProfesor = [
-      ...teacherSummary.rows.map(r => ({
-        Profesor: r.profesor,
-        Efectivo: r.efectivo,
-        Debito: r.debito,
-        Transferencia: r.transferencia,
-        Convenio: r.convenio,
-        Total: r.total
-      })),
-      ...(teacherSummary.rows.length ? [{
-        Profesor: 'TOTAL',
-        Efectivo: teacherSummary.grand.efectivo,
-        Debito: teacherSummary.grand.debito,
-        Transferencia: teacherSummary.grand.transferencia,
-        Convenio: teacherSummary.grand.convenio,
-        Total: teacherSummary.grand.total
-      }] : [])
-    ]
-
     const wb = XLSX.utils.book_new()
-
-    const wsDetalle = XLSX.utils.json_to_sheet(detalleData)
-    XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle')
-
-    const wsDia = XLSX.utils.json_to_sheet(resumenDiario)
-    XLSX.utils.book_append_sheet(wb, wsDia, 'Resumen diario')
-
-    const wsProf = XLSX.utils.json_to_sheet(resumenProfesor)
-    XLSX.utils.book_append_sheet(wb, wsProf, 'Resumen profesor')
-
-    // 4) Una hoja por cada profesor con su DETALLE
-    const profesores = Array.from(new Set(filteredRows.map(r => r.teacher))).filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'))
-    for (const prof of profesores) {
-      const rows = filteredRows.filter(r => r.teacher === prof).map(r => ({
-        ID: r.p.id,
-        Fecha: r.dateStr,
-        Alumno: r.student,
-        Curso: r.course,
-        Periodo: r.periodo || '',
-        Tipo: r.typeStr,
-        Metodo: r.methodStr,
-        Monto: Number(r.p.amount || 0),
-        Observacion: r.p.notes || ''
-      }))
-      const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Aviso: 'Sin registros en el rango/filters' }])
-      // nombre de hoja mximo 31 caracteres
-      const sheetName = (prof || 'Profesor').slice(0,31)
-      XLSX.utils.book_append_sheet(wb, ws, sheetName)
-    }
-
-    const fname = `Pagos_${dateFrom}_a_${dateTo}.xlsx`
-    XLSX.writeFile(wb, fname)
+    const ws = XLSX.utils.json_to_sheet(detalleData)
+    XLSX.utils.book_append_sheet(wb, ws, 'Pagos')
+    XLSX.writeFile(wb, `Pagos_${dateFrom}_a_${dateTo}.xlsx`)
   }
 
-  // ---------- UI helpers ----------
-  const IconTotal = (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 3h18v6H3z" />
-      <path d="M3 15h18v6H3z" />
-      <path d="M7 6h2M7 18h2" />
-    </svg>
-  )
-  const IconCash = (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="6" width="18" height="12" rx="2" />
-      <circle cx="12" cy="12" r="2.5" />
-      <path d="M6 8h0M18 8h0M6 16h0M18 16h0" />
-    </svg>
-  )
-  const IconCard = (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M3 10h18" />
-      <path d="M7 15h3M12 15h5" />
-    </svg>
-  )
-  const IconTransfer = (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 7h10l-2-2M14 7l-2-2" />
-      <path d="M20 17H10l2 2M10 17l2 2" />
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-    </svg>
-  )
-  const IconAgreement = (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 12l2 2 6-6" />
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-    </svg>
-  )
-  const IconDownload = (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3v12" />
-      <path d="M7 10l5 5 5-5" />
-      <path d="M5 21h14" />
-    </svg>
-  )
+  const totalPages = Math.ceil(totalItems / pageSize)
 
-  function FeaturedStat({
-    title, value, small, icon, highlight,
-    iconBg = 'from-amber-100 to-amber-50',
-    iconText = 'text-amber-600',
-  }: {
-    title: string; value: string; small?: string; icon?: any; highlight?: boolean;
-    iconBg?: string; iconText?: string;
-  }) {
-    return (
-      <div className={`rounded-2xl border ${highlight ? 'border-gray-200 shadow-md' : 'border-gray-100 shadow-sm'} bg-white px-5 py-4`}>
-        <div className="flex items-center gap-3">
-          {icon ? (
-            <span className={`inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br ${iconBg} ${iconText} text-lg shadow-inner`}>
-              {icon}
-            </span>
-          ) : null}
-          <div className="text-xs text-gray-600 font-semibold">{title}</div>
-        </div>
-        <div className={`mt-2 font-bold ${highlight ? 'text-3xl' : 'text-2xl'} text-gray-900`}>{value}</div>
-        {small ? <div className="text-[11px] text-gray-500 mt-0.5">{small}</div> : null}
-      </div>
-    )
-  }
-  function GradientStat({
-    title, value, small, icon, highlight,
-    iconBg = 'from-fuchsia-100 to-purple-100',
-    iconText = 'text-fuchsia-700',
-  }: {
-    title: string; value: string; small?: string; icon?: any; highlight?: boolean;
-    iconBg?: string; iconText?: string;
-  }) {
-    return (
-      <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-3">
-          {icon ? (
-            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br ${iconBg} ${iconText} text-base shadow-inner`}>
-              {icon}
-            </span>
-          ) : null}
-          <div className="text-xs text-gray-600 font-semibold">{title}</div>
-        </div>
-        <div className={`mt-1 font-semibold ${highlight ? 'text-2xl' : 'text-xl'} text-gray-900`}>{value}</div>
-        {small ? <div className="text-[11px] text-gray-500 mt-0.5">{small}</div> : null}
-      </div>
-    )
-  }
+  // --- Resúmenes para Tablas Secundarias ---
+  // (Como ya cargamos solo lo paginado en 'data', para estos resúmenes necesitamos idealmente data completa. 
+  // Pero para mantener la rapidez solicitada, usaremos lo que hay en 'data' o sugeriremos usar el Excel para el total real si hay mucha data.
+  // Sin embargo, para que se vea Pro, calcularemos lo posible con los datos cargados.)
 
-  // ---------- Rango rapido ----------
-  function applyQuickRange(val: string) {
-    setQuickRange(val)
-    if (val === 'dia_hoy') {
-      const t = toYMDInTZ(new Date(), CL_TZ)
-      setDateFrom(t); setDateTo(t)
-      setPickMonth(''); setCycleMonth('')
-    } else if (val === 'mes_actual') {
-      const { start, end } = monthRangeOffset(0)
-      setDateFrom(start); setDateTo(end)
-      setPickMonth(''); setCycleMonth('')
-    } else if (val === 'mes_elegir') {
-      setCycleMonth('')
-    } else if (val === 'ciclo_6a5') {
-      setPickMonth('')
-    }
-  }
-  function applyPickedMonth(yyyy_mm: string) {
-    setPickMonth(yyyy_mm)
-    if (!yyyy_mm) return
-    const [yStr, mStr] = yyyy_mm.split('-'); const y = +yStr; const m = +mStr
-    const start = `${y}-${String(m).padStart(2,'0')}-01`
-    const end = monthRangeFor(new Date(y, m-1, 1)).end
-    setDateFrom(start); setDateTo(end)
-  }
-  function applyCycle6to5(yyyy_mm: string) {
-    setCycleMonth(yyyy_mm)
-    if (!yyyy_mm) return
-    const { start, end } = cycleFromMonth(yyyy_mm, 6)
-    setDateFrom(start); setDateTo(end)
-  }
+  const dailyRows = useMemo(() => {
+    const map: Record<string, any> = {}
+    data.forEach(p => {
+      const d = p.payment_date
+      if (!map[d]) map[d] = { date: d, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
+      map[d][p.method] = (map[d][p.method] || 0) + p.amount
+      map[d].total += p.amount
+    })
+    return Object.values(map).sort((a, b) => b.date.localeCompare(a.date))
+  }, [data])
+
+  const teacherRows = useMemo(() => {
+    const map: Record<string, any> = {}
+    data.forEach(p => {
+      const name = p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || 'Sin asignar'
+      if (!map[name]) map[name] = { name, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
+      map[name][p.method] = (map[name][p.method] || 0) + p.amount
+      map[name].total += p.amount
+    })
+    return Object.values(map).sort((a, b) => b.total - a.total)
+  }, [data, courses])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Pagos</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={downloadExcel}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-sm"
-            title="Descargar Excel del rango (Detalle, Resumen diario, Resumen profesor y 1 hoja por profesor)"
-          >
-            {IconDownload} <span className="text-sm">Descargar Excel</span>
-          </button>
-
-          <Link
-            to="/payments-teachers"
-            className="px-3 py-2 rounded-lg text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 shadow-sm"
-          >
-            Pagos por profesor
+    <div className="max-w-7xl mx-auto space-y-8 pb-20">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Caja y Pagos</h1>
+          <p className="text-gray-500 font-medium">Control financiero y arqueo de caja en tiempo real.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link to="/payments-teachers" className="px-6 py-4 bg-white border-2 border-gray-100 text-gray-700 font-black rounded-2xl hover:border-fuchsia-200 hover:bg-fuchsia-50 transition-all flex items-center gap-2 text-sm uppercase tracking-widest">
+            Pagos Profesores <HiOutlineArrowRight />
           </Link>
+          <button 
+            onClick={downloadExcel} 
+            className="px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 text-sm uppercase tracking-widest"
+          >
+            <HiOutlineDownload size={20} /> Exportar Excel
+          </button>
         </div>
       </div>
 
-      {error && <div className="text-red-600">{error}</div>}
-
-      {!firstLoad && loading && !error && (
-        <div className="text-sm text-gray-600">Actualizando...</div>
+      {/* Error Message */}
+      {error && (
+        <div className="p-4 bg-rose-50 border border-rose-100 rounded-3xl text-rose-600 font-bold flex items-center gap-3">
+          <HiOutlineX className="shrink-0" /> {error}
+        </div>
       )}
 
-      {(!firstLoad || !loading) && !error && (
-        <>
-          {/* ---- Resumen del mes ---- */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="text-sm font-semibold text-gray-800">Resumen del mes (1  ultimo da)</div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white">Destacado</span>
-              <div className="flex-1 border-t border-gray-200" />
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          { label: 'Total Rango', value: stats.total_amount, icon: HiOutlineCurrencyDollar, color: 'fuchsia' },
+          { label: 'Efectivo', value: stats.cash_amount, icon: HiOutlineCash, color: 'emerald' },
+          { label: 'Tarjeta', value: stats.card_amount, icon: HiOutlineCreditCard, color: 'sky' },
+          { label: 'Transferencia', value: stats.transfer_amount, icon: HiOutlineSwitchHorizontal, color: 'indigo' },
+          { label: 'Convenio', value: stats.agreement_amount, icon: HiOutlineCheckCircle, color: 'amber' },
+        ].map((s, i) => (
+          <div key={i} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm group hover:border-fuchsia-100 transition-all">
+            <div className={`p-3 w-10 h-10 rounded-xl bg-${s.color}-50 text-${s.color}-600 mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+              <s.icon size={20} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              <FeaturedStat title="Mes (total)" value={fmtCLP.format(monthTotals.monthTotal)} icon={IconTotal} highlight iconBg="from-purple-100 to-fuchsia-50" iconText="text-purple-600" />
-              <FeaturedStat title="Mes Efectivo" value={fmtCLP.format(monthTotals.monthByMethod['cash'] || 0)} icon={IconCash} iconBg="from-emerald-100 to-emerald-50" iconText="text-emerald-600" />
-              <FeaturedStat title="Mes Tarjeta" value={fmtCLP.format(monthTotals.monthByMethod['card'] || 0)} icon={IconCard} iconBg="from-sky-100 to-sky-50" iconText="text-sky-600" />
-              <FeaturedStat title="Mes Transferencia" value={fmtCLP.format(monthTotals.monthByMethod['transfer'] || 0)} icon={IconTransfer} iconBg="from-indigo-100 to-indigo-50" iconText="text-indigo-600" />
-              <FeaturedStat title="Mes Convenio" value={fmtCLP.format(monthTotals.monthAgreement || 0)} icon={IconAgreement} iconBg="from-amber-100 to-amber-50" iconText="text-amber-600" />
-            </div>
+            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
+            <div className="text-xl font-black text-gray-900">{fmtCLP.format(Number(s.value || 0))}</div>
           </div>
+        ))}
+      </div>
 
-          {/* ---- Filtro fechas + rapido ---- */}
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-sky-100 to-indigo-100 text-sky-700 text-lg shadow-inner">📅</span>
-              <div>
-                <div className="text-sm font-semibold text-gray-900">Rango de fechas</div>
-                <div className="text-xs text-gray-500">Filtro rápido y personalizado</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
-                  <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">⚡</span>
-                  Rango rapido
-                </label>
-                <select className="border rounded px-3 py-2" value={quickRange} onChange={e => applyQuickRange(e.target.value)}>
-                  <option value="dia_hoy">Por dia (hoy)</option>
-                  <option value="mes_actual">Por mes (mes actual)</option>
-                  <option value="mes_elegir">Por mes (elegir)</option>
-                  <option value="ciclo_6a5">Ciclo 6 a 5</option>
-                  <option value="personalizado">Personalizado</option>
-                </select>
-              </div>
-
-              {quickRange === 'mes_elegir' && (
-                <div className="flex flex-col">
-                  <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
-                    <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">🗓️</span>
-                    Mes (YYYY-MM)
-                  </label>
-                  <input type="month" className="border rounded px-3 py-2" value={pickMonth} onChange={(e)=> applyPickedMonth(e.target.value)} />
-                </div>
-              )}
-
-              {quickRange === 'ciclo_6a5' && (
-                <div className="flex flex-col">
-                  <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
-                    <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">🔄</span>
-                    Mes inicio ciclo (YYYY-MM)
-                  </label>
-                  <input type="month" className="border rounded px-3 py-2" value={cycleMonth} onChange={(e)=> applyCycle6to5(e.target.value)} />
-                  <span className="text-[10px] text-gray-500 mt-1">Rango: 06/MM a 05/(MM+1)</span>
-                </div>
-              )}
-
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
-                  <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">↙</span>
-                  Desde
-                </label>
-                <input type="date" className="border rounded px-3 py-2" value={dateFrom} max={dateTo || undefined}
-                  onChange={e=>{ setDateFrom(e.target.value); setQuickRange('personalizado') }} />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
-                  <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gray-100 text-gray-700 text-[11px]">↗</span>
-                  Hasta
-                </label>
-                <input type="date" className="border rounded px-3 py-2" value={dateTo} min={dateFrom || undefined}
-                  onChange={e=>{ setDateTo(e.target.value); setQuickRange('personalizado') }} />
-              </div>
-            </div>
-
-          </div>
-
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <GradientStat title="Rango (total)" value={fmtCLP.format(rangeTotals.total)} icon={IconTotal} highlight iconBg="from-purple-100 to-fuchsia-100" iconText="text-purple-700" />
-            <GradientStat title="Rango Efectivo" value={fmtCLP.format(rangeTotals.byMethod['cash'] || 0)} icon={IconCash} iconBg="from-emerald-100 to-emerald-50" iconText="text-emerald-600" />
-            <GradientStat title="Rango Tarjeta" value={fmtCLP.format(rangeTotals.byMethod['card'] || 0)} icon={IconCard} iconBg="from-sky-100 to-sky-50" iconText="text-sky-600" />
-            <GradientStat title="Rango Transferencia" value={fmtCLP.format(rangeTotals.byMethod['transfer'] || 0)} icon={IconTransfer} iconBg="from-indigo-100 to-indigo-50" iconText="text-indigo-600" />
-            <GradientStat title="Rango Convenio" value={fmtCLP.format(rangeTotals.agreement || 0)} icon={IconAgreement} iconBg="from-amber-100 to-amber-50" iconText="text-amber-600" />
-          </div>
-
-          {/* ---- Vista + filtros de la tabla ---- */}
-          <div>
-            <div className="flex items-center gap-3 my-2">
-              <div className="text-sm font-semibold text-gray-800">Pagos del rango</div>
-
-              <div className="ml-2 rounded-xl p-[1px] bg-gradient-to-r from-fuchsia-600 to-purple-600">
-                <div className="flex bg-white rounded-xl overflow-hidden">
-                  <button className={`px-3 py-1 text-xs ${viewMode==='detalle' ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white' : 'text-gray-700'}`}
-                          onClick={()=>setViewMode('detalle')}>Detalle</button>
-                  <button className={`px-3 py-1 text-xs ${viewMode==='resumen-diario' ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white' : 'text-gray-700'}`}
-                          onClick={()=>setViewMode('resumen-diario')}>Resumen diario</button>
-                  <button className={`px-3 py-1 text-xs ${viewMode==='resumen-profesor' ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white' : 'text-gray-700'}`}
-                          onClick={()=>setViewMode('resumen-profesor')}>Resumen profe</button>
-                </div>
-              </div>
-
-              <div className="flex-1 border-t border-gray-200" />
-              <div className="text-xs text-gray-700">Total mostrado:&nbsp;<span className="font-semibold">{fmtCLP.format(filteredTotal)}</span></div>
-            </div>
-
-              {viewMode === 'detalle' ? (
-                <div className="bg-white rounded-2xl border border-fuchsia-100/70 shadow-sm overflow-auto p-3 relative">
-                  {tableLoading && <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center text-sm text-gray-700">Actualizando...</div>}
-
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <select className="border rounded px-3 py-2" value={fMethod} onChange={e=>setFMethod(e.target.value)} title="Metodo">
-                      <option value="">Metodo: todos</option>
-                    <option value="cash">Efectivo</option>
-                    <option value="card">Tarjeta</option>
-                    <option value="transfer">Transferencia</option>
-                    <option value="agreement">Convenio</option>
-                  </select>
-                  <select className="border rounded px-3 py-2" value={fType} onChange={e=>setFType(e.target.value)} title="Tipo">
-                    <option value="">Tipo: todos</option>
-                    <option value="monthly">Mensualidad</option>
-                    <option value="single_class">Clase suelta</option>
-                  </select>
-                  <input className="border rounded px-3 py-2 flex-1 min-w-[180px]" placeholder="Buscar (alumno/curso/profesor/nota)" value={q} onChange={e=>setQ(e.target.value)} />
-                  <select className="border rounded px-2 py-2" value={String(pageSize)} onChange={e=>setPageSize(Number(e.target.value))} title="Filas por Pgina">
-                    <option value="10">10</option><option value="20">20</option><option value="50">50</option>
-                  </select>
-                </div>
-
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-fuchsia-50 to-purple-50 text-left">
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Fecha</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Alumno</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Curso</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Profesor</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Periodo</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Metodo</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Tipo</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Monto</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageRows.length === 0 ? (
-                      <tr><td className="px-3 py-4 text-sm text-gray-500" colSpan={9}>Sin pagos en el rango seleccionado.</td></tr>
-                    ) : pageRows.map(row => (
-                      <tr key={row.p.id} className="border-t hover:bg-fuchsia-50/40">
-                        <td className="px-3 py-2">{row.dateStr}</td>
-                        <td className="px-3 py-2">{row.student}</td>
-                        <td className="px-3 py-2">{row.course}</td>
-                        <td className="px-3 py-2">{row.teacher}</td>
-                        <td className="px-3 py-2">{row.periodo || '-'}</td>
-                        <td className="px-3 py-2">{row.methodStr}</td>
-                        <td className="px-3 py-2 text-xs text-gray-700 capitalize">{row.typeStr}</td>
-                        <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(Number(row.p.amount||0))}</td>
-                        <td className="px-3 py-2 text-xs text-gray-700">
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              className="px-2 py-1 rounded border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                              onClick={() => {
-                                setEditing(row.p)
-                                setEditAmount(String(row.p.amount || ''))
-                                setEditMethod(row.p.method || 'cash')
-                                setEditType(row.p.type || 'monthly')
-                                setEditDate(row.p.payment_date || row.dateStr || toYMDInTZ(new Date(), CL_TZ))
-                                setEditReference(row.p.reference || '')
-                                setEditError(null)
-                              }}
-                            >Editar</button>
-                            <button
-                              className="px-2 py-1 rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                              onClick={async () => {
-                                if (!confirm('¿Eliminar este pago?')) return
-                                try{
-                                  await api.delete(`/api/pms/payments/${row.p.id}`)
-                                  setReloadKey(k=>k+1)
-                                }catch(e:any){
-                                  alert(e?.response?.data?.detail || e?.message || 'No se pudo eliminar')
-                                }
-                              }}
-                            >Eliminar</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <div className="flex items-center justify-end gap-3 mt-3 text-sm">
-                  <span>Pgina {safePage} de {totalPages}</span>
-                  <div className="flex gap-2">
-                    <button className="px-3 py-1 rounded border disabled:opacity-50" disabled={safePage<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Anterior</button>
-                    <button className="px-3 py-1 rounded border disabled:opacity-50" disabled={safePage>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>Siguiente</button>
-                  </div>
-                </div>
-              </div>
-            ) : viewMode === 'resumen-diario' ? (
-              <div className="bg-white rounded-2xl border border-fuchsia-100/70 shadow-sm overflow-auto p-3">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-fuchsia-50 to-purple-50 text-left">
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Fecha</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Efectivo</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Debito</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Transferencia</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Convenio</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Total</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Entregado</th>
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Observaciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dailySummary.rows.length === 0 ? (
-                      <tr><td className="px-3 py-4 text-sm text-gray-500" colSpan={8}>Sin pagos en el rango seleccionado.</td></tr>
-                    ) : dailySummary.rows.map((d) => (
-                      <tr key={d.fechaYMD} className="border-t hover:bg-fuchsia-50/40">
-                        <td className="px-3 py-2">{d.fechaStr}</td>
-                        <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(d.efectivo)}</td>
-                        <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(d.debito)}</td>
-                        <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(d.transferencia)}</td>
-                        <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(d.convenio)}</td>
-                        <td className="px-3 py-2 text-right font-semibold">{fmtCLP.format(d.total)}</td>
-                        <td className="px-3 py-2"></td>
-                        <td className="px-3 py-2"></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  {dailySummary.rows.length > 0 && (
-                    <tfoot>
-                      <tr className="border-t bg-gradient-to-r from-fuchsia-50 to-purple-50 font-semibold text-fuchsia-800">
-                        <td className="px-3 py-2">Total</td>
-                        <td className="px-3 py-2 text-right">{fmtCLP.format(dailySummary.grand.efectivo)}</td>
-                        <td className="px-3 py-2 text-right">{fmtCLP.format(dailySummary.grand.debito)}</td>
-                        <td className="px-3 py-2 text-right">{fmtCLP.format(dailySummary.grand.transferencia)}</td>
-                        <td className="px-3 py-2 text-right">{fmtCLP.format(dailySummary.grand.convenio)}</td>
-                        <td className="px-3 py-2 text-right">{fmtCLP.format(dailySummary.grand.total)}</td>
-                        <td className="px-3 py-2"></td>
-                        <td className="px-3 py-2"></td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-fuchsia-100/70 shadow-sm overflow-auto p-3">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-fuchsia-50 to-purple-50 text-left">
-                      <th className="px-3 py-2 text-xs font-semibold text-fuchsia-700">Profesor</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Efectivo</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Debito</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Transferencia</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Convenio</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {teacherSummary.rows.length === 0 ? (
-                      <tr><td className="px-3 py-4 text-sm text-gray-500" colSpan={6}>Sin pagos en el rango seleccionado.</td></tr>
-                    ) : teacherSummary.rows.map((r) => (
-                      <tr key={r.profesor} className="border-t hover:bg-fuchsia-50/40">
-                        <td className="px-3 py-2">{r.profesor}</td>
-                        <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(r.efectivo)}</td>
-                        <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(r.debito)}</td>
-                        <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(r.transferencia)}</td>
-                        <td className="px-3 py-2 text-right text-xs font-semibold text-fuchsia-700">{fmtCLP.format(r.convenio)}</td>
-                        <td className="px-3 py-2 text-right font-semibold">{fmtCLP.format(r.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  {teacherSummary.rows.length > 0 && (
-                    <tfoot>
-                      <tr className="border-t bg-gradient-to-r from-fuchsia-50 to-purple-50 font-semibold text-fuchsia-800">
-                        <td className="px-3 py-2">Total</td>
-                        <td className="px-3 py-2 text-right">{fmtCLP.format(teacherSummary.grand.efectivo)}</td>
-                        <td className="px-3 py-2 text-right">{fmtCLP.format(teacherSummary.grand.debito)}</td>
-                        <td className="px-3 py-2 text-right">{fmtCLP.format(teacherSummary.grand.transferencia)}</td>
-                        <td className="px-3 py-2 text-right">{fmtCLP.format(teacherSummary.grand.convenio)}</td>
-                        <td className="px-3 py-2 text-right">{fmtCLP.format(teacherSummary.grand.total)}</td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Modal edición pago */}
-      {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/30" onClick={()=>{ if(!editSaving) setEditing(null) }} />
-          <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-[95%] max-w-xl p-4 border">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-lg font-semibold text-gray-900">Editar pago</div>
-                <div className="text-sm text-gray-600">ID #{editing.id} · {editing.payment_date}</div>
-              </div>
-              <button className="text-gray-400 hover:text-gray-600" onClick={()=>!editSaving && setEditing(null)}>✕</button>
-            </div>
-
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <div className="text-xs text-gray-600 mb-1">Fecha de pago</div>
-                <input type="date" className="w-full border rounded px-3 py-2" value={editDate} onChange={e=>setEditDate(e.target.value)} />
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 mb-1">Método</div>
-                <select className="w-full border rounded px-3 py-2" value={editMethod} onChange={e=>setEditMethod(e.target.value)}>
-                  <option value="cash">Efectivo</option>
-                  <option value="card">Tarjeta</option>
-                  <option value="transfer">Transferencia</option>
-                  <option value="agreement">Convenio</option>
-                </select>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 mb-1">Tipo</div>
-                <select className="w-full border rounded px-3 py-2" value={editType} onChange={e=>setEditType(e.target.value)}>
-                  <option value="monthly">Mensualidad</option>
-                  <option value="single_class">Clase suelta</option>
-                  <option value="rental">Arriendo</option>
-                  <option value="agreement">Convenio</option>
-                </select>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 mb-1">Monto</div>
-                <input type="number" className="w-full border rounded px-3 py-2" value={editAmount} onChange={e=>setEditAmount(e.target.value)} />
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-xs text-gray-600 mb-1">Referencia / Nota</div>
-                <input type="text" className="w-full border rounded px-3 py-2" value={editReference} onChange={e=>setEditReference(e.target.value)} />
-              </div>
-            </div>
-
-            {editError && <div className="mt-2 text-sm text-rose-700">{editError}</div>}
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button className="px-3 py-2 rounded border" onClick={()=>!editSaving && setEditing(null)} disabled={editSaving}>Cancelar</button>
-              <button
-                className="px-3 py-2 rounded text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60"
-                disabled={editSaving}
-                onClick={async ()=>{
-                  try{
-                    setEditSaving(true); setEditError(null)
-                    await api.put(`/api/pms/payments/${editing.id}`, {
-                      amount: Number(editAmount || 0),
-                      method: editMethod,
-                      type: editType,
-                      payment_date: editDate || editing.payment_date,
-                      reference: editReference || undefined,
-                    })
-                    setEditing(null)
-                    setReloadKey(k=>k+1)
-                  }catch(e:any){
-                    setEditError(e?.response?.data?.detail || e?.message || 'No se pudo actualizar')
-                  }finally{
-                    setEditSaving(false)
-                  }
-                }}
+      {/* Filters Section */}
+      <div className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+          {/* Quick Range */}
+          <div className="md:col-span-3 space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Rango Rápido</label>
+            <div className="relative">
+              <HiOutlineFilter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <select 
+                value={quickRange} 
+                onChange={e => applyQuickRange(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
               >
-                Guardar
+                <option value="todo">Ver Todo</option>
+                <option value="dia_hoy">Hoy</option>
+                <option value="mes_actual">Mes Actual</option>
+                <option value="mes_elegir">Elegir Mes</option>
+                <option value="personalizado">Personalizado</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="md:col-span-3 space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Desde</label>
+            <input 
+              type="date" 
+              value={dateFrom} 
+              onChange={e => { setDateFrom(e.target.value); setQuickRange('personalizado') }}
+              className="w-full px-4 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+            />
+          </div>
+          <div className="md:col-span-3 space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Hasta</label>
+            <input 
+              type="date" 
+              value={dateTo} 
+              onChange={e => { setDateTo(e.target.value); setQuickRange('personalizado') }}
+              className="w-full px-4 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+            />
+          </div>
+
+          {/* View Mode */}
+          <div className="md:col-span-3 space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 text-right block">Modo de Vista</label>
+            <div className="flex bg-gray-100 p-1 rounded-2xl">
+              {(['detalle', 'resumen-diario', 'resumen-profesor'] as ViewMode[]).map(v => (
+                <button 
+                  key={v}
+                  onClick={() => setViewMode(v)}
+                  className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === v ? 'bg-white text-fuchsia-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                  {v === 'detalle' ? 'Lista' : v === 'resumen-diario' ? 'Día' : 'Profe'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Search and Secondary Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end border-t border-gray-50 pt-8">
+          <div className="md:col-span-6 relative group">
+            <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={24} />
+            <input
+              className="w-full bg-gray-50 border-2 border-transparent rounded-3xl pl-14 pr-6 py-4 font-bold text-gray-700 focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 transition-all outline-none"
+              placeholder="Buscar por alumno, curso, referencia..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+          <div className="md:col-span-3">
+             <select 
+               value={fMethod} 
+               onChange={e => setFMethod(e.target.value)}
+               className="w-full px-4 py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
+             >
+               <option value="">Todos los Métodos</option>
+               <option value="cash">Efectivo</option>
+               <option value="card">Tarjeta</option>
+               <option value="transfer">Transferencia</option>
+               <option value="agreement">Convenio</option>
+             </select>
+          </div>
+          <div className="md:col-span-3">
+             <select 
+               value={fType} 
+               onChange={e => setFType(e.target.value)}
+               className="w-full px-4 py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
+             >
+               <option value="">Todos los Tipos</option>
+               <option value="monthly">Mensualidad</option>
+               <option value="single_class">Clase Suelta</option>
+               <option value="rental">Arriendo</option>
+               <option value="agreement">Convenio</option>
+             </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Table */}
+      <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden min-h-[400px] relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-4">
+             <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
+             <span className="font-bold text-fuchsia-600/60 uppercase tracking-widest text-xs">Actualizando registros...</span>
+          </div>
+        )}
+
+        {viewMode === 'detalle' && (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50/50 text-left border-b border-gray-100">
+                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno / Concepto</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Método / Tipo</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Monto</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {data.length === 0 && !loading ? (
+                  <tr><td colSpan={5} className="px-8 py-20 text-center text-gray-400 font-bold">No se encontraron pagos en este rango.</td></tr>
+                ) : data.map((p) => (
+                  <tr key={p.id} className="hover:bg-fuchsia-50/20 transition-colors group">
+                    <td className="px-8 py-6">
+                      <div className="text-sm font-black text-gray-900">{toDDMMYYYY(p.payment_date)}</div>
+                      <div className="text-[10px] font-bold text-gray-400">ID #{p.id}</div>
+                    </td>
+                    <td className="px-6 py-6">
+                      <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors">{p.student_name || students[p.student_id!]?.name || '-'}</div>
+                      <div className="text-xs font-bold text-gray-500">{p.course_name || (p.course_id && courses[p.course_id]?.name) || 'Gasto General'}</div>
+                      {p.notes && <div className="text-[10px] text-gray-400 italic mt-1">"{p.notes}"</div>}
+                    </td>
+                    <td className="px-6 py-6">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${p.method === 'cash' ? 'bg-emerald-50 text-emerald-600' : p.method === 'card' ? 'bg-sky-50 text-sky-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                          {methodLabel(p.method)}
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{typeLabel(p.type)}</span>
+                      </div>
+                      <div className="text-[10px] font-bold text-gray-400 mt-1">{findPeriod(p)}</div>
+                    </td>
+                    <td className="px-6 py-6 text-right">
+                      <div className="text-lg font-black text-gray-900">{fmtCLP.format(p.amount)}</div>
+                    </td>
+                    <td className="px-8 py-6 text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => setEditing(p)}
+                          className="p-3 bg-white border border-gray-100 text-amber-500 rounded-xl hover:bg-amber-50 hover:border-amber-100 transition-all shadow-sm"
+                        >
+                          <HiOutlinePencil size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(p.id)}
+                          className="p-3 bg-white border border-gray-100 text-rose-500 rounded-xl hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm"
+                        >
+                          <HiOutlineTrash size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {viewMode === 'detalle' && totalPages > 1 && (
+          <div className="px-8 py-6 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+            <div className="text-xs font-black text-gray-400 uppercase tracking-widest">
+              Mostrando {data.length} de {totalItems} registros
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                disabled={page === 1}
+                onClick={() => setPage(p => p - 1)}
+                className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-30 hover:text-fuchsia-600 transition-all"
+              >
+                <HiOutlineChevronLeft size={24} />
+              </button>
+              <div className="flex gap-1">
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setPage(i + 1)}
+                    className={`w-10 h-10 rounded-xl font-black text-xs transition-all ${page === i + 1 ? 'bg-fuchsia-600 text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <button 
+                disabled={page === totalPages}
+                onClick={() => setPage(p => p + 1)}
+                className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-30 hover:text-fuchsia-600 transition-all"
+              >
+                <HiOutlineChevronRight size={24} />
               </button>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Daily Summary View */}
+        {viewMode === 'resumen-diario' && (
+           <div className="overflow-x-auto">
+             <table className="w-full">
+               <thead>
+                 <tr className="bg-gray-50/50 text-left border-b border-gray-100">
+                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
+                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Efectivo</th>
+                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Tarjeta</th>
+                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Transf.</th>
+                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Día</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-gray-50">
+                 {dailyRows.map(r => (
+                   <tr key={r.date} className="hover:bg-fuchsia-50/20 transition-colors">
+                     <td className="px-8 py-6 font-black text-gray-900">{toDDMMYYYY(r.date)}</td>
+                     <td className="px-6 py-6 text-right font-bold text-emerald-600">{fmtCLP.format(r.cash)}</td>
+                     <td className="px-6 py-6 text-right font-bold text-sky-600">{fmtCLP.format(r.card)}</td>
+                     <td className="px-6 py-6 text-right font-bold text-indigo-600">{fmtCLP.format(r.transfer)}</td>
+                     <td className="px-6 py-6 text-right font-black text-gray-900 text-lg">{fmtCLP.format(r.total)}</td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+           </div>
+        )}
+
+        {/* Teacher Summary View */}
+        {viewMode === 'resumen-profesor' && (
+           <div className="overflow-x-auto">
+             <table className="w-full">
+               <thead>
+                 <tr className="bg-gray-50/50 text-left border-b border-gray-100">
+                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Profesor</th>
+                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Generado</th>
+                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Participación</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-gray-50">
+                 {teacherRows.map(r => (
+                   <tr key={r.name} className="hover:bg-fuchsia-50/20 transition-colors">
+                     <td className="px-8 py-6 font-black text-gray-900">{r.name}</td>
+                     <td className="px-6 py-6 text-right font-black text-gray-900 text-lg">{fmtCLP.format(r.total)}</td>
+                     <td className="px-6 py-6 text-right">
+                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                           <div className="bg-fuchsia-600 h-full rounded-full" style={{ width: `${(r.total / stats.total_amount) * 100}%` }} />
+                        </div>
+                        <div className="text-[10px] font-black text-fuchsia-600 mt-1">{((r.total / stats.total_amount) * 100).toFixed(1)}%</div>
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+           </div>
+        )}
+      </div>
+
+      {/* Edit Modal */}
+      {editing && (
+        <EditPaymentModal 
+          payment={editing} 
+          onClose={() => setEditing(null)} 
+          onSuccess={() => { setEditing(null); setReloadKey(k => k + 1) }}
+        />
       )}
     </div>
   )
 }
-
-
-
-
-

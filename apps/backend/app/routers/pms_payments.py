@@ -3,9 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, case
+from sqlalchemy import select, func, case, or_
 
-from app.pms.models import Payment, Course, Teacher
+from app.pms.models import Payment, Course, Teacher, Student
 from app.pms.schemas import PaymentOut, PaymentCreate, PaymentUpdate, PaymentListResponse, PaymentByTeacherListResponse
 from app.pms.deps import get_tenant_id, get_db_session
 
@@ -118,28 +118,69 @@ async def list_payments(
             return None
     d_from = parse_date(date_from)
     d_to = parse_date(date_to)
+
+    # Base filter for all queries
+    filters = [Payment.tenant_id == tenant_id]
+    if student_id:
+        filters.append(Payment.student_id == student_id)
+    if course_id:
+        filters.append(Payment.course_id == course_id)
     if d_from:
-        stmt = stmt.where(Payment.payment_date >= d_from)
+        filters.append(Payment.payment_date >= d_from)
     if d_to:
-        stmt = stmt.where(Payment.payment_date <= d_to)
+        filters.append(Payment.payment_date <= d_to)
     if method:
-        stmt = stmt.where(Payment.method == method)
+        filters.append(Payment.method == method)
     if type:
-        stmt = stmt.where(Payment.type == type)
+        filters.append(Payment.type == type)
     if q:
         like = f"%{q}%"
-        stmt = stmt.where(
-            (Payment.reference.ilike(like))
-            | (Payment.notes.ilike(like))
-            | (Payment.method.ilike(like))
-            | (Payment.type.ilike(like))
+        stmt = stmt.join(Student, Payment.student_id == Student.id, isouter=True)
+        filters.append(
+            or_(
+                Payment.reference.ilike(like),
+                Payment.notes.ilike(like),
+                Payment.method.ilike(like),
+                Payment.type.ilike(like),
+                Student.first_name.ilike(like),
+                Student.last_name.ilike(like)
+            )
         )
-    res = await db.execute(
-        stmt.order_by(Payment.payment_date.desc(), Payment.created_at.desc()).offset(offset).limit(limit)
-    )
+
+    def apply_filters(q_stmt):
+        if q:
+            q_stmt = q_stmt.join(Student, Payment.student_id == Student.id, isouter=True)
+        return q_stmt.where(*filters)
+
+    stats_stmt = apply_filters(select(
+        func.sum(Payment.amount).label('total_amount'),
+        func.sum(case((Payment.method == 'cash', Payment.amount), else_=0)).label('cash_amount'),
+        func.sum(case((Payment.method == 'card', Payment.amount), else_=0)).label('card_amount'),
+        func.sum(case((Payment.method == 'transfer', Payment.amount), else_=0)).label('transfer_amount'),
+        func.sum(case((Payment.method == 'agreement', Payment.amount), else_=0)).label('agreement_amount'),
+    ))
+    
+    stats_res = await db.execute(stats_stmt)
+    stats_row = stats_res.mappings().one_or_none()
+    
+    stats_data = {
+        "total_amount": stats_row["total_amount"] or 0,
+        "cash_amount": stats_row["cash_amount"] or 0,
+        "card_amount": stats_row["card_amount"] or 0,
+        "transfer_amount": stats_row["transfer_amount"] or 0,
+        "agreement_amount": stats_row["agreement_amount"] or 0,
+    }
+
+    # List query
+    list_stmt = apply_filters(select(Payment)).order_by(Payment.payment_date.desc(), Payment.created_at.desc())
+    res = await db.execute(list_stmt.offset(offset).limit(limit))
     items = res.scalars().all()
-    total = await db.scalar(select(func.count()).select_from(Payment).where(*stmt._where_criteria))
-    return {"items": items, "total": total or 0}
+    
+    # Total count
+    total_stmt = apply_filters(select(func.count()).select_from(Payment))
+    total = await db.scalar(total_stmt)
+    
+    return {"items": items, "total": total or 0, "stats": stats_data}
 
 
 @router.get("/{payment_id}", response_model=PaymentOut)

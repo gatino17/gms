@@ -13,6 +13,8 @@ import {
   HiSparkles,
   HiOutlineCurrencyDollar,
   HiOutlineOfficeBuilding,
+  HiOutlineArrowRight,
+  HiOutlineTrendingUp
 } from 'react-icons/hi'
 
 type CourseListItem = {
@@ -80,17 +82,9 @@ type Payment = {
   teacher_name?: string | null
 }
 
-type StudentListItem = {
-  id: number
-  first_name: string
-  last_name: string
-  joined_at?: string | null
-  enrolled_since?: string | null
-}
-
 const CL_TZ = 'America/Santiago'
 const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' })
-const dayNames = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo']
+const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
 function toYMDInTZ(d: Date, tz = CL_TZ): string {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' })
@@ -112,29 +106,16 @@ function dayInfoInTZ(tz = CL_TZ) {
   }
 }
 
-function formatYMDToCL(ymd?: string | null) {
-  if (!ymd) return ''
-  const [y, m, d] = ymd.split('-')
-  if (!y || !m || !d) return ymd
-  return `${d}/${m}/${y}`
-}
-
 const methodLabel: Record<string, string> = {
   cash: 'Efectivo',
   card: 'Tarjeta',
   transfer: 'Transferencia',
 }
 
-const typeLabel: Record<string, string> = {
-  monthly: 'Mensual',
-  single_class: 'Clase suelta',
-}
-
 export default function DashboardPage() {
   const { tenantId } = useTenant()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const [summary, setSummary] = useState<any>(null)
 
   const load = async () => {
@@ -151,12 +132,9 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => {
-    load()
-  }, [tenantId])
+  useEffect(() => { load() }, [tenantId])
 
   const { label: todayLabel } = dayInfoInTZ(CL_TZ)
-
   const kpis = summary?.kpis
   const classesToday = summary?.classes_today || []
   const paymentsRecent = summary?.recent_payments || []
@@ -165,41 +143,46 @@ export default function DashboardPage() {
   const revByMethod = kpis?.revenue_by_method || {}
 
   const kpiData = [
-    { label: 'Alumnos activos', value: kpis?.active_students || 0, icon: <HiUserGroup className="text-blue-600" /> },
-    { label: 'Cursos activos', value: kpis?.active_courses || 0, icon: <HiBookOpen className="text-indigo-600" /> },
-    { label: 'Ingresos hoy', value: fmtCLP.format(kpis?.revenue_today || 0), icon: <HiOutlineCurrencyDollar className="text-emerald-600" /> },
-    { label: 'Ingresos mes', value: fmtCLP.format(kpis?.revenue_month || 0), icon: <HiRefresh className="text-purple-600" /> },
+    { label: 'Alumnos activos', value: kpis?.active_students || 0, icon: <HiUserGroup />, color: 'fuchsia' },
+    { label: 'Cursos activos', value: kpis?.active_courses || 0, icon: <HiBookOpen />, color: 'purple' },
+    { label: 'Ingresos hoy', value: fmtCLP.format(kpis?.revenue_today || 0), icon: <HiOutlineCurrencyDollar />, color: 'emerald' },
+    { label: 'Ingresos mes', value: fmtCLP.format(kpis?.revenue_month || 0), icon: <HiOutlineTrendingUp />, color: 'indigo' },
   ]
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-10 animate-in fade-in duration-700 pb-20">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Panel de Control</h1>
-          <p className="text-slate-500 font-medium">Bienvenido de nuevo. Aquí tienes un resumen de hoy, {todayLabel}.</p>
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+             <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Resumen General</span>
+             <div className="h-1 w-1 rounded-full bg-gray-300" />
+             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{todayLabel}</span>
+          </div>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Panel de Control</h1>
+          <p className="text-gray-500 font-medium">Bienvenido. Aquí tienes el pulso de tu academia hoy.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <button 
             onClick={load} 
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-bold text-sm shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95"
+            className="flex items-center gap-2 px-6 py-3.5 rounded-[20px] bg-white text-gray-600 font-black text-xs uppercase tracking-widest border border-gray-100 shadow-sm hover:bg-gray-50 transition-all active:scale-95"
           >
             <HiRefresh className={loading ? 'animate-spin' : ''} />
             Actualizar
           </button>
           <Link 
             to="/payments" 
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95"
+            className="flex items-center gap-2 px-8 py-3.5 rounded-[20px] bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-fuchsia-200 hover:scale-[1.02] transition-all active:scale-95"
           >
             <HiOutlineCurrencyDollar className="text-lg" />
-            Registrar Pago
+            Nuevo Pago
           </Link>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 text-rose-700 border border-rose-100 flex items-center gap-3 text-sm font-semibold">
-          <HiExclamationCircle className="text-xl" />
+        <div className="p-6 rounded-[32px] bg-rose-50 text-rose-700 border border-rose-100 flex items-center gap-4 text-sm font-bold animate-in shake duration-500">
+          <HiExclamationCircle className="text-2xl" />
           {error}
         </div>
       )}
@@ -207,7 +190,17 @@ export default function DashboardPage() {
       {/* KPI Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpiData.map((k, idx) => (
-          <KpiCard key={idx} label={k.label} value={k.value} icon={k.icon} />
+          <div key={idx} className="group bg-white rounded-[40px] p-8 border border-gray-100 shadow-sm hover:shadow-2xl hover:border-fuchsia-100 transition-all duration-500 relative overflow-hidden">
+            <div className="relative flex flex-col gap-6">
+              <div className={`w-14 h-14 rounded-2xl bg-${k.color}-50 text-${k.color}-600 flex items-center justify-center text-2xl transition-all duration-500 group-hover:scale-110`}>
+                {k.icon}
+              </div>
+              <div className="space-y-1">
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{k.label}</div>
+                <div className="text-3xl font-black text-gray-900 tracking-tight">{k.value}</div>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
 
@@ -215,63 +208,60 @@ export default function DashboardPage() {
         {/* Main Column */}
         <div className="xl:col-span-8 space-y-8">
           {/* Clases de hoy */}
-          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <HiBookOpen className="text-xl" />
+          <section className="bg-white rounded-[48px] border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-10 py-8 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center">
+                  <HiCalendar className="text-2xl" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Clases de hoy</h2>
-                  <p className="text-xs text-slate-500 font-medium">{classesToday.length} sesiones programadas</p>
+                  <h2 className="text-xl font-black text-gray-900 tracking-tight">Clases de hoy</h2>
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{classesToday.length} Sesiones</p>
                 </div>
               </div>
-              <Link to="/calendar" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors">Ver Calendario</Link>
+              <Link to="/calendar" className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest hover:text-fuchsia-700 transition-colors bg-fuchsia-50 px-4 py-2 rounded-full">Ver Calendario</Link>
             </div>
             
-            <div className="p-8">
+            <div className="p-10">
               {classesToday.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                  <HiClock className="text-5xl mb-4 opacity-20" />
-                  <p className="font-semibold italic">No hay clases programadas para hoy.</p>
+                <div className="flex flex-col items-center justify-center py-20 text-gray-300">
+                  <HiClock className="text-6xl mb-4 opacity-20" />
+                  <p className="font-black uppercase tracking-[0.2em] text-xs">No hay clases para hoy</p>
                 </div>
               ) : (
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-2 gap-6">
                   {classesToday.map(c => (
-                    <div key={c.id} className="group p-4 rounded-2xl border border-slate-100 bg-slate-50/30 hover:bg-white hover:border-indigo-200 hover:shadow-md transition-all duration-300 flex gap-4 items-center cursor-pointer">
+                    <div key={c.id} className="group p-6 rounded-[32px] border border-gray-50 bg-gray-50/30 hover:bg-white hover:border-fuchsia-200 hover:shadow-xl transition-all duration-500 flex gap-6 items-center cursor-pointer">
                       <div className="relative flex-shrink-0">
                         {c.image_url ? (
-                          <img src={toAbsoluteUrl(c.image_url)} alt={c.name} className="w-20 h-20 rounded-2xl object-cover border-2 border-white shadow-sm" />
+                          <img src={toAbsoluteUrl(c.image_url)} alt={c.name} className="w-24 h-24 rounded-[28px] object-cover border-4 border-white shadow-lg" />
                         ) : (
-                          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 border-2 border-white flex items-center justify-center text-slate-400 text-2xl shadow-sm">
-                            <HiBookOpen />
+                          <div className="w-24 h-24 rounded-[28px] bg-gradient-to-br from-gray-100 to-gray-200 border-4 border-white flex items-center justify-center text-gray-400 text-3xl shadow-lg">
+                            {c.name[0]}
                           </div>
                         )}
                         {c.level && (
-                          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[9px] font-black uppercase tracking-wider shadow-lg">
+                          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gray-900 text-white text-[8px] font-black uppercase tracking-widest shadow-xl">
                             {c.level}
                           </span>
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-col gap-1">
-                          <h3 className="text-sm font-bold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">{c.name}</h3>
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
-                            <HiClock className="text-indigo-500 text-sm" />
-                            <span className="bg-white px-2 py-0.5 rounded-md border border-slate-100">
-                              {(c.start_time || '').slice(0, 5)} - {(c.end_time || '').slice(0, 5)}
+                        <div className="flex flex-col gap-2">
+                          <h3 className="text-lg font-black text-gray-900 truncate group-hover:text-fuchsia-600 transition-colors leading-tight">{c.name}</h3>
+                          <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
+                            <span className="bg-white px-3 py-1 rounded-lg border border-gray-100 text-fuchsia-600 font-black">
+                              {(c.start_time || '').slice(0, 5)}
+                            </span>
+                            <span className="text-gray-300 font-normal">a</span>
+                            <span className="bg-white px-3 py-1 rounded-lg border border-gray-100 text-gray-600 font-black">
+                              {(c.end_time || '').slice(0, 5)}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 mt-1">
-                            <HiUserGroup className="text-slate-400 text-sm" />
+                          <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                            <HiUserGroup size={14} className="text-fuchsia-400" />
                             <span className="truncate">{c.teacher_name || 'Sin profesor'}</span>
                           </div>
-                          {c.room_name && (
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wide">
-                              <HiOutlineOfficeBuilding className="text-sm" />
-                              <span>SALA {c.room_name}</span>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -282,45 +272,43 @@ export default function DashboardPage() {
           </section>
 
           {/* Pagos Recientes */}
-          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <HiOutlineCurrencyDollar className="text-xl" />
+          <section className="bg-white rounded-[48px] border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-10 py-8 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <HiOutlineCurrencyDollar className="text-2xl" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Actividad de Pagos</h2>
-                  <p className="text-xs text-slate-500 font-medium">Últimos movimientos del día</p>
+                  <h2 className="text-xl font-black text-gray-900 tracking-tight">Actividad Reciente</h2>
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Finanzas</p>
                 </div>
               </div>
-              <Link to="/payments" className="text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors">Ver todos</Link>
+              <Link to="/payments" className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:text-emerald-700 transition-colors bg-emerald-50 px-4 py-2 rounded-full">Ver Detalles</Link>
             </div>
 
-            <div className="p-8">
+            <div className="p-10">
               {paymentsRecent.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 font-medium italic text-sm">Sin pagos registrados recientemente.</div>
+                <div className="text-center py-10 text-gray-300 font-black uppercase tracking-widest text-xs italic">Sin movimientos recientes</div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-4">
                   {paymentsRecent.slice(0, 6).map((p: any) => (
-                    <div key={p.id} className="p-4 rounded-2xl border border-slate-100 hover:border-emerald-200 transition-all flex items-center justify-between gap-4 group">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs">
+                    <div key={p.id} className="p-5 rounded-[24px] border border-gray-50 hover:border-emerald-100 hover:bg-emerald-50/20 transition-all flex items-center justify-between gap-6 group">
+                      <div className="flex items-center gap-5 min-w-0">
+                        <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 text-emerald-600 flex items-center justify-center font-black text-sm shadow-sm group-hover:scale-110 transition-transform">
                           {p.method?.[0].toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <div className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+                          <div className="text-sm font-black text-gray-900 group-hover:text-emerald-600 transition-colors truncate">
                             {p.course_name || p.reference || 'Concepto Vario'}
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                {methodLabel[p.method] || p.method}
-                             </span>
+                          <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                             {methodLabel[p.method] || p.method}
                           </div>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <div className="text-sm font-black text-slate-900">{fmtCLP.format(Number(p.amount || 0))}</div>
-                        <div className="text-[10px] font-bold text-slate-400 mt-1">{(p.payment_date || '').split('-').reverse().join('/')}</div>
+                        <div className="text-lg font-black text-gray-900">{fmtCLP.format(Number(p.amount || 0))}</div>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{(p.payment_date || '').split('-').reverse().join('/')}</div>
                       </div>
                     </div>
                   ))}
@@ -328,11 +316,11 @@ export default function DashboardPage() {
               )}
 
               {/* Resumen por método */}
-              <div className="mt-8 pt-8 border-t border-slate-100 grid grid-cols-3 gap-4">
+              <div className="mt-10 pt-10 border-t border-gray-100 grid grid-cols-3 gap-6">
                 {['cash', 'card', 'transfer'].map(m => (
-                  <div key={m} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] mb-1">{methodLabel[m] || m}</div>
-                    <div className="text-base font-black text-slate-900">{fmtCLP.format(revByMethod[m] || 0)}</div>
+                  <div key={m} className="p-6 rounded-[24px] bg-gray-50/50 border border-gray-50 text-center group hover:bg-white hover:border-emerald-100 transition-all">
+                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-2">{methodLabel[m] || m}</div>
+                    <div className="text-xl font-black text-gray-900">{fmtCLP.format(revByMethod[m] || 0)}</div>
                   </div>
                 ))}
               </div>
@@ -342,54 +330,53 @@ export default function DashboardPage() {
 
         {/* Sidebar Column */}
         <div className="xl:col-span-4 space-y-8">
-          {/* Alertas y Notificaciones */}
-          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-6 border-b border-slate-100 flex items-center gap-3">
-              <HiExclamationCircle className="text-rose-500 text-2xl" />
-              <h2 className="text-lg font-bold text-slate-900 tracking-tight">Alertas Críticas</h2>
+          {/* Alertas */}
+          <section className="bg-white rounded-[48px] border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-8 py-8 border-b border-gray-50 flex items-center gap-4 bg-gray-50/30">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                 <HiExclamationCircle className="text-2xl" />
+              </div>
+              <h2 className="text-xl font-black text-gray-900 tracking-tight">Alertas</h2>
             </div>
             
-            <div className="p-6 space-y-6">
+            <div className="p-8 space-y-8">
               {/* Pagos pendientes */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest">
-                    <HiUserGroup className="text-rose-400 text-sm" />
-                    <span>Pendientes</span>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-lg bg-rose-100 text-rose-700 text-[10px] font-black">{alerts.pending_count}</span>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Pendientes</div>
+                  <span className="px-3 py-1 rounded-full bg-rose-500 text-white text-[10px] font-black shadow-lg shadow-rose-100">{alerts.pending_count}</span>
                 </div>
                 {!alerts.pending_preview || alerts.pending_preview.length === 0 ? (
-                   <p className="text-xs text-slate-400 italic">No hay pagos pendientes.</p>
+                   <p className="text-xs text-gray-400 italic text-center py-4">Todo al día</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {alerts.pending_preview.map((p: any, idx: number) => (
-                      <div key={idx} className="p-3 rounded-xl bg-rose-50/50 border border-rose-100/50">
-                        <div className="text-xs font-bold text-slate-900">{p.student}</div>
-                        <div className="text-[10px] font-bold text-rose-600 mt-0.5">{p.course}</div>
+                      <div key={idx} className="p-4 rounded-2xl bg-rose-50/30 border border-rose-100/30 flex items-center justify-between group cursor-pointer hover:bg-rose-50 transition-all">
+                        <div className="min-w-0">
+                          <div className="text-xs font-black text-gray-900 truncate">{p.student}</div>
+                          <div className="text-[10px] font-bold text-rose-600/70 mt-0.5 truncate uppercase tracking-widest">{p.course}</div>
+                        </div>
+                        <HiOutlineArrowRight className="text-rose-400 opacity-0 group-hover:opacity-100 transition-all" size={14} />
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Renovaciones proximas */}
-              <div className="space-y-3 pt-6 border-t border-slate-50">
-                <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest">
-                  <HiRefresh className="text-amber-400 text-sm" />
-                  <span>Vencimientos (7d)</span>
-                </div>
+              {/* Renovaciones */}
+              <div className="space-y-4 pt-8 border-t border-gray-50">
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Vencimientos (7d)</div>
                 {!alerts.soon_end || alerts.soon_end.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">Sin renovaciones próximas.</p>
+                  <p className="text-xs text-gray-400 italic text-center py-4">Sin vencimientos próximos</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {alerts.soon_end.map((r: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between gap-3 group">
+                      <div key={i} className="flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-all group">
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-900 truncate">{r.student}</div>
-                          <div className="text-[10px] font-bold text-slate-500 truncate">{r.course}</div>
+                          <div className="text-xs font-black text-gray-900 truncate">{r.student}</div>
+                          <div className="text-[10px] font-bold text-gray-400 truncate uppercase tracking-widest mt-0.5">{r.course}</div>
                         </div>
-                        <div className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-black tabular-nums">
+                        <div className="px-3 py-1.5 rounded-xl bg-gray-100 text-gray-600 text-[10px] font-black tabular-nums group-hover:bg-fuchsia-100 group-hover:text-fuchsia-600 transition-colors">
                           {r.renewal_date.split('-').reverse().slice(0,2).join('/')}
                         </div>
                       </div>
@@ -398,41 +385,39 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Cumpleaños y Aniversarios */}
-              <div className="grid grid-cols-1 gap-4 pt-6 border-t border-slate-50">
-                <div className="space-y-2">
-                   <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest">
-                    <FaBirthdayCake className="text-pink-400" />
-                    <span>Cumpleaños</span>
-                  </div>
-                  {alerts.birthdays.length === 0 ? <p className="text-[10px] text-slate-400 italic">Hoy nadie cumple.</p> : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {alerts.birthdays.map((n, i) => (
-                        <span key={i} className="px-2 py-1 rounded-lg bg-pink-50 text-pink-700 text-[10px] font-black border border-pink-100">{n}</span>
-                      ))}
-                    </div>
-                  )}
+              {/* Cumpleaños */}
+              <div className="pt-8 border-t border-gray-50 space-y-4">
+                <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">
+                  <FaBirthdayCake className="text-pink-400" />
+                  <span>Hoy cumplen</span>
                 </div>
+                {alerts.birthdays.length === 0 ? <p className="text-xs text-gray-400 italic text-center py-2">Nadie cumple hoy</p> : (
+                  <div className="flex flex-wrap gap-2 px-1">
+                    {alerts.birthdays.map((n, i) => (
+                      <span key={i} className="px-4 py-2 rounded-xl bg-pink-50 text-pink-700 text-[10px] font-black border border-pink-100 animate-bounce" style={{ animationDelay: `${i*100}ms`, animationIterationCount: 1 }}>{n} 🎂</span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </section>
 
-          {/* Estadísticas rápidas */}
-          <section className="bg-slate-900 rounded-3xl p-6 shadow-xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-indigo-500/20 transition-all" />
-            <div className="relative space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white">
-                  <HiSparkles className="text-indigo-300" />
+          {/* Estadísticas 30D */}
+          <section className="bg-gray-900 rounded-[48px] p-10 shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-fuchsia-500/20 rounded-full -mr-20 -mt-20 blur-[60px] group-hover:bg-fuchsia-500/30 transition-all" />
+            <div className="relative space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
+                  <HiSparkles className="text-fuchsia-400 text-xl" />
                 </div>
-                <h2 className="text-sm font-black text-white uppercase tracking-widest">Asistencias 30D</h2>
+                <h2 className="text-xs font-black text-white uppercase tracking-[0.2em]">Asistencias 30D</h2>
               </div>
               <div>
-                <div className="text-4xl font-black text-white tracking-tight">{attendances30d}</div>
-                <p className="text-slate-400 text-[11px] font-bold mt-1 uppercase tracking-wider">Total registros mensuales</p>
+                <div className="text-5xl font-black text-white tracking-tight leading-none">{attendances30d}</div>
+                <p className="text-gray-400 text-[10px] font-black mt-3 uppercase tracking-widest">Total registros mensuales</p>
               </div>
-              <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden mt-4">
-                <div className="h-full bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]" style={{ width: `${Math.min(100, (attendances30d/500)*100)}%` }} />
+              <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden mt-6">
+                <div className="h-full bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full shadow-[0_0_20px_rgba(217,70,239,0.4)] transition-all duration-1000" style={{ width: `${Math.min(100, (attendances30d/500)*100)}%` }} />
               </div>
             </div>
           </section>
@@ -441,23 +426,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
-function KpiCard({ label, value, icon }: { label: string; value: string | number; icon?: ReactNode }) {
-  return (
-    <div className="group bg-white rounded-3xl p-6 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all duration-300 relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-full -mr-12 -mt-12 group-hover:bg-indigo-50 transition-colors" />
-      <div className="relative flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div className="w-12 h-12 rounded-2xl bg-slate-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center text-2xl text-slate-600 transition-all duration-300 shadow-inner">
-            {icon}
-          </div>
-        </div>
-        <div className="space-y-1">
-          <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</div>
-          <div className="text-2xl font-black text-slate-900 tracking-tight group-hover:translate-x-1 transition-transform">{value}</div>
-        </div>
-      </div>
-    </div>
-  )
-}
-

@@ -108,7 +108,7 @@ export default function AppLayout() {
         {/* Logo Section */}
         <div className="h-16 flex items-center px-6 border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-xl sticky top-0">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-fuchsia-600 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-fuchsia-500/20 ring-1 ring-white/10">
               <span className="text-white font-bold text-xl tracking-tight">P</span>
             </div>
             {!collapsed && (
@@ -134,10 +134,10 @@ export default function AppLayout() {
                 to={n.to}
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative
                   ${isActive 
-                    ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' 
+                    ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-xl shadow-fuchsia-600/20' 
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
               >
-                <span className={`text-xl transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'}`}>
+                <span className={`text-xl transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-fuchsia-400'}`}>
                   {n.icon}
                 </span>
                 {!collapsed && <span className="font-semibold text-sm tracking-tight">{n.label}</span>}
@@ -167,10 +167,10 @@ export default function AppLayout() {
                 to={n.to}
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative
                   ${isActive 
-                    ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' 
+                    ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-xl shadow-fuchsia-600/20' 
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
               >
-                <span className={`text-xl transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'}`}>
+                <span className={`text-xl transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-fuchsia-400'}`}>
                   {n.icon}
                 </span>
                 {!collapsed && <span className="font-semibold text-sm tracking-tight">{n.label}</span>}

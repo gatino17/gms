@@ -222,9 +222,17 @@ class PaymentOut(PaymentBase):
     class Config:
         from_attributes = True
 
+class PaymentStats(BaseModel):
+    total_amount: Decimal = Decimal(0)
+    cash_amount: Decimal = Decimal(0)
+    card_amount: Decimal = Decimal(0)
+    transfer_amount: Decimal = Decimal(0)
+    agreement_amount: Decimal = Decimal(0)
+
 class PaymentListResponse(BaseModel):
     items: list[PaymentOut]
     total: int
+    stats: Optional[PaymentStats] = None
 
 class PaymentByTeacher(BaseModel):
     teacher_id: Optional[int] = None

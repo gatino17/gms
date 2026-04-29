@@ -82,6 +82,7 @@ class Teacher(Base):
     join_date: Mapped[Optional[date]] = mapped_column(Date)  # fecha de ingreso
     birthdate: Mapped[Optional[date]] = mapped_column(Date)  # fecha de nacimiento
     styles: Mapped[Optional[str]] = mapped_column(Text())    # estilos que sabe (texto libre)
+    photo_url: Mapped[Optional[str]] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import logging
 
 
 from app.core.config import settings
@@ -22,9 +24,14 @@ app = FastAPI(title=settings.api_title)
 cors_origins_raw = settings.cors_origins.split(',')
 origins = [o.strip() for o in cors_origins_raw if o.strip()]
 
-# If origins is '*', allow all. If empty, default to localhost for dev.
-if not origins:
-    origins = ['http://localhost:5173', 'http://127.0.0.1:5173']
+# If origins is '*' or empty, provide defaults including the production IP
+if not origins or "*" in origins:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://206.189.191.143",
+        "http://206.189.191.143:8000",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,6 +40,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Exception handler to ensure CORS headers are sent on 500 errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logging.error(f"Global error handler caught: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "message": str(exc)},
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", origins[0]),
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 # PMS routers
 app.include_router(pms_students.router)

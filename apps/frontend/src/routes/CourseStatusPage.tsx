@@ -15,6 +15,7 @@ import {
   HiOutlineExclamationCircle 
 } from 'react-icons/hi'
 import { useTenant } from '../lib/tenant'
+import RenewModal from '../components/RenewModal'
 
 type CourseRow = {
   course: { id: number; name: string; level?: string; start_date?: string | null; price?: number | null; classes_per_week?: number | null; day_of_week?: number | null }
@@ -46,6 +47,7 @@ export default function CourseStatusPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tenantInfo, setTenantInfo] = useState<any>(null)
+  const [renewModalData, setRenewModalData] = useState<{ studentId: number; courseId: number; enrollmentId: number } | null>(null)
   
   // View state: 'detailed' | 'compact' | 'summary'
   const [viewMode, setViewMode] = useState<'detailed' | 'compact' | 'summary'>('detailed')
@@ -224,7 +226,14 @@ export default function CourseStatusPage() {
                                                        OK
                                                     </div>
                                                   ) : (
-                                                    <button onClick={() => navigate(`/students/${s.id}/renew?enrollment=${s.enrollment_id}&course=${row.course.id}`)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors" title="Renovar o Pagar">
+                                                    <button 
+                                                      onClick={() => {
+                                                        if (s.enrollment_id) setRenewModalData({ studentId: s.id, courseId: row.course.id, enrollmentId: s.enrollment_id })
+                                                        else navigate(`/students/${s.id}`)
+                                                      }} 
+                                                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors" 
+                                                      title="Renovar o Pagar"
+                                                    >
                                                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                                                        Renovar
                                                     </button>
@@ -289,6 +298,21 @@ export default function CourseStatusPage() {
               </div>
            ))}
         </div>
+      )}
+
+      {/* Modal de Renovación */}
+      {renewModalData && (
+        <RenewModal
+          isOpen={true}
+          onClose={() => setRenewModalData(null)}
+          onSuccess={() => {
+            setRenewModalData(null)
+            load() // Recargar los datos para reflejar el pago
+          }}
+          studentId={renewModalData.studentId}
+          courseId={renewModalData.courseId}
+          enrollmentId={renewModalData.enrollmentId}
+        />
       )}
     </div>
   )

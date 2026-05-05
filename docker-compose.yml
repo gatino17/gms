@@ -1,26 +1,11 @@
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: pms-db
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-gatino}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-753524}
-      POSTGRES_DB: ${POSTGRES_DB:-studiobd}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
   backend:
     build: ./apps/backend
     container_name: pms-backend
     restart: always
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://gatino:753524@db:5432/studiobd}
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
-    depends_on:
-      - db
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://gatino:753524@204.48.22.217:5432/studiobd}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://206.189.191.143,http://localhost:5173}
     ports:
       - "8000:8000"
     volumes:
@@ -39,4 +24,5 @@ services:
       - backend
 
 volumes:
+  # We can keep this or remove it, but it's not used anymore for postgres
   postgres_data:

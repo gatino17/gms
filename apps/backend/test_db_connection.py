@@ -21,11 +21,25 @@ async def test_connection():
             exists = result.scalar()
             print(f"Table 'users' exists: {exists}")
             
-            if not exists:
+            if exists:
+                # Check columns
+                columns_to_check = ['id', 'email', 'hashed_password', 'full_name', 'is_active', 'is_superuser', 'tenant_id']
+                for col in columns_to_check:
+                    try:
+                        await conn.execute(text(f"SELECT {col} FROM users LIMIT 1"))
+                        print(f"  Column '{col}' exists: Yes")
+                    except Exception as e:
+                        print(f"  Column '{col}' exists: NO (Error: {e})")
+                
+                # Check user count
+                result = await conn.execute(text("SELECT COUNT(*) FROM users"))
+                count = result.scalar()
+                print(f"Total users in DB: {count}")
+                
+                if count == 0:
+                    print("WARNING: No users found in 'users' table. You need to create a superuser.")
+            else:
                 print("WARNING: Table 'users' does not exist. Did you run migrations?")
-            
-    except Exception as e:
-        print(f"Connection failed: {e}")
     finally:
         await engine.dispose()
 

@@ -49,8 +49,8 @@ export default function CourseStatusPage() {
   const [tenantInfo, setTenantInfo] = useState<any>(null)
   const [renewModalData, setRenewModalData] = useState<{ studentId: number; courseId: number; enrollmentId: number } | null>(null)
   
-  // View state: 'detailed' | 'compact' | 'summary'
-  const [viewMode, setViewMode] = useState<'detailed' | 'compact' | 'summary'>('detailed')
+  // View state: 'detailed' | 'pending' | 'summary'
+  const [viewMode, setViewMode] = useState<'detailed' | 'pending' | 'summary'>('detailed')
   
   // Filters
   const [courseQ, setCourseQ] = useState('')
@@ -85,14 +85,15 @@ export default function CourseStatusPage() {
   }, [courseQ, studentQ, selectedDay])
 
   const filteredData = useMemo(() => {
-    if (!studentQ) return data
     return data.map(row => ({
       ...row,
-      students: row.students.filter(s => 
-        (s.first_name + ' ' + s.last_name).toLowerCase().includes(studentQ.toLowerCase())
-      )
-    })).filter(row => row.students.length > 0 || !studentQ)
-  }, [data, studentQ])
+      students: row.students.filter(s => {
+        const matchesStudent = !studentQ || (s.first_name + ' ' + s.last_name).toLowerCase().includes(studentQ.toLowerCase())
+        const matchesPending = viewMode !== 'pending' || s.payment_status !== 'activo'
+        return matchesStudent && matchesPending
+      })
+    })).filter(row => row.students.length > 0 || (!studentQ && viewMode !== 'pending'))
+  }, [data, studentQ, viewMode])
 
   const groupedByDay = useMemo(() => {
     const groups: Record<string, CourseRow[]> = {}
@@ -114,11 +115,11 @@ export default function CourseStatusPage() {
            <div className="flex items-center gap-4 mt-2">
               <p className="text-gray-500 font-medium">Control de inscripciones y pagos.</p>
               <div className="h-4 w-px bg-gray-200" />
-              <div className="flex bg-gray-100 p-1 rounded-xl">
-                 <button onClick={() => setViewMode('detailed')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='detailed' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Detallada</button>
-                 <button onClick={() => setViewMode('compact')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='compact' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Compacta</button>
+               <div className="flex bg-gray-100 p-1 rounded-xl">
+                 <button onClick={() => setViewMode('detailed')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='detailed' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Todos</button>
+                 <button onClick={() => setViewMode('pending')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='pending' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-rose-400 hover:text-rose-600'}`}>Pendientes</button>
                  <button onClick={() => setViewMode('summary')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='summary' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Resumen</button>
-              </div>
+               </div>
            </div>
         </div>
 
@@ -197,7 +198,7 @@ export default function CourseStatusPage() {
                                             <tr key={s.id} className="hover:bg-fuchsia-50/10 transition-colors group">
                                                <td className="pl-10 pr-6 py-4">
                                                   <div className="flex items-center gap-3">
-                                                     {viewMode === 'detailed' && (
+                                                     {(viewMode === 'detailed' || viewMode === 'pending') && (
                                                         <div className="w-10 h-10 rounded-xl bg-fuchsia-100 overflow-hidden flex items-center justify-center text-fuchsia-600 font-black shrink-0">
                                                            {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
                                                         </div>

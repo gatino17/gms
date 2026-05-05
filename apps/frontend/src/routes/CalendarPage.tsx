@@ -26,7 +26,7 @@ const THEME_COLORS = [
 ]
 
 const hash = (s: string) => { let h=0; for(let i=0; i<s.length; i++) h = (h<<5)-h+s.charCodeAt(i)|0; return Math.abs(h) }
-const getTheme = (name: string | null) => THEME_COLORS[hash(name || 'teacher') % THEME_COLORS.length]
+const getTheme = (c: Course) => THEME_COLORS[hash(c.name + c.id) % THEME_COLORS.length]
 
 export default function CalendarPage() {
   const { tenantId } = useTenant()
@@ -45,11 +45,21 @@ export default function CalendarPage() {
   }, [tenantId])
 
   const hours = useMemo(() => {
-    let min = 8, max = 22
+    let min = 24, max = 0
+    let hasValidHours = false
+
     for(const c of data) {
       const h = toHour(c.start_time)
-      if(h != null) { min = Math.min(min, h); max = Math.max(max, h + 1) }
+      const endH = toHour(c.end_time)
+      if(h != null) { 
+        min = Math.min(min, h)
+        max = Math.max(max, endH != null ? endH + 1 : h + 1)
+        hasValidHours = true
+      }
     }
+
+    if (!hasValidHours) return Array.from({length: 14}, (_, i) => 8 + i)
+
     return Array.from({length: max - min}, (_, i) => min + i)
   }, [data])
 
@@ -113,7 +123,7 @@ export default function CalendarPage() {
                         <div key={dayIdx} className="p-3 border-r border-gray-100 last:border-0 min-h-[140px] transition-colors hover:bg-gray-50/50 relative">
                           <div className="flex flex-col gap-3 h-full">
                             {classes.map(c => {
-                              const theme = getTheme(c.teacher_name)
+                              const theme = getTheme(c)
                               return (
                                 <div 
                                   key={c.id} 

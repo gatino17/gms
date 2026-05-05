@@ -51,6 +51,7 @@ async def course_status(
             Course,
             Teacher.name.label("teacher_name"),
             Student,
+            Enrollment.id.label("enr_id"),
             Enrollment.start_date.label("enr_start"),
             Enrollment.end_date.label("enr_end"),
             func.coalesce(att_subquery.c.count, 0).label("att_count")
@@ -93,7 +94,7 @@ async def course_status(
                 count += 1
         return count
 
-    for course_obj, t_name, student_obj, enr_start, enr_end, att_count in rows:
+    for course_obj, t_name, student_obj, enr_id, enr_start, enr_end, att_count in rows:
         cid = course_obj.id
         if cid not in grouped:
             grouped[cid] = {
@@ -124,6 +125,8 @@ async def course_status(
                 "id": student_obj.id,
                 "first_name": student_obj.first_name,
                 "last_name": student_obj.last_name,
+                "phone": student_obj.phone,
+                "enrollment_id": enr_id,
                 "photo_url": student_obj.photo_url,
                 "enrolled_since": enr_start.isoformat() if enr_start else None,
                 "renewal_date": enr_end.isoformat() if enr_end else None,

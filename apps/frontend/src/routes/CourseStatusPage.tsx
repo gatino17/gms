@@ -22,6 +22,7 @@ type CourseRow = {
   counts?: { total: number; female: number; male: number }
   students: {
     id: number;
+    enrollment_id?: number;
     photo_url?: string | null;
     first_name: string;
     last_name: string;
@@ -44,6 +45,7 @@ export default function CourseStatusPage() {
   const [data, setData] = useState<CourseRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tenantInfo, setTenantInfo] = useState<any>(null)
   
   // View state: 'detailed' | 'compact' | 'summary'
   const [viewMode, setViewMode] = useState<'detailed' | 'compact' | 'summary'>('detailed')
@@ -59,8 +61,14 @@ export default function CourseStatusPage() {
     try {
       const params: any = { course_q: courseQ, student_q: studentQ }
       if (selectedDay !== '') params.day_of_week = Number(selectedDay)
-      const res = await api.get('/api/pms/course_status', { params })
+      
+      const [res, tenantRes] = await Promise.all([
+        api.get('/api/pms/course_status', { params }),
+        api.get('/api/pms/tenants/me')
+      ])
+      
       setData(res.data || [])
+      setTenantInfo(tenantRes.data)
     } catch (e: any) {
       setError('Error al cargar datos')
     } finally {
@@ -210,14 +218,31 @@ export default function CourseStatusPage() {
                                                   </div>
                                                </td>
                                                <td className="px-6 py-4 text-center">
-                                                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                                                     <div className={`w-1.5 h-1.5 rounded-full ${isPaid ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`} />
-                                                     {isPaid ? 'OK' : 'Pagar'}
-                                                  </div>
+                                                  {isPaid ? (
+                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700">
+                                                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                       OK
+                                                    </div>
+                                                  ) : (
+                                                    <button onClick={() => navigate(`/students/${s.id}/renew?enrollment=${s.enrollment_id}&course=${row.course.id}`)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors" title="Renovar o Pagar">
+                                                       <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                                       Renovar
+                                                    </button>
+                                                  )}
                                                </td>
                                                <td className="pr-10 pl-6 py-4 text-right">
                                                   <div className="flex items-center justify-end gap-2">
-                                                     <a href={`https://wa.me/${s.phone}`} target="_blank" className="p-2 bg-gray-50 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"><HiOutlinePhone size={14} /></a>
+                                                     {(() => {
+                                                        const waMsgTemplate = tenantInfo?.whatsapp_message || "Hola {nombre}, te escribimos de {academia}. Tienes un pago pendiente para el curso {curso}."
+                                                        const msg = waMsgTemplate
+                                                          .replace('{nombre}', s.first_name)
+                                                          .replace('{curso}', row.course.name)
+                                                          .replace('{academia}', tenantInfo?.name || 'la academia')
+                                                        const cleanPhone = s.phone?.replace(/\D/g, '') || ''
+                                                        return (
+                                                          <a href={cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : '#'} onClick={e => !cleanPhone && e.preventDefault()} target={cleanPhone ? "_blank" : undefined} className={`p-2 rounded-lg transition-all ${cleanPhone ? 'bg-gray-50 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50' : 'bg-gray-50 text-gray-300 cursor-not-allowed opacity-50'}`} title={cleanPhone ? "Enviar WhatsApp" : "Sin número de teléfono"}><HiOutlinePhone size={14} /></a>
+                                                        )
+                                                     })()}
                                                      <button onClick={() => navigate(`/students/${s.id}`)} className="p-2 bg-gray-50 text-gray-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 rounded-lg transition-all"><HiOutlineChevronRight size={14} /></button>
                                                   </div>
                                                </td>

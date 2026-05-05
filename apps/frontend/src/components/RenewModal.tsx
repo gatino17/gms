@@ -223,17 +223,21 @@ export default function RenewModal({
             )
             
             const outOfPlanAttendances: string[] = []
-            for (const mm of monthsToCheck) {
-              const res = await api.get(`/api/pms/students/${studentId}/attendance_calendar`, {
+            const attendancePromises = monthsToCheck.map(mm => 
+              api.get(`/api/pms/students/${studentId}/attendance_calendar`, {
                 params: { year: mm.year, month: mm.month }
               })
+            )
+            const responses = await Promise.all(attendancePromises)
+            
+            responses.forEach(res => {
               const days = (res.data?.days || []) as { date: string; attended_course_ids?: number[] }[]
               for (const d of days) {
                 if (d.date > prevEnd && d.date < newStart && d.attended_course_ids?.includes(Number(courseId))) {
                   outOfPlanAttendances.push(d.date)
                 }
               }
-            }
+            })
             
             if (outOfPlanAttendances.length > 0) {
               setOutOfPlanDates(outOfPlanAttendances)

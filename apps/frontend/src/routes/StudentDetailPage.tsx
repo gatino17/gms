@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
+import RenewModal from '../components/RenewModal'
 import { 
   HiOutlineChevronLeft, 
   HiOutlineMail, 
@@ -85,6 +86,7 @@ export default function StudentDetailPage() {
 
   const [showEdit, setShowEdit] = useState(false)
   const [editMode, setEditMode] = useState<'edit' | 'renew' | 'profile'>('edit')
+  const [renewModalData, setRenewModalData] = useState<{ studentId: number; courseId: number; enrollmentId: number } | null>(null)
 
   const todayYMD = useMemo(() => toYMDInTZ(new Date(), CL_TZ), [])
 
@@ -268,7 +270,7 @@ export default function StudentDetailPage() {
                           </div>
 
                           <div className="flex gap-3 pt-2">
-                             <button onClick={() => { setEditMode('renew'); setShowEdit(true) }} className="flex-1 py-4 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-fuchsia-600 hover:scale-[1.02] transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2">
+                             <button onClick={() => setRenewModalData({ studentId: student.id, courseId: e.course.id, enrollmentId: e.id })} className="flex-1 py-4 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-fuchsia-600 hover:scale-[1.02] transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2">
                                 <HiOutlineRefresh size={18} /> Renovar Ciclo
                              </button>
                              <button onClick={() => { setEditMode('edit'); setShowEdit(true) }} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:text-fuchsia-600 hover:bg-white hover:shadow-lg transition-all">
@@ -379,6 +381,21 @@ export default function StudentDetailPage() {
            </div>
         </div>
       </div>
+
+      {/* Modal de Renovación */}
+      {renewModalData && (
+        <RenewModal
+          isOpen={true}
+          onClose={() => setRenewModalData(null)}
+          onSuccess={() => {
+            setRenewModalData(null)
+            loadData() // Recargar datos financieros y de inscripción
+          }}
+          studentId={renewModalData.studentId}
+          courseId={renewModalData.courseId}
+          enrollmentId={renewModalData.enrollmentId}
+        />
+      )}
     </div>
   )
 }

@@ -19,6 +19,7 @@ type StudioForm = {
 type StudioUpdateForm = {
   name: string
   email: string
+  password: string
   address: string
   country: string
   city: string
@@ -67,6 +68,7 @@ const defaultForm: StudioForm = {
 const defaultEditForm: StudioUpdateForm = {
   name: '',
   email: '',
+  password: '',
   address: '',
   country: '',
   city: '',
@@ -97,6 +99,7 @@ export default function StudiosPage() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [editMessage, setEditMessage] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
+  const [showNewPassword, setShowNewPassword] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [createLogoFile, setCreateLogoFile] = useState<File | null>(null)
@@ -124,6 +127,7 @@ export default function StudiosPage() {
       setEditForm({
         name: editTarget.name,
         email: editTarget.contact_email ?? '',
+        password: '',
         address: editTarget.address ?? '',
         country: editTarget.country ?? '',
         city: editTarget.city ?? '',
@@ -137,6 +141,7 @@ export default function StudiosPage() {
       })
       setEditMessage(null)
       setEditError(null)
+      setShowNewPassword(false)
     } else {
       setEditForm(defaultEditForm)
     }
@@ -199,6 +204,7 @@ export default function StudiosPage() {
       const { data } = await api.put<Studio>(`/api/pms/tenants/${editTarget.id}`, {
         name: editForm.name.trim(),
         email: editForm.email.trim(),
+        ...(editForm.password.trim() ? { password: editForm.password.trim() } : {}),
         address: normalizeOptional(editForm.address),
         country: normalizeOptional(editForm.country),
         city: normalizeOptional(editForm.city),
@@ -587,6 +593,41 @@ export default function StudiosPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Correo administrador</label>
                   <input type="email" value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} required className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                {/* Contraseña */}
+                <div className="md:col-span-2 lg:col-span-3">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Contraseña</span>
+                    </div>
+                    <p className="text-xs text-amber-600">
+                      La contraseña actual está cifrada y no puede mostrarse. Deja el campo en blanco para mantenerla sin cambios.
+                    </p>
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={editForm.password}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
+                        placeholder="Nueva contraseña (mín. 6 caracteres)"
+                        className="w-full rounded border border-amber-300 bg-white px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-700"
+                        tabIndex={-1}
+                      >
+                        {showNewPassword ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 mt-5">
                   <input id="edit_is_superuser" type="checkbox" checked={editForm.is_superuser} onChange={(e) => setEditForm((prev) => ({ ...prev, is_superuser: e.target.checked }))} className="h-4 w-4 text-fuchsia-600 border-gray-300 rounded" />

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Header, UploadFile, File
 import logging
@@ -157,6 +157,15 @@ async def update_tenant(
             )
         if admin_user:
             admin_user.is_superuser = bool(data["is_superuser"])
+
+    # Cambio de contraseña: solo si viene un valor no vacío
+    if "password" in data and data["password"]:
+        if admin_user is None:
+            admin_user = await db.scalar(
+                select(models.User).where(models.User.tenant_id == tenant_id).order_by(models.User.id)
+            )
+        if admin_user:
+            admin_user.hashed_password = security.get_password_hash(data["password"])
 
     await db.commit()
     await db.refresh(tenant)

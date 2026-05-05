@@ -42,6 +42,7 @@ class TenantCreate(BaseModel):
 class TenantUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=150)
     email: Optional[EmailStr] = None
+    password: Optional[str] = Field(default=None, min_length=6)  # Si viene, actualiza la clave del admin
     address: Optional[str] = Field(default=None, max_length=255)
     country: Optional[str] = Field(default=None, max_length=80)
     city: Optional[str] = Field(default=None, max_length=120)

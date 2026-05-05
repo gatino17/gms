@@ -54,9 +54,7 @@ export default function AppLayout() {
         const res = await api.get<TenantOption[]>('/api/pms/tenants')
         setTenantOptions(res.data)
         setCanSwitchTenants(true)
-        if (res.data.length > 0 && (tenantId == null || !res.data.some((t) => t.id === tenantId))) {
-          setTenantId(res.data[0].id)
-        }
+        // Do NOT auto-select the first tenant — admin can choose or see all
       } catch (e: any) {
         setTenantOptions([])
         setCanSwitchTenants(false)
@@ -232,6 +230,7 @@ export default function AppLayout() {
                     value={tenantId ?? ''}
                     onChange={(e) => setTenantId(e.target.value ? Number(e.target.value) : null)}
                   >
+                    <option value="">— Todos los estudios —</option>
                     {tenantOptions.map((tenant) => (
                       <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
                     ))}

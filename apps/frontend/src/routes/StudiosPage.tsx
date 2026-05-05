@@ -553,174 +553,111 @@ export default function StudiosPage() {
       </div>
 
       {editTarget && (
-      <div className="bg-white rounded-xl shadow p-6 space-y-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">Editar estudio</h2>
-              <p className="text-sm text-gray-600">Tenant actual: {editTarget.slug}</p>
-            </div>
-            <button
-              type="button"
-              className="text-sm text-gray-500 hover:text-gray-700"
-              onClick={() => setEditTarget(null)}
-            >
-              Cerrar
-            </button>
-          </div>
-
-          <form className="space-y-4" onSubmit={handleUpdate}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setEditTarget(null)}
+          />
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del estudio</label>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
-                  required
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                />
+                <h2 className="text-xl font-semibold text-gray-900">Editar estudio</h2>
+                <p className="text-sm text-gray-500">Tenant: <span className="font-mono text-fuchsia-600">{editTarget.slug}</span></p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Correo administrador</label>
-                <input
-                  type="email"
-                  value={editForm.email}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
-                  required
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  id="edit_is_superuser"
-                  type="checkbox"
-                  checked={editForm.is_superuser}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, is_superuser: e.target.checked }))}
-                  className="h-4 w-4 text-fuchsia-600 border-gray-300 rounded"
-                />
-                <label htmlFor="edit_is_superuser" className="text-sm text-gray-700">Admin es superusuario</label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Direccion</label>
-                <input
-                  type="text"
-                  value={editForm.address}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pais</label>
-                <input
-                  type="text"
-                  value={editForm.country}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, country: e.target.value }))}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
-                <input
-                  type="text"
-                  value={editForm.city}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
-                <input
-                  type="text"
-                  value={editForm.phone}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
-                <input
-                  type="text"
-                  value={editForm.instagram_url}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, instagram_url: e.target.value }))}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">TikTok</label>
-                <input
-                  type="text"
-                  value={editForm.tiktok_url}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, tiktok_url: e.target.value }))}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Facebook</label>
-                <input
-                  type="text"
-                  value={editForm.facebook_url}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, facebook_url: e.target.value }))}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sitio web</label>
-                <input
-                  type="text"
-                  value={editForm.website_url}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, website_url: e.target.value }))}
-                  className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
-                <div className="flex items-center gap-3">
-                  <div className="h-14 w-14 rounded-full border bg-white flex items-center justify-center overflow-hidden">
-                    {editForm.logo_url ? (
-                      <img src={toAbsoluteUrl(editForm.logo_url)} alt="logo" className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="text-xs text-gray-500">Sin logo</span>
-                    )}
-                  </div>
-                  <label className="px-3 py-2 rounded border border-fuchsia-300 text-sm text-fuchsia-700 font-semibold cursor-pointer hover:bg-fuchsia-50">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (!file) return
-                        handleUploadLogo(file)
-                      }}
-                    />
-                    {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {editMessage && <div className="rounded-md bg-green-50 text-green-800 px-4 py-2">{editMessage}</div>}
-            {editError && <div className="rounded-md bg-red-50 text-red-800 px-4 py-2">{editError}</div>}
-
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={isUpdating}
-                className="inline-flex items-center justify-center rounded-md bg-fuchsia-600 px-4 py-2 text-white font-semibold hover:bg-fuchsia-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-500 disabled:opacity-60"
-              >
-                {isUpdating ? 'Guardando...' : 'Guardar cambios'}
-              </button>
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 onClick={() => setEditTarget(null)}
+                className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                aria-label="Cerrar"
               >
-                Cancelar
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
-          </form>
+
+            <form className="p-6 space-y-4" onSubmit={handleUpdate}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del estudio</label>
+                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} required className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Correo administrador</label>
+                  <input type="email" value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} required className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                <div className="flex items-center gap-2 mt-5">
+                  <input id="edit_is_superuser" type="checkbox" checked={editForm.is_superuser} onChange={(e) => setEditForm((prev) => ({ ...prev, is_superuser: e.target.checked }))} className="h-4 w-4 text-fuchsia-600 border-gray-300 rounded" />
+                  <label htmlFor="edit_is_superuser" className="text-sm text-gray-700">Admin es superusuario</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                  <input type="text" value={editForm.address} onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">País</label>
+                  <input type="text" value={editForm.country} onChange={(e) => setEditForm((prev) => ({ ...prev, country: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+                  <input type="text" value={editForm.city} onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                  <input type="text" value={editForm.phone} onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
+                  <input type="text" value={editForm.instagram_url} onChange={(e) => setEditForm((prev) => ({ ...prev, instagram_url: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">TikTok</label>
+                  <input type="text" value={editForm.tiktok_url} onChange={(e) => setEditForm((prev) => ({ ...prev, tiktok_url: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Facebook</label>
+                  <input type="text" value={editForm.facebook_url} onChange={(e) => setEditForm((prev) => ({ ...prev, facebook_url: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sitio web</label>
+                  <input type="text" value={editForm.website_url} onChange={(e) => setEditForm((prev) => ({ ...prev, website_url: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
+                  <div className="flex items-center gap-3">
+                    <div className="h-14 w-14 rounded-full border bg-white flex items-center justify-center overflow-hidden">
+                      {editForm.logo_url ? (
+                        <img src={toAbsoluteUrl(editForm.logo_url)} alt="logo" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-xs text-gray-500">Sin logo</span>
+                      )}
+                    </div>
+                    <label className="px-3 py-2 rounded border border-fuchsia-300 text-sm text-fuchsia-700 font-semibold cursor-pointer hover:bg-fuchsia-50">
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; handleUploadLogo(file) }} />
+                      {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {editMessage && <div className="rounded-md bg-green-50 text-green-800 px-4 py-2 text-sm">{editMessage}</div>}
+              {editError && <div className="rounded-md bg-red-50 text-red-800 px-4 py-2 text-sm">{editError}</div>}
+
+              <div className="flex gap-3 pt-2 border-t border-gray-100">
+                <button type="submit" disabled={isUpdating} className="inline-flex items-center justify-center rounded-md bg-fuchsia-600 px-5 py-2 text-white font-semibold hover:bg-fuchsia-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-500 disabled:opacity-60">
+                  {isUpdating ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+                <button type="button" className="inline-flex items-center justify-center rounded-md border border-gray-300 px-5 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setEditTarget(null)}>
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
   )
 }
+

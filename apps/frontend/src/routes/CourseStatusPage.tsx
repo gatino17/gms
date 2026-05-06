@@ -162,9 +162,9 @@ export default function CourseStatusPage() {
            {Object.entries(groupedByDay).map(([dayName, courses]) => (
               <div key={dayName} className="space-y-6 md:space-y-8">
                  <div className="flex items-center gap-4 px-2">
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-100 to-gray-100" />
-                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] whitespace-nowrap bg-gray-50 px-5 py-1.5 rounded-full border border-gray-100">{dayName}</h2>
-                    <div className="h-px flex-1 bg-gradient-to-l from-transparent via-gray-100 to-gray-100" />
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-fuchsia-100 to-fuchsia-100" />
+                    <h2 className="text-[10px] font-black text-fuchsia-600 uppercase tracking-[0.4em] whitespace-nowrap bg-fuchsia-50 px-6 py-2 rounded-full border border-fuchsia-100 shadow-sm">{dayName}</h2>
+                    <div className="h-px flex-1 bg-gradient-to-l from-transparent via-fuchsia-100 to-fuchsia-100" />
                  </div>
 
                  <div className={`grid gap-6 md:gap-8 ${viewMode === 'summary' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>

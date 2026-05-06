@@ -215,7 +215,14 @@ export default function AppLayout() {
               </div>
               <span className="text-slate-300 text-lg">/</span>
               <span className="text-slate-900 font-bold tracking-tight">
-                {pathname === '/' ? 'Dashboard Overview' : pathname.slice(1).split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')}
+                {(() => {
+                  if (pathname === '/') return 'Dashboard Overview'
+                  const allNav = [...navTop, ...navBottom]
+                  const match = allNav.find(n => n.to === pathname)
+                  if (match) return match.label
+                  // Fallback for sub-routes or dynamic routes
+                  return pathname.slice(1).split('/').pop()?.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
+                })()}
               </span>
             </div>
           </div>

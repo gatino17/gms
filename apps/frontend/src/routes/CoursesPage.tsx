@@ -137,28 +137,28 @@ export default function CoursesPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10 pb-20">
+    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 px-4 md:px-0">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="space-y-1 text-center sm:text-left">
           <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Academia</span>
-          <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight">Cursos & Clases</h1>
-          <p className="text-gray-500 font-medium text-sm md:text-lg">Administra tu oferta académica.</p>
+          <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Cursos & Clases</h1>
+          <p className="text-gray-500 font-medium text-xs md:text-sm">Administra tu oferta académica.</p>
         </div>
         <button
           onClick={() => openForm(null)}
-          className="w-full sm:w-auto px-8 py-4 md:py-5 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black rounded-2xl md:rounded-[24px] shadow-2xl shadow-fuchsia-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+          className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-sm rounded-xl shadow-xl shadow-fuchsia-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
         >
-          <HiOutlinePlus size={20} className="md:w-6 md:h-6" /> Crear Nuevo
+          <HiOutlinePlus size={18} /> Crear Nuevo
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="mx-4 bg-white p-1.5 md:p-2 rounded-2xl md:rounded-[32px] border border-gray-100 shadow-sm flex items-center gap-2">
+      <div className="mx-0 bg-white p-1 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-2">
         <div className="relative flex-1">
-          <HiOutlineSearch className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} md:size={24} />
+          <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
-            className="w-full bg-transparent border-none rounded-full pl-12 md:pl-16 pr-6 py-4 md:py-5 text-base md:text-lg font-bold text-gray-700 placeholder-gray-300 outline-none"
+            className="w-full bg-transparent border-none rounded-full pl-12 pr-6 py-2.5 md:py-3 text-sm md:text-base font-bold text-gray-700 placeholder-gray-300 outline-none"
             placeholder="Buscar curso, nivel o instructor..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -173,50 +173,50 @@ export default function CoursesPage() {
            <span className="font-bold text-fuchsia-600/60 uppercase tracking-widest text-xs">Sincronizando academia...</span>
         </div>
       ) : (
-        <div className="space-y-12 px-4 md:px-0">
+        <div className="space-y-10 px-0 md:px-0">
           {grouped.map((g, idx) => (
-            <div key={idx} className="space-y-6 md:space-y-8">
-              <div className="flex items-center gap-4 md:gap-6">
-                 <h2 className="text-2xl md:text-3xl font-black text-gray-900">{g.label}</h2>
+            <div key={idx} className="space-y-4 md:space-y-6">
+              <div className="flex items-center gap-3 md:gap-4">
+                 <h2 className="text-xl md:text-2xl font-black text-gray-900">{g.label}</h2>
                  <div className="h-[2px] flex-1 bg-gray-100 rounded-full" />
-                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{g.items.length} Clases</span>
+                 <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{g.items.length} Clases</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {g.items.map((c, i) => (
-                  <div key={c.id} className="group relative bg-white rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden cursor-pointer" onClick={() => window.location.href=`/courses/${c.id}`}>
+                   <div key={c.id} className="group relative bg-white rounded-2xl md:rounded-[28px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden cursor-pointer" onClick={() => window.location.href=`/courses/${c.id}`}>
                     {/* Visual Header */}
-                    <div className={`h-36 md:h-40 relative bg-gradient-to-br ${getCourseGradient(c, i)}`}>
+                    <div className={`h-32 md:h-36 relative bg-gradient-to-br ${getCourseGradient(c, i)}`}>
                        {c.image_url && <img src={toAbsoluteUrl(c.image_url)} className="w-full h-full object-cover opacity-60 mix-blend-overlay group-hover:scale-110 transition-transform duration-700" />}
                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                       <div className="absolute top-5 right-5">
-                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest backdrop-blur-md border border-white/20 ${c.is_active !== false ? 'bg-emerald-500/80 text-white' : 'bg-gray-500/80 text-white'}`}>
+                       <div className="absolute top-4 right-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-md border border-white/20 ${c.is_active !== false ? 'bg-emerald-500/80 text-white' : 'bg-gray-500/80 text-white'}`}>
                              {c.is_active !== false ? 'Activo' : 'Inactivo'}
                           </span>
                        </div>
-                       <div className="absolute bottom-5 left-6 right-6">
-                          <div className="text-xs font-black text-white/80 uppercase tracking-widest mb-1">{c.level || 'Nivel General'}</div>
-                          <div className="text-2xl font-black text-white leading-tight line-clamp-1">{c.name}</div>
+                       <div className="absolute bottom-4 left-5 right-5">
+                          <div className="text-[9px] font-black text-white/80 uppercase tracking-widest mb-1">{c.level || 'Nivel General'}</div>
+                          <div className="text-xl font-black text-white leading-tight line-clamp-1">{c.name}</div>
                        </div>
                     </div>
 
                     {/* Content */}
-                    <div className="p-8 space-y-6">
-                       <div className="flex items-center justify-between border-b border-gray-50 pb-4">
+                    <div className="p-6 space-y-4">
+                       <div className="flex items-center justify-between border-b border-gray-50 pb-3">
                           <div className="flex items-center gap-2">
-                             <div className="w-8 h-8 rounded-full bg-fuchsia-50 text-fuchsia-600 flex items-center justify-center font-black text-xs">
+                             <div className="w-7 h-7 rounded-full bg-fuchsia-50 text-fuchsia-600 flex items-center justify-center font-black text-[10px]">
                                 {c.student_count || 0}
                              </div>
-                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumnos</span>
+                             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Alumnos</span>
                           </div>
                           <div className="flex items-center gap-2">
-                             <HiOutlineLocationMarker className="text-fuchsia-300" />
-                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{c.room_name || 'Sin Sala'}</span>
+                             <HiOutlineLocationMarker className="text-fuchsia-300" size={12} />
+                             <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">{c.room_name || 'Sin Sala'}</span>
                           </div>
                        </div>
 
-                       <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                             <HiOutlineClock className="text-fuchsia-600" /> Horarios
+                       <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                             <HiOutlineClock className="text-fuchsia-600" size={12} /> Horarios
                           </div>
                           <div className="space-y-1">
                              {[
@@ -224,7 +224,7 @@ export default function CoursesPage() {
                                { d: c.day_of_week_2, st: c.start_time_2, et: c.end_time_2 },
                                { d: c.day_of_week_3, st: c.start_time_3, et: c.end_time_3 }
                              ].filter(s => s.d != null).map((s, si) => (
-                               <div key={si} className="flex items-center justify-between text-xs">
+                               <div key={si} className="flex items-center justify-between text-[11px]">
                                   <span className="font-black text-gray-700">{DAY_NAMES[s.d!]}</span>
                                   <span className="font-bold text-gray-400">{hhmm(s.st)} - {hhmm(s.et)}</span>
                                </div>
@@ -232,22 +232,22 @@ export default function CoursesPage() {
                           </div>
                        </div>
 
-                       <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
+                       <div className="pt-3 border-t border-gray-50 flex items-center justify-between">
                           <div className="flex flex-col">
-                             <span className="text-[9px] font-black text-gray-400 uppercase">Mensual</span>
-                             <span className="text-lg font-black text-gray-900">{fmtCLP.format(Number(c.price || 0))}</span>
+                             <span className="text-[8px] font-black text-gray-400 uppercase leading-none mb-1">Mensual</span>
+                             <span className="text-base font-black text-gray-900 leading-none">{fmtCLP.format(Number(c.price || 0))}</span>
                           </div>
-                          <div className="text-right">
-                             <div className="text-[10px] font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors">{c.teacher_name || 'Sin Instructor'}</div>
-                             <div className="text-[9px] font-bold text-gray-400 uppercase">Instructor</div>
+                          <div className="text-right min-w-0">
+                             <div className="text-[9px] font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors truncate">{c.teacher_name || 'Sin Instructor'}</div>
+                             <div className="text-[8px] font-bold text-gray-400 uppercase leading-none">Instructor</div>
                           </div>
                        </div>
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="absolute top-4 left-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0">
-                       <button onClick={(e)=>{e.stopPropagation(); openForm(c)}} className="p-3 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-2xl text-white shadow-xl transition-all">
-                          <HiOutlinePencil size={20} />
+                    <div className="absolute top-3 left-4 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0">
+                       <button onClick={(e)=>{e.stopPropagation(); openForm(c)}} className="p-2 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-xl text-white shadow-xl transition-all">
+                          <HiOutlinePencil size={16} />
                        </button>
                        <button onClick={async (e)=>{
                           e.stopPropagation()
@@ -255,8 +255,8 @@ export default function CoursesPage() {
                              await api.delete(`/api/pms/courses/${c.id}`)
                              load()
                           }
-                       }} className="p-3 bg-rose-500/80 hover:bg-rose-600 backdrop-blur-md rounded-2xl text-white shadow-xl transition-all">
-                          <HiOutlineTrash size={20} />
+                       }} className="p-2 bg-rose-500/80 hover:bg-rose-600 backdrop-blur-md rounded-xl text-white shadow-xl transition-all">
+                          <HiOutlineTrash size={16} />
                        </button>
                     </div>
                   </div>
@@ -271,18 +271,18 @@ export default function CoursesPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4">
            <div className="absolute inset-0 bg-black/60 backdrop-blur-xl animate-in fade-in duration-300" onClick={()=>setShowForm(false)} />
-           <div className="relative w-full h-full md:h-auto md:max-w-4xl bg-white rounded-none md:rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in duration-300 md:max-h-[90vh] flex flex-col border border-white/20">
-              <div className="p-6 md:p-10 bg-gradient-to-br from-fuchsia-600 to-purple-600 text-white flex justify-between items-center shrink-0">
+           <div className="relative w-full h-full md:h-auto md:max-w-4xl bg-white rounded-none md:rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-300 md:max-h-[90vh] flex flex-col border border-white/20">
+              <div className="p-5 md:p-8 bg-gradient-to-br from-fuchsia-600 to-purple-600 text-white flex justify-between items-center shrink-0">
                  <div>
-                    <h2 className="text-2xl md:text-3xl font-black">{editId ? 'Editar Clase' : 'Nueva Clase'}</h2>
-                    <p className="text-fuchsia-100 font-bold uppercase tracking-widest text-[8px] md:text-[10px] mt-1">Configuración de programa</p>
+                    <h2 className="text-xl md:text-2xl font-black">{editId ? 'Editar Clase' : 'Nueva Clase'}</h2>
+                    <p className="text-fuchsia-100 font-bold uppercase tracking-widest text-[8px] md:text-[9px] mt-1">Configuración de programa</p>
                  </div>
-                 <button onClick={()=>setShowForm(false)} className="p-3 md:p-4 hover:bg-white/10 rounded-2xl transition-colors">
-                    <HiOutlineX size={24} md:size={28} />
+                 <button onClick={()=>setShowForm(false)} className="p-2 md:p-3 hover:bg-white/10 rounded-xl transition-colors">
+                    <HiOutlineX size={20} md:size={24} />
                  </button>
               </div>
 
-              <div className="p-6 md:p-10 overflow-y-auto space-y-8 md:space-y-10 custom-scrollbar flex-1 bg-gray-50/50">
+              <div className="p-6 md:p-8 overflow-y-auto space-y-6 md:space-y-8 custom-scrollbar flex-1 bg-gray-50/50">
                  <div className="flex flex-col-reverse md:grid md:grid-cols-12 gap-6 md:gap-10">
                     <div className="md:col-span-8 space-y-6 md:space-y-8">
                        <div className="space-y-2">

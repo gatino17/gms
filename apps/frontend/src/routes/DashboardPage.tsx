@@ -17,6 +17,13 @@ import {
   HiOutlineTrendingUp
 } from 'react-icons/hi'
 
+const toDDMMYYYY = (d?: string | null) => {
+  if (!d) return '--/--'
+  const parts = d.split('T')[0].split('-')
+  if (parts.length !== 3) return d
+  return `${parts[2]}/${parts[1]}/${parts[0]}`
+}
+
 type CourseListItem = {
   id: number
   name: string
@@ -352,11 +359,16 @@ export default function DashboardPage() {
                   <div className="space-y-3">
                     {alerts.pending_preview.map((p: any, idx: number) => (
                       <div key={idx} className="p-4 rounded-2xl bg-rose-50/30 border border-rose-100/30 flex items-center justify-between group cursor-pointer hover:bg-rose-50 transition-all">
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="text-xs font-black text-gray-900 truncate">{p.student}</div>
                           <div className="text-[10px] font-bold text-rose-600/70 mt-0.5 truncate uppercase tracking-widest">{p.course}</div>
                         </div>
-                        <HiOutlineArrowRight className="text-rose-400 opacity-0 group-hover:opacity-100 transition-all" size={14} />
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <div className="text-[9px] font-black text-rose-500 bg-rose-100/50 px-2 py-0.5 rounded-lg">
+                            Venció: {toDDMMYYYY(p.end_date)}
+                          </div>
+                          <HiOutlineArrowRight className="text-rose-400 opacity-0 group-hover:opacity-100 transition-all" size={12} />
+                        </div>
                       </div>
                     ))}
                   </div>

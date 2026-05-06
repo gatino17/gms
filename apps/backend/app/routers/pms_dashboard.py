@@ -74,7 +74,7 @@ async def get_summary(
     )
 
     # Alerts Previews
-    pending_prev_stmt = select(Student.first_name, Student.last_name, Course.name).join(Enrollment, and_(Enrollment.student_id == Student.id, Enrollment.tenant_id == tenant_id)).join(Course, and_(Course.id == Enrollment.course_id, Course.tenant_id == tenant_id)).where(
+    pending_prev_stmt = select(Student.first_name, Student.last_name, Course.name, Enrollment.end_date).join(Enrollment, and_(Enrollment.student_id == Student.id, Enrollment.tenant_id == tenant_id)).join(Course, and_(Course.id == Enrollment.course_id, Course.tenant_id == tenant_id)).where(
         Enrollment.tenant_id == tenant_id, Enrollment.is_active == True,
         or_(Enrollment.end_date == None, Enrollment.end_date < today)
     ).limit(3)
@@ -112,7 +112,7 @@ async def get_summary(
         ],
         "alerts": {
             "pending_count": res[4] or 0,
-            "pending_preview": [{"student": f"{r[0]} {r[1]}", "course": r[2]} for r in p_prev_res.all()],
+            "pending_preview": [{"student": f"{r[0]} {r[1]}", "course": r[2], "end_date": r[3].isoformat() if r[3] else None} for r in p_prev_res.all()],
             "birthdays": res[6] or [],
             "soon_end": [{"student": f"{r[0]} {r[1]}", "course": r[2], "renewal_date": r[3].isoformat()} for r in soon_res.all()]
         },

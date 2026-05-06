@@ -190,14 +190,14 @@ export default function DashboardPage() {
       {/* KPI Section */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 px-4">
         {kpiData.map((k, idx) => (
-          <div key={idx} className="group bg-white rounded-[32px] md:rounded-[40px] p-5 md:p-8 border border-gray-100 shadow-sm hover:shadow-2xl hover:border-fuchsia-100 transition-all duration-500 relative overflow-hidden">
-            <div className="relative flex flex-col gap-4 md:gap-6">
-              <div className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-${k.color}-50 text-${k.color}-600 flex items-center justify-center text-xl md:text-2xl transition-all duration-500 group-hover:scale-110`}>
+          <div key={idx} className="group bg-white rounded-[24px] md:rounded-[32px] p-4 md:p-5 border border-gray-100 shadow-sm hover:shadow-2xl hover:border-fuchsia-100 transition-all duration-500 relative overflow-hidden">
+            <div className="relative flex items-center gap-4">
+              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-${k.color}-50 text-${k.color}-600 flex items-center justify-center text-xl md:text-2xl transition-all duration-500 group-hover:scale-110 shrink-0`}>
                 {k.icon}
               </div>
-              <div className="space-y-1">
-                <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{k.label}</div>
-                <div className="text-xl md:text-3xl font-black text-gray-900 tracking-tight truncate">{k.value}</div>
+              <div className="min-w-0">
+                <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest truncate">{k.label}</div>
+                <div className="text-lg md:text-2xl font-black text-gray-900 tracking-tight truncate leading-none mt-1">{k.value}</div>
               </div>
             </div>
           </div>
@@ -206,10 +206,10 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         {/* Main Column */}
-        <div className="xl:col-span-8 space-y-8">
+        <div className="xl:col-span-8 space-y-6">
           {/* Clases de hoy */}
-          <section className="bg-white md:rounded-[48px] border-y md:border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-6 md:px-10 py-6 md:py-8 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+          <section className="bg-white md:rounded-[32px] border-y md:border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 md:px-8 py-5 md:py-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center">
                   <HiCalendar className="text-xl md:text-2xl" />
@@ -222,21 +222,21 @@ export default function DashboardPage() {
               <Link to="/calendar" className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest hover:text-fuchsia-700 transition-colors bg-fuchsia-50 px-3 md:px-4 py-2 rounded-full">Ver Todo</Link>
             </div>
             
-            <div className="p-6 md:p-10">
+            <div className="p-5 md:p-8">
               {classesToday.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-300">
-                  <HiClock className="text-6xl mb-4 opacity-20" />
-                  <p className="font-black uppercase tracking-widest text-[10px]">No hay clases hoy</p>
+                <div className="flex flex-col items-center justify-center py-16 text-gray-300">
+                  <HiClock className="text-5xl mb-4 opacity-20" />
+                  <p className="font-black uppercase tracking-widest text-[9px]">No hay clases hoy</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
                   {classesToday.map(c => (
-                    <div key={c.id} className="group p-4 md:p-6 rounded-[24px] md:rounded-[32px] border border-gray-50 bg-gray-50/30 hover:bg-white hover:border-fuchsia-200 hover:shadow-xl transition-all duration-500 flex gap-4 md:gap-6 items-center cursor-pointer">
+                    <div key={c.id} className="group p-3 md:p-4 rounded-2xl md:rounded-[28px] border border-gray-50 bg-gray-50/30 hover:bg-white hover:border-fuchsia-200 hover:shadow-xl transition-all duration-500 flex gap-3 md:gap-4 items-center cursor-pointer">
                       <div className="relative flex-shrink-0">
                         {c.image_url ? (
-                          <img src={toAbsoluteUrl(c.image_url)} alt={c.name} className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[28px] object-cover border-2 md:border-4 border-white shadow-lg" />
+                          <img src={toAbsoluteUrl(c.image_url)} alt={c.name} className="w-14 h-14 md:w-16 md:h-16 rounded-xl md:rounded-2xl object-cover border-2 md:border-3 border-white shadow-md" />
                         ) : (
-                          <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[28px] bg-gradient-to-br from-gray-100 to-gray-200 border-2 md:border-4 border-white flex items-center justify-center text-gray-400 text-xl md:text-3xl shadow-lg">
+                          <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 border-2 md:border-3 border-white flex items-center justify-center text-gray-400 text-lg md:text-xl shadow-md">
                             {c.name[0]}
                           </div>
                         )}
@@ -267,8 +267,8 @@ export default function DashboardPage() {
           </section>
 
           {/* Pagos Recientes */}
-          <section className="bg-white md:rounded-[48px] border-y md:border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-6 md:px-10 py-6 md:py-8 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+          <section className="bg-white md:rounded-[32px] border-y md:border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 md:px-8 py-5 md:py-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
                   <HiOutlineCurrencyDollar className="text-xl md:text-2xl" />
@@ -281,13 +281,13 @@ export default function DashboardPage() {
               <Link to="/payments" className="text-[9px] md:text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:text-emerald-700 transition-colors bg-emerald-50 px-3 md:px-4 py-2 rounded-full">Ver Más</Link>
             </div>
 
-            <div className="p-6 md:p-10">
+            <div className="p-5 md:p-8">
               {paymentsRecent.length === 0 ? (
                 <div className="text-center py-10 text-gray-300 font-black uppercase tracking-widest text-[10px] italic">Sin movimientos recientes</div>
               ) : (
                 <div className="grid grid-cols-1 gap-3 md:gap-4">
                   {paymentsRecent.slice(0, 6).map((p: any) => (
-                    <div key={p.id} className="p-4 md:p-5 rounded-2xl md:rounded-[24px] border border-gray-50 hover:border-emerald-100 hover:bg-emerald-50/20 transition-all flex items-center justify-between gap-4 md:gap-6 group">
+                    <div key={p.id} className="p-3 md:p-4 rounded-xl md:rounded-[20px] border border-gray-50 hover:border-emerald-100 hover:bg-emerald-50/20 transition-all flex items-center justify-between gap-3 md:gap-4 group">
                       <div className="flex items-center gap-3 md:gap-5 min-w-0">
                         <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white border border-gray-100 text-emerald-600 flex items-center justify-center font-black text-xs md:text-sm shadow-sm group-hover:scale-110 transition-transform">
                           {p.method?.[0].toUpperCase()}
@@ -326,12 +326,12 @@ export default function DashboardPage() {
         {/* Sidebar Column */}
         <div className="xl:col-span-4 space-y-8">
           {/* Alertas */}
-          <section className="bg-white rounded-[48px] border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-8 py-8 border-b border-gray-50 flex items-center gap-4 bg-gray-50/30">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
-                 <HiExclamationCircle className="text-2xl" />
+          <section className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-6 py-6 border-b border-gray-50 flex items-center gap-4 bg-gray-50/30">
+              <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                 <HiExclamationCircle className="text-xl" />
               </div>
-              <h2 className="text-xl font-black text-gray-900 tracking-tight">Alertas</h2>
+              <h2 className="text-lg font-black text-gray-900 tracking-tight">Alertas</h2>
             </div>
             
             <div className="p-8 space-y-8">
@@ -398,7 +398,7 @@ export default function DashboardPage() {
           </section>
 
           {/* Estadísticas 30D */}
-          <section className="bg-gray-900 md:rounded-[48px] p-8 md:p-10 shadow-2xl relative overflow-hidden group mx-4 md:mx-0">
+          <section className="bg-gray-900 md:rounded-[32px] p-6 md:p-8 shadow-2xl relative overflow-hidden group mx-4 md:mx-0">
             <div className="absolute top-0 right-0 w-32 md:w-40 h-32 md:h-40 bg-fuchsia-500/20 rounded-full -mr-16 -mt-16 md:-mr-20 md:-mt-20 blur-[40px] md:blur-[60px] group-hover:bg-fuchsia-500/30 transition-all" />
             <div className="relative space-y-4 md:space-y-6">
               <div className="flex items-center gap-4">

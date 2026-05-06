@@ -107,12 +107,12 @@ export default function CourseStatusPage() {
   }, [filteredData])
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-8 md:space-y-12 pb-20 px-4 md:px-0">
+    <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-20 px-4 md:px-0">
       {/* Header & Controls */}
-      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-8 pt-4">
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 pt-4">
         <div className="space-y-1 text-center sm:text-left">
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Gestión Académica</span>
-           <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight leading-none">Estado de Cursos</h1>
+           <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Estado de Cursos</h1>
            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-4">
               <p className="text-gray-500 font-medium text-sm md:text-lg">Control de inscripciones y pagos en tiempo real.</p>
               <div className="hidden sm:block h-4 w-px bg-gray-200" />
@@ -124,29 +124,29 @@ export default function CourseStatusPage() {
            </div>
         </div>
 
-        <div className="w-full xl:w-auto flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-[32px] border border-gray-100 shadow-xl shadow-gray-100/50">
-           <div className="flex items-center gap-4 w-full sm:w-auto">
+        <div className="w-full xl:w-auto flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-[24px] border border-gray-100 shadow-xl shadow-gray-100/50">
+           <div className="flex items-center gap-3 w-full sm:w-auto">
               <div className="relative group flex-1">
-                 <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={18} />
-                 <input value={courseQ} onChange={e=>setCourseQ(e.target.value)} placeholder="Curso..." className="w-full pl-12 pr-6 py-3.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-2xl text-sm font-bold outline-none transition-all" />
+                 <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={16} />
+                 <input value={courseQ} onChange={e=>setCourseQ(e.target.value)} placeholder="Curso..." className="w-full pl-10 pr-5 py-2.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none transition-all" />
               </div>
               <div className="relative group flex-1">
-                 <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={18} />
-                 <input value={studentQ} onChange={e=>setStudentQ(e.target.value)} placeholder="Alumno..." className="w-full pl-12 pr-6 py-3.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-2xl text-sm font-bold outline-none transition-all" />
+                 <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={16} />
+                 <input value={studentQ} onChange={e=>setStudentQ(e.target.value)} placeholder="Alumno..." className="w-full pl-10 pr-5 py-2.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none transition-all" />
               </div>
            </div>
-           <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="relative flex-1 sm:w-40">
-                <select value={selectedDay} onChange={e=>setSelectedDay(e.target.value)} className="w-full px-6 py-3.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-2xl text-sm font-bold outline-none appearance-none transition-all">
-                   <option value="">Cualquier día</option>
-                   {DAY_NAMES.map((d,i)=><option key={i} value={i}>{d}</option>)}
-                </select>
-                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                </div>
+           <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-36">
+                 <select value={selectedDay} onChange={e=>setSelectedDay(e.target.value)} className="w-full pl-5 pr-10 py-2.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none appearance-none transition-all">
+                    <option value="">Cualquier día</option>
+                    {DAY_NAMES.map((d,i)=><option key={i} value={i}>{d}</option>)}
+                 </select>
+                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                 </div>
               </div>
-              <button onClick={load} className="p-4 bg-fuchsia-50 text-fuchsia-600 rounded-2xl hover:bg-fuchsia-600 hover:text-white transition-all shadow-sm shadow-fuchsia-100">
-                 <HiOutlineRefresh size={22} className={loading?'animate-spin':''} />
+              <button onClick={load} className="p-3 bg-fuchsia-50 text-fuchsia-600 rounded-xl hover:bg-fuchsia-600 hover:text-white transition-all shadow-sm shadow-fuchsia-100">
+                 <HiOutlineRefresh size={20} className={loading?'animate-spin':''} />
               </button>
            </div>
         </div>
@@ -158,29 +158,29 @@ export default function CourseStatusPage() {
            <span className="text-[10px] font-black text-fuchsia-400 uppercase tracking-[0.4em] animate-pulse">Sincronizando academia...</span>
         </div>
       ) : (
-        <div className="space-y-20 md:space-y-32">
+        <div className="space-y-12 md:space-y-16">
            {Object.entries(groupedByDay).map(([dayName, courses]) => (
-              <div key={dayName} className="space-y-10">
-                 <div className="flex items-center gap-6 px-2">
+              <div key={dayName} className="space-y-6 md:space-y-8">
+                 <div className="flex items-center gap-4 px-2">
                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-100 to-gray-100" />
-                    <h2 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.5em] whitespace-nowrap bg-gray-50 px-6 py-2 rounded-full border border-gray-100">{dayName}</h2>
+                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] whitespace-nowrap bg-gray-50 px-5 py-1.5 rounded-full border border-gray-100">{dayName}</h2>
                     <div className="h-px flex-1 bg-gradient-to-l from-transparent via-gray-100 to-gray-100" />
                  </div>
 
-                 <div className={`grid gap-10 ${viewMode === 'summary' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
+                 <div className={`grid gap-6 md:gap-8 ${viewMode === 'summary' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
                     {courses.map((row) => (
-                       <div key={row.course.id} className={`bg-white border border-gray-100 transition-all duration-500 hover:shadow-2xl hover:shadow-gray-200/50 ${viewMode === 'summary' ? 'rounded-[40px] p-8' : 'rounded-[48px] overflow-hidden'}`}>
+                       <div key={row.course.id} className={`bg-white border border-gray-100 transition-all duration-500 hover:shadow-2xl hover:shadow-gray-200/50 ${viewMode === 'summary' ? 'rounded-[32px] p-6 md:p-8' : 'rounded-[32px] overflow-hidden'}`}>
                           {/* Card Header / Summary Header */}
-                          <div className={`flex items-start justify-between ${viewMode === 'summary' ? 'mb-8' : 'px-10 py-8 bg-gray-50/50 border-b border-gray-100'}`}>
-                             <div className="flex items-center gap-5">
-                                <div className={`flex items-center justify-center bg-gradient-to-br from-fuchsia-600 to-purple-700 text-white font-black shadow-xl shadow-fuchsia-100 transition-transform duration-500 group-hover:scale-110 ${viewMode === 'summary' ? 'w-14 h-14 rounded-[24px] text-xl' : 'w-16 h-16 rounded-[28px] text-2xl'}`}>
+                          <div className={`flex items-start justify-between ${viewMode === 'summary' ? 'mb-6' : 'px-6 md:px-8 py-5 md:py-6 bg-gray-50/50 border-b border-gray-100'}`}>
+                             <div className="flex items-center gap-4">
+                                <div className={`flex items-center justify-center bg-gradient-to-br from-fuchsia-600 to-purple-700 text-white font-black shadow-xl shadow-fuchsia-100 transition-transform duration-500 group-hover:scale-110 ${viewMode === 'summary' ? 'w-12 h-12 rounded-[20px] text-lg' : 'w-14 h-14 rounded-[22px] text-xl'}`}>
                                    {row.course.name[0]}
                                 </div>
-                                <div>
-                                   <h3 className={`font-black text-gray-900 leading-tight ${viewMode === 'summary' ? 'text-lg' : 'text-2xl'}`}>{row.course.name}</h3>
+                                <div className="min-w-0">
+                                   <h3 className={`font-black text-gray-900 leading-tight truncate ${viewMode === 'summary' ? 'text-base' : 'text-xl'}`}>{row.course.name}</h3>
                                    <div className="flex items-center gap-2 mt-1">
                                       <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" />
-                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{row.teacher?.name || 'Por Asignar'}</p>
+                                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest truncate">{row.teacher?.name || 'Por Asignar'}</p>
                                    </div>
                                 </div>
                              </div>

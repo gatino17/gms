@@ -284,7 +284,7 @@ export default function PaymentsPage() {
             onClick={downloadExcel} 
             className="w-full xs:flex-1 sm:w-auto px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 text-[10px] md:text-sm uppercase tracking-widest"
           >
-            <HiOutlineDownload size={18} md:size={20} /> Excel
+            <HiOutlineDownload size={20} /> Excel
           </button>
         </div>
       </div>
@@ -307,7 +307,7 @@ export default function PaymentsPage() {
         ].map((s, i) => (
           <div key={i} className={`bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm group hover:border-fuchsia-100 transition-all ${i === 0 ? 'col-span-2 lg:col-span-1' : ''}`}>
             <div className={`p-2.5 w-9 h-9 md:w-10 md:h-10 rounded-xl bg-${s.color}-50 text-${s.color}-600 mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
-              <s.icon size={18} md:size={20} />
+              <s.icon size={20} />
             </div>
             <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
             <div className="text-base md:text-xl font-black text-gray-900 truncate">{fmtCLP.format(Number(s.value || 0))}</div>
@@ -377,7 +377,7 @@ export default function PaymentsPage() {
         {/* Search and Secondary Filters */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-6 items-end border-t border-gray-50 pt-6 md:pt-8">
           <div className="lg:col-span-6 relative group">
-            <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={20} md:size={24} />
+            <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={24} />
             <input
               className="w-full bg-gray-50 border-2 border-transparent rounded-xl md:rounded-3xl pl-12 md:pl-14 pr-6 py-3 md:py-4 font-bold text-sm md:text-base text-gray-700 focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 transition-all outline-none"
               placeholder="Buscar alumno, curso..."
@@ -499,7 +499,7 @@ export default function PaymentsPage() {
                 onClick={() => setPage(p => p - 1)}
                 className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-30 hover:text-fuchsia-600 transition-all"
               >
-                <HiOutlineChevronLeft size={20} md:size={24} />
+                <HiOutlineChevronLeft size={24} />
               </button>
               <div className="flex gap-1 overflow-x-auto max-w-[200px] md:max-w-none no-scrollbar">
                 {[...Array(totalPages)].map((_, i) => (
@@ -517,7 +517,7 @@ export default function PaymentsPage() {
                 onClick={() => setPage(p => p + 1)}
                 className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-30 hover:text-fuchsia-600 transition-all"
               >
-                <HiOutlineChevronRight size={20} md:size={24} />
+                <HiOutlineChevronRight size={24} />
               </button>
             </div>
           </div>

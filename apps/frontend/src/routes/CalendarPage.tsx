@@ -76,7 +76,7 @@ export default function CalendarPage() {
         </div>
         <div className="flex px-4 py-2.5 md:px-6 md:py-3 bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 items-center justify-center sm:justify-start gap-3 mx-4 sm:mx-0">
            <div className="p-2 md:p-2.5 bg-fuchsia-50 text-fuchsia-600 rounded-lg md:rounded-xl shrink-0">
-              <HiOutlineCalendar size={16} md:size={18} />
+              <HiOutlineCalendar size={18} />
            </div>
            <div>
               <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest">Mes Actual</div>
@@ -111,7 +111,7 @@ export default function CalendarPage() {
               {/* Header Days */}
               <div className="grid border-b border-gray-100 bg-gray-50/50 sticky top-0 z-20 backdrop-blur-xl grid-cols-[60px_1fr] md:grid-cols-[80px_repeat(7,1fr)]">
                 <div className="p-3 md:p-4 flex items-center justify-center border-r border-gray-100">
-                  <HiOutlineClock className="text-gray-300" size={18} md:size={20} />
+                  <HiOutlineClock className="text-gray-300" size={20} />
                 </div>
                 {DAY_NAMES.map((d, i) => (
                   <div key={i} className={`p-3 md:p-6 text-center border-r border-gray-100 last:border-0 ${selectedDay !== i ? 'hidden md:block' : 'block'}`}>
@@ -124,7 +124,7 @@ export default function CalendarPage() {
               {/* Grid Body */}
               <div className="divide-y divide-gray-50">
                 {hours.map((h) => (
-                  <div key={h} className="grid group grid-cols-[60px_1fr] md:grid-cols-[100px_repeat(7,1fr)]">
+                  <div key={h} className="grid group grid-cols-[60px_1fr] md:grid-cols-[80px_repeat(7,1fr)]">
                     {/* Time Column */}
                     <div className="p-2 md:p-3 flex items-start justify-center border-r border-gray-100 bg-gray-50/20 group-hover:bg-fuchsia-50/30 transition-colors">
                       <span className="mt-1 md:mt-2 px-1.5 py-1 md:px-2.5 md:py-1 bg-white rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black text-gray-500 shadow-sm border border-gray-100">
@@ -158,15 +158,15 @@ export default function CalendarPage() {
                                     <h4 className="text-xs md:text-sm font-black leading-tight drop-shadow-md">{c.name}</h4>
                                     <div className="flex flex-wrap gap-1.5">
                                       <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-bold text-white bg-black/20 backdrop-blur-sm px-2 py-1 rounded-lg w-fit shrink-0 border border-white/10">
-                                        <HiOutlineClock size={10} md:size={12} />
+                                        <HiOutlineClock size={12} />
                                         {hhmm(c.start_time)}
                                       </div>
                                       <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-bold text-white bg-black/20 backdrop-blur-sm px-2 py-1 rounded-lg w-fit shrink-0 border border-white/10">
-                                        <HiOutlineUser size={10} md:size={12} />
+                                        <HiOutlineUser size={12} />
                                         <span className="truncate max-w-[60px] md:max-w-[80px]">{c.teacher_name || 'Sin Instr.'}</span>
                                       </div>
                                       <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-bold text-white bg-black/20 backdrop-blur-sm px-2 py-1 rounded-lg w-fit shrink-0 border border-white/10">
-                                        <HiOutlineLocationMarker size={10} md:size={12} />
+                                        <HiOutlineLocationMarker size={12} />
                                         <span className="truncate max-w-[60px] md:max-w-[80px]">{c.room_name || 'Gral.'}</span>
                                       </div>
                                     </div>
@@ -174,7 +174,7 @@ export default function CalendarPage() {
                                   
                                   {/* Glassy detail indicator */}
                                   <div className="relative z-10 mt-2 flex justify-end">
-                                     <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                                     <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all transform translate-x-2 group-hover/card:translate-x-0">
                                         <HiOutlineTag size={12} />
                                      </div>
                                   </div>

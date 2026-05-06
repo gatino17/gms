@@ -278,7 +278,7 @@ export default function CoursesPage() {
                     <p className="text-fuchsia-100 font-bold uppercase tracking-widest text-[8px] md:text-[9px] mt-1">Configuración de programa</p>
                  </div>
                  <button onClick={()=>setShowForm(false)} className="p-2 md:p-3 hover:bg-white/10 rounded-xl transition-colors">
-                    <HiOutlineX size={20} md:size={24} />
+                    <HiOutlineX size={24} />
                  </button>
               </div>
 
@@ -310,7 +310,7 @@ export default function CoursesPage() {
                              <img src={imagePreview || toAbsoluteUrl(form.image_url)} className="w-full h-full object-cover" />
                           ) : (
                              <>
-                                <HiOutlinePhotograph size={32} md:size={48} className="text-gray-200 group-hover:text-fuchsia-200 transition-colors" />
+                                <HiOutlinePhotograph size={48} className="text-gray-200 group-hover:text-fuchsia-200 transition-colors" />
                                 <span className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase mt-2 md:mt-4">Subir Foto</span>
                              </>
                           )}
@@ -330,7 +330,7 @@ export default function CoursesPage() {
                  {/* Horarios Grid */}
                   <div className="bg-white p-6 md:p-8 rounded-3xl md:rounded-[40px] border border-gray-100 shadow-sm space-y-4 md:space-y-6">
                     <div className="flex items-center gap-3 text-fuchsia-600 font-black uppercase tracking-widest text-[9px] md:text-[10px]">
-                       <HiOutlineClock size={16} md:size={18} /> Programación Semanal
+                       <HiOutlineClock size={18} /> Programación Semanal
                     </div>
                     <div className="space-y-3 md:space-y-4">
                        {[1,2,3,4,5].map(num => {

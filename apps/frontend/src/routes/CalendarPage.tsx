@@ -66,21 +66,21 @@ export default function CalendarPage() {
   }, [data])
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-10 pb-20 px-6">
+    <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-20 px-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4 md:px-0">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4 md:px-0 pt-4">
         <div className="space-y-1 text-center sm:text-left">
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Programación</span>
-           <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight leading-none">Calendario</h1>
-           <p className="text-gray-500 font-medium text-sm md:text-lg">Distribución horaria y salas.</p>
+           <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Calendario</h1>
+           <p className="text-gray-500 font-medium text-xs md:text-sm">Distribución horaria y salas.</p>
         </div>
-        <div className="flex px-5 py-3 md:px-8 md:py-4 bg-white rounded-2xl md:rounded-[24px] shadow-sm border border-gray-100 items-center justify-center sm:justify-start gap-4 mx-4 sm:mx-0">
-           <div className="p-2 md:p-3 bg-fuchsia-50 text-fuchsia-600 rounded-xl md:rounded-2xl shrink-0">
-              <HiOutlineCalendar size={18} md:size={20} />
+        <div className="flex px-4 py-2.5 md:px-6 md:py-3 bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 items-center justify-center sm:justify-start gap-3 mx-4 sm:mx-0">
+           <div className="p-2 md:p-2.5 bg-fuchsia-50 text-fuchsia-600 rounded-lg md:rounded-xl shrink-0">
+              <HiOutlineCalendar size={16} md:size={18} />
            </div>
            <div>
-              <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Mes Actual</div>
-              <div className="text-sm md:text-lg font-black text-gray-900 uppercase">{new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}</div>
+              <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest">Mes Actual</div>
+              <div className="text-sm md:text-base font-black text-gray-900 uppercase">{new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}</div>
            </div>
         </div>
       </div>
@@ -105,13 +105,13 @@ export default function CalendarPage() {
           <span className="text-fuchsia-600 font-black tracking-widest text-xs uppercase">Sincronizando horarios...</span>
         </div>
       ) : (
-        <div className="md:mx-0 bg-white rounded-none md:rounded-[40px] shadow-2xl shadow-gray-100/50 border-y md:border border-gray-100 overflow-hidden">
+        <div className="md:mx-0 bg-white rounded-none md:rounded-[28px] shadow-2xl shadow-gray-100/50 border-y md:border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto no-scrollbar">
             <div className="min-w-full md:min-w-[1200px]">
               {/* Header Days */}
-              <div className="grid border-b border-gray-100 bg-gray-50/50 sticky top-0 z-20 backdrop-blur-xl grid-cols-[60px_1fr] md:grid-cols-[100px_repeat(7,1fr)]">
-                <div className="p-3 md:p-6 flex items-center justify-center border-r border-gray-100">
-                  <HiOutlineClock className="text-gray-300" size={20} md:size={24} />
+              <div className="grid border-b border-gray-100 bg-gray-50/50 sticky top-0 z-20 backdrop-blur-xl grid-cols-[60px_1fr] md:grid-cols-[80px_repeat(7,1fr)]">
+                <div className="p-3 md:p-4 flex items-center justify-center border-r border-gray-100">
+                  <HiOutlineClock className="text-gray-300" size={18} md:size={20} />
                 </div>
                 {DAY_NAMES.map((d, i) => (
                   <div key={i} className={`p-3 md:p-6 text-center border-r border-gray-100 last:border-0 ${selectedDay !== i ? 'hidden md:block' : 'block'}`}>
@@ -126,8 +126,8 @@ export default function CalendarPage() {
                 {hours.map((h) => (
                   <div key={h} className="grid group grid-cols-[60px_1fr] md:grid-cols-[100px_repeat(7,1fr)]">
                     {/* Time Column */}
-                    <div className="p-2 md:p-4 flex items-start justify-center border-r border-gray-100 bg-gray-50/20 group-hover:bg-fuchsia-50/30 transition-colors">
-                      <span className="mt-1 md:mt-2 px-1.5 py-1 md:px-3 md:py-1.5 bg-white rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black text-gray-500 shadow-sm border border-gray-100">
+                    <div className="p-2 md:p-3 flex items-start justify-center border-r border-gray-100 bg-gray-50/20 group-hover:bg-fuchsia-50/30 transition-colors">
+                      <span className="mt-1 md:mt-2 px-1.5 py-1 md:px-2.5 md:py-1 bg-white rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black text-gray-500 shadow-sm border border-gray-100">
                         {String(h).padStart(2, '0')}:00
                       </span>
                     </div>
@@ -136,15 +136,15 @@ export default function CalendarPage() {
                     {DAY_NAMES.map((_, dayIdx) => {
                       const classes = data.filter(c => c.day_of_week === dayIdx && toHour(c.start_time) === h)
                       return (
-                        <div key={dayIdx} className={`p-2 md:p-3 border-r border-gray-100 last:border-0 min-h-[80px] md:min-h-[140px] transition-colors hover:bg-gray-50/50 relative ${selectedDay !== dayIdx ? 'hidden md:block' : 'block'}`}>
-                          <div className="flex flex-col gap-2 md:gap-3 h-full">
+                        <div key={dayIdx} className={`p-1.5 md:p-2 border-r border-gray-100 last:border-0 min-h-[80px] md:min-h-[110px] transition-colors hover:bg-gray-50/50 relative ${selectedDay !== dayIdx ? 'hidden md:block' : 'block'}`}>
+                          <div className="flex flex-col gap-2 md:gap-2 h-full">
                             {classes.map(c => {
                               const theme = getTheme(c)
                               return (
                                 <div 
                                   key={c.id} 
                                   onClick={() => window.location.href=`/courses/${c.id}`}
-                                  className={`p-4 md:p-5 rounded-2xl md:rounded-[24px] text-white shadow-lg cursor-pointer transform transition-all duration-500 hover:scale-[1.03] active:scale-95 group/card relative overflow-hidden flex flex-col justify-between h-full bg-gradient-to-br ${theme.from} ${theme.via} ${theme.to}`}
+                                  className={`p-3 md:p-3.5 rounded-xl md:rounded-2xl text-white shadow-lg cursor-pointer transform transition-all duration-500 hover:scale-[1.03] active:scale-95 group/card relative overflow-hidden flex flex-col justify-between h-full bg-gradient-to-br ${theme.from} ${theme.via} ${theme.to}`}
                                 >
                                   {/* Blurred Background Image */}
                                   {c.image_url && (

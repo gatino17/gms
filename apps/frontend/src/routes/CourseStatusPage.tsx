@@ -107,124 +107,144 @@ export default function CourseStatusPage() {
   }, [filteredData])
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-20 px-4">
+    <div className="max-w-[1600px] mx-auto space-y-8 md:space-y-12 pb-20 px-4 md:px-0">
       {/* Header & Controls */}
-      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
-        <div>
-           <h1 className="text-4xl font-black text-gray-900 tracking-tight">Estado de Cursos</h1>
-           <div className="flex items-center gap-4 mt-2">
-              <p className="text-gray-500 font-medium">Control de inscripciones y pagos.</p>
-              <div className="h-4 w-px bg-gray-200" />
-               <div className="flex bg-gray-100 p-1 rounded-xl">
-                 <button onClick={() => setViewMode('detailed')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='detailed' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Todos</button>
-                 <button onClick={() => setViewMode('pending')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='pending' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-rose-400 hover:text-rose-600'}`}>Pendientes</button>
-                 <button onClick={() => setViewMode('summary')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='summary' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Resumen</button>
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-8 pt-4">
+        <div className="space-y-1 text-center sm:text-left">
+           <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Gestión Académica</span>
+           <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight leading-none">Estado de Cursos</h1>
+           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-4">
+              <p className="text-gray-500 font-medium text-sm md:text-lg">Control de inscripciones y pagos en tiempo real.</p>
+              <div className="hidden sm:block h-4 w-px bg-gray-200" />
+               <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+                 <button onClick={() => setViewMode('detailed')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='detailed' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Todos</button>
+                 <button onClick={() => setViewMode('pending')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='pending' ? 'bg-white shadow-sm text-rose-600' : 'text-rose-400/60 hover:text-rose-600'}`}>Pendientes</button>
+                 <button onClick={() => setViewMode('summary')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='summary' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>Resumen</button>
                </div>
            </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-[28px] border border-gray-100 shadow-lg shadow-gray-100/50">
-           <div className="relative group">
-              <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input value={courseQ} onChange={e=>setCourseQ(e.target.value)} placeholder="Curso..." className="pl-10 pr-4 py-2.5 bg-gray-50 border-transparent border-2 focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none w-40" />
+        <div className="w-full xl:w-auto flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-[32px] border border-gray-100 shadow-xl shadow-gray-100/50">
+           <div className="flex items-center gap-4 w-full sm:w-auto">
+              <div className="relative group flex-1">
+                 <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={18} />
+                 <input value={courseQ} onChange={e=>setCourseQ(e.target.value)} placeholder="Curso..." className="w-full pl-12 pr-6 py-3.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-2xl text-sm font-bold outline-none transition-all" />
+              </div>
+              <div className="relative group flex-1">
+                 <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={18} />
+                 <input value={studentQ} onChange={e=>setStudentQ(e.target.value)} placeholder="Alumno..." className="w-full pl-12 pr-6 py-3.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-2xl text-sm font-bold outline-none transition-all" />
+              </div>
            </div>
-           <div className="relative group">
-              <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input value={studentQ} onChange={e=>setStudentQ(e.target.value)} placeholder="Alumno..." className="pl-10 pr-4 py-2.5 bg-gray-50 border-transparent border-2 focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none w-40" />
+           <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-40">
+                <select value={selectedDay} onChange={e=>setSelectedDay(e.target.value)} className="w-full px-6 py-3.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-2xl text-sm font-bold outline-none appearance-none transition-all">
+                   <option value="">Cualquier día</option>
+                   {DAY_NAMES.map((d,i)=><option key={i} value={i}>{d}</option>)}
+                </select>
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+              <button onClick={load} className="p-4 bg-fuchsia-50 text-fuchsia-600 rounded-2xl hover:bg-fuchsia-600 hover:text-white transition-all shadow-sm shadow-fuchsia-100">
+                 <HiOutlineRefresh size={22} className={loading?'animate-spin':''} />
+              </button>
            </div>
-           <select value={selectedDay} onChange={e=>setSelectedDay(e.target.value)} className="px-4 py-2.5 bg-gray-50 border-transparent border-2 focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none appearance-none">
-              <option value="">Día...</option>
-              {DAY_NAMES.map((d,i)=><option key={i} value={i}>{d}</option>)}
-           </select>
-           <button onClick={load} className="p-2.5 bg-fuchsia-50 text-fuchsia-600 rounded-xl hover:bg-fuchsia-100 transition-all">
-              <HiOutlineRefresh size={20} className={loading?'animate-spin':''} />
-           </button>
         </div>
       </div>
 
       {loading && data.length === 0 ? (
-        <div className="py-40 text-center space-y-4">
-           <div className="w-10 h-10 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin mx-auto" />
-           <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest">Sincronizando...</span>
+        <div className="py-60 flex flex-col items-center gap-6">
+           <div className="w-16 h-16 border-4 border-fuchsia-50 border-t-fuchsia-600 rounded-full animate-spin" />
+           <span className="text-[10px] font-black text-fuchsia-400 uppercase tracking-[0.4em] animate-pulse">Sincronizando academia...</span>
         </div>
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-20 md:space-y-32">
            {Object.entries(groupedByDay).map(([dayName, courses]) => (
-              <div key={dayName} className="space-y-6">
-                 <div className="flex items-center gap-4 px-2">
-                    <h2 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em]">{dayName}</h2>
-                    <div className="h-px flex-1 bg-gray-100" />
+              <div key={dayName} className="space-y-10">
+                 <div className="flex items-center gap-6 px-2">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-100 to-gray-100" />
+                    <h2 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.5em] whitespace-nowrap bg-gray-50 px-6 py-2 rounded-full border border-gray-100">{dayName}</h2>
+                    <div className="h-px flex-1 bg-gradient-to-l from-transparent via-gray-100 to-gray-100" />
                  </div>
 
-                 <div className={`grid gap-6 ${viewMode === 'summary' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                 <div className={`grid gap-10 ${viewMode === 'summary' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
                     {courses.map((row) => (
-                       <div key={row.course.id} className={`bg-white border border-gray-100 shadow-sm transition-all duration-300 ${viewMode === 'summary' ? 'rounded-[32px] p-6' : 'rounded-[40px] overflow-hidden'}`}>
+                       <div key={row.course.id} className={`bg-white border border-gray-100 transition-all duration-500 hover:shadow-2xl hover:shadow-gray-200/50 ${viewMode === 'summary' ? 'rounded-[40px] p-8' : 'rounded-[48px] overflow-hidden'}`}>
                           {/* Card Header / Summary Header */}
-                          <div className={`flex items-start justify-between ${viewMode === 'summary' ? 'mb-6' : 'px-8 py-6 bg-gray-50/50 border-b border-gray-100'}`}>
-                             <div className="flex items-center gap-4">
-                                <div className={`flex items-center justify-center bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white font-black shadow-lg shadow-fuchsia-100 ${viewMode === 'summary' ? 'w-12 h-12 rounded-2xl text-lg' : 'w-14 h-14 rounded-[20px] text-xl'}`}>
+                          <div className={`flex items-start justify-between ${viewMode === 'summary' ? 'mb-8' : 'px-10 py-8 bg-gray-50/50 border-b border-gray-100'}`}>
+                             <div className="flex items-center gap-5">
+                                <div className={`flex items-center justify-center bg-gradient-to-br from-fuchsia-600 to-purple-700 text-white font-black shadow-xl shadow-fuchsia-100 transition-transform duration-500 group-hover:scale-110 ${viewMode === 'summary' ? 'w-14 h-14 rounded-[24px] text-xl' : 'w-16 h-16 rounded-[28px] text-2xl'}`}>
                                    {row.course.name[0]}
                                 </div>
                                 <div>
-                                   <h3 className={`font-black text-gray-900 leading-tight ${viewMode === 'summary' ? 'text-base' : 'text-xl'}`}>{row.course.name}</h3>
-                                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{row.teacher?.name || 'Academia'}</p>
+                                   <h3 className={`font-black text-gray-900 leading-tight ${viewMode === 'summary' ? 'text-lg' : 'text-2xl'}`}>{row.course.name}</h3>
+                                   <div className="flex items-center gap-2 mt-1">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" />
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{row.teacher?.name || 'Por Asignar'}</p>
+                                   </div>
                                 </div>
                              </div>
                              {viewMode === 'summary' ? (
-                                <span className="px-3 py-1 bg-fuchsia-50 text-fuchsia-600 text-[10px] font-black rounded-lg">{row.students.length}</span>
+                                <div className="flex flex-col items-end">
+                                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Inscritos</span>
+                                   <span className="px-4 py-1 bg-indigo-50 text-indigo-600 text-[11px] font-black rounded-full border border-indigo-100">{row.students.length}</span>
+                                </div>
                              ) : (
-                                <button onClick={() => navigate(`/courses/${row.course.id}`)} className="p-3 bg-white border border-gray-100 rounded-xl hover:text-fuchsia-600 transition-all"><HiOutlineChevronRight size={20} /></button>
+                                <button onClick={() => navigate(`/courses/${row.course.id}`)} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-fuchsia-600 hover:shadow-lg transition-all group/btn"><HiOutlineChevronRight size={24} className="group-hover/btn:translate-x-0.5 transition-transform" /></button>
                              )}
                           </div>
 
                           {/* Detailed/Compact Table */}
                           {viewMode !== 'summary' && (
-                             <div className="overflow-x-auto">
+                             <div className="overflow-x-auto no-scrollbar">
                                 <table className="w-full">
-                                   <thead>
-                                      <tr className="text-left text-[9px] font-black text-gray-300 uppercase tracking-widest">
-                                         <th className="pl-10 pr-6 py-4">Alumno</th>
-                                         <th className="px-6 py-4 text-center">Asistencia</th>
-                                         <th className="px-6 py-4 text-center">Estado</th>
-                                         <th className="pr-10 pl-6 py-4 text-right">Contacto</th>
+                                   <thead className="hidden md:table-header-group">
+                                      <tr className="text-left text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/30">
+                                         <th className="pl-12 pr-6 py-5">Información Alumno</th>
+                                         <th className="px-6 py-5 text-center">Progreso de Asistencia</th>
+                                         <th className="px-6 py-5 text-center">Estatus Financiero</th>
+                                         <th className="pr-12 pl-6 py-5 text-right">Gestión de Contacto</th>
                                       </tr>
                                    </thead>
-                                   <tbody className="divide-y divide-gray-50">
+                                   <tbody className="divide-y divide-gray-50 block md:table-row-group">
                                       {row.students.map((s) => {
                                          const isPaid = s.payment_status === 'activo'
                                          const progress = s.expected_count && s.expected_count > 0 ? Math.min(100, (s.attendance_count || 0) / s.expected_count * 100) : 0
                                          
                                          return (
-                                            <tr key={s.id} className="hover:bg-fuchsia-50/10 transition-colors group">
-                                               <td className="pl-10 pr-6 py-4">
-                                                  <div className="flex items-center gap-3">
-                                                     {(viewMode === 'detailed' || viewMode === 'pending') && (
-                                                        <div className="w-10 h-10 rounded-xl bg-fuchsia-100 overflow-hidden flex items-center justify-center text-fuchsia-600 font-black shrink-0">
-                                                           {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
-                                                        </div>
-                                                     )}
+                                            <tr key={s.id} className="block md:table-row hover:bg-gray-50/80 transition-all group">
+                                               <td className="block md:table-cell pl-8 md:pl-12 pr-6 py-6">
+                                                  <div className="flex items-center gap-4">
+                                                     <div className="w-12 h-12 rounded-2xl bg-fuchsia-50 overflow-hidden flex items-center justify-center text-fuchsia-600 font-black shrink-0 border border-fuchsia-100 shadow-sm">
+                                                        {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
+                                                     </div>
                                                      <div className="min-w-0">
-                                                        <div className="text-sm font-black text-gray-800 truncate group-hover:text-fuchsia-600 transition-colors">{s.first_name} {s.last_name}</div>
-                                                        {s.birthday_today && <div className="text-[8px] font-black text-pink-500 uppercase flex items-center gap-1"><HiOutlineCake /> Cumple hoy</div>}
+                                                        <div className="text-base font-black text-gray-900 truncate group-hover:text-fuchsia-600 transition-colors flex items-center gap-2">
+                                                           {s.first_name} {s.last_name}
+                                                           {s.birthday_today && <HiOutlineCake className="text-pink-500 shrink-0" size={16} />}
+                                                        </div>
+                                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Socio #{s.id}</div>
                                                      </div>
                                                   </div>
                                                </td>
-                                               <td className="px-6 py-4">
-                                                  <div className="w-24 mx-auto">
-                                                     <div className="flex justify-between text-[8px] font-black text-gray-400 uppercase mb-1">
-                                                        <span>{s.attendance_count}/{s.expected_count}</span>
-                                                        <span>{Math.round(progress)}%</span>
+                                               <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6">
+                                                  <div className="w-full md:w-32 mx-auto">
+                                                     <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase mb-2">
+                                                        <span className="md:hidden">Asistencia: </span>
+                                                        <span className="text-gray-900">{s.attendance_count}/{s.expected_count}</span>
+                                                        <span className={progress >= 80 ? 'text-emerald-600' : 'text-fuchsia-600'}>{Math.round(progress)}%</span>
                                                      </div>
-                                                     <div className="h-1.5 bg-gray-50 rounded-full border border-gray-100 overflow-hidden">
-                                                        <div className={`h-full transition-all duration-700 ${progress >= 100 ? 'bg-emerald-500' : 'bg-fuchsia-500'}`} style={{ width: `${progress}%` }} />
+                                                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner">
+                                                        <div className={`h-full transition-all duration-1000 ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-fuchsia-500' : 'bg-rose-400'}`} style={{ width: `${progress}%` }} />
                                                      </div>
                                                   </div>
                                                </td>
-                                               <td className="px-6 py-4 text-center">
+                                               <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6 text-left md:text-center">
+                                                  <span className="md:hidden text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">Estado de Pago</span>
                                                   {isPaid ? (
-                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700">
-                                                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                       OK
+                                                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                       <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" />
+                                                       PAGADO
                                                     </div>
                                                   ) : (
                                                     <button 
@@ -232,16 +252,15 @@ export default function CourseStatusPage() {
                                                         if (s.enrollment_id) setRenewModalData({ studentId: s.id, courseId: row.course.id, enrollmentId: s.enrollment_id })
                                                         else navigate(`/students/${s.id}`)
                                                       }} 
-                                                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors" 
-                                                      title="Renovar o Pagar"
+                                                      className="inline-flex items-center gap-2 px-6 py-3 md:px-4 md:py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all w-full md:w-auto justify-center shadow-sm shadow-rose-50 active:scale-95" 
                                                     >
-                                                       <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                                                       Renovar
+                                                       <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                                                       PENDIENTE
                                                     </button>
                                                   )}
                                                </td>
-                                               <td className="pr-10 pl-6 py-4 text-right">
-                                                  <div className="flex items-center justify-end gap-2">
+                                               <td className="block md:table-cell pr-8 md:pr-12 pl-8 py-4 md:py-6 text-right">
+                                                  <div className="flex items-center justify-start md:justify-end gap-3">
                                                      {(() => {
                                                         const waMsgTemplate = tenantInfo?.whatsapp_message || "Hola {nombre}, te escribimos de {academia}. Tienes un pago pendiente para el curso {curso}."
                                                         const msg = waMsgTemplate
@@ -250,10 +269,16 @@ export default function CourseStatusPage() {
                                                           .replace('{academia}', tenantInfo?.name || 'la academia')
                                                         const cleanPhone = s.phone?.replace(/\D/g, '') || ''
                                                         return (
-                                                          <a href={cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : '#'} onClick={e => !cleanPhone && e.preventDefault()} target={cleanPhone ? "_blank" : undefined} className={`p-2 rounded-lg transition-all ${cleanPhone ? 'bg-gray-50 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50' : 'bg-gray-50 text-gray-300 cursor-not-allowed opacity-50'}`} title={cleanPhone ? "Enviar WhatsApp" : "Sin número de teléfono"}><HiOutlinePhone size={14} /></a>
+                                                          <a href={cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : '#'} onClick={e => !cleanPhone && e.preventDefault()} target={cleanPhone ? "_blank" : undefined} className={`flex items-center justify-center gap-3 px-5 py-3 md:p-3 rounded-2xl transition-all flex-1 md:flex-none border ${cleanPhone ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-100' : 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50'}`} title={cleanPhone ? "Enviar WhatsApp" : "Sin número de teléfono"}>
+                                                            <HiOutlinePhone size={18} />
+                                                            <span className="md:hidden text-[11px] font-black uppercase tracking-widest">WhatsApp</span>
+                                                          </a>
                                                         )
                                                      })()}
-                                                     <button onClick={() => navigate(`/students/${s.id}`)} className="p-2 bg-gray-50 text-gray-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 rounded-lg transition-all"><HiOutlineChevronRight size={14} /></button>
+                                                     <button onClick={() => navigate(`/students/${s.id}`)} className="flex items-center justify-center gap-3 px-5 py-3 md:p-3 bg-gray-50 text-gray-400 border border-gray-100 hover:text-fuchsia-600 hover:bg-white hover:border-fuchsia-100 hover:shadow-lg hover:shadow-fuchsia-100 rounded-2xl transition-all flex-1 md:flex-none">
+                                                       <span className="md:hidden text-[11px] font-black uppercase tracking-widest">Perfil</span>
+                                                       <HiOutlineChevronRight size={18} />
+                                                     </button>
                                                   </div>
                                                </td>
                                             </tr>
@@ -266,30 +291,30 @@ export default function CourseStatusPage() {
 
                           {/* Summary View Content */}
                           {viewMode === 'summary' && (
-                             <div className="space-y-4">
+                             <div className="space-y-8">
                                 <div className="grid grid-cols-2 gap-4">
-                                   <div className="bg-gray-50 p-4 rounded-2xl">
-                                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Alumnos</div>
-                                      <div className="text-xl font-black text-gray-900">{row.students.length}</div>
+                                   <div className="bg-gray-50/50 p-5 rounded-[24px] border border-gray-100">
+                                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Cupos</div>
+                                      <div className="text-2xl font-black text-gray-900">{row.students.length}</div>
                                    </div>
-                                   <div className="bg-gray-50 p-4 rounded-2xl">
-                                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Asistencia Avg</div>
-                                      <div className="text-xl font-black text-fuchsia-600">
+                                   <div className="bg-gray-50/50 p-5 rounded-[24px] border border-gray-100">
+                                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Asistencia</div>
+                                      <div className="text-2xl font-black text-fuchsia-600">
                                          {Math.round(row.students.reduce((acc, s) => acc + (s.expected_count ? ((s.attendance_count||0)/s.expected_count*100) : 0), 0) / (row.students.length || 1))}%
                                       </div>
                                    </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                   <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase tracking-widest px-1">
-                                      <span>Estado de Pagos</span>
-                                      <span>{row.students.filter(s=>s.payment_status==='activo').length}/{row.students.length}</span>
+                                <div className="space-y-3 px-1">
+                                   <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                                      <span>Salud Financiera</span>
+                                      <span className="text-emerald-600">{row.students.filter(s=>s.payment_status==='activo').length} / {row.students.length}</span>
                                    </div>
-                                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                      <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${(row.students.filter(s=>s.payment_status==='activo').length / (row.students.length || 1)) * 100}%` }} />
+                                   <div className="h-3 bg-gray-100 rounded-full overflow-hidden shadow-inner p-0.5">
+                                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000 shadow-sm" style={{ width: `${(row.students.filter(s=>s.payment_status==='activo').length / (row.students.length || 1)) * 100}%` }} />
                                    </div>
                                 </div>
-                                <button onClick={() => navigate(`/courses/${row.course.id}`)} className="w-full py-3 bg-fuchsia-50 text-fuchsia-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-fuchsia-600 hover:text-white transition-all flex items-center justify-center gap-2">
-                                   Ver Detalles <HiOutlineChevronRight size={14} />
+                                <button onClick={() => navigate(`/courses/${row.course.id}`)} className="w-full py-4 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-fuchsia-600 hover:shadow-xl hover:shadow-fuchsia-100 transition-all flex items-center justify-center gap-3 group/nav">
+                                   Explorar Detalles <HiOutlineChevronRight size={16} className="group-hover/nav:translate-x-1 transition-transform" />
                                 </button>
                              </div>
                           )}

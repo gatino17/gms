@@ -102,9 +102,9 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen flex bg-slate-50 font-sans antialiased text-slate-900">
       {/* Sidebar */}
-      <aside className={`${collapsed ? 'w-20' : 'w-72'} bg-slate-900 border-r border-slate-800 transition-all duration-300 flex flex-col z-30 shadow-2xl`}>
+      <aside className={`${collapsed ? 'w-20' : 'w-72'} bg-slate-900 border-r border-slate-800 transition-all duration-300 flex flex-col z-30 shadow-2xl overflow-x-hidden`}>
         {/* Logo Section */}
-        <div className="h-16 flex items-center px-6 border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-xl sticky top-0">
+        <div className={`h-16 flex items-center border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-xl sticky top-0 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-fuchsia-600 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-fuchsia-500/20 ring-1 ring-white/10">
               <span className="text-white font-bold text-xl tracking-tight">P</span>
@@ -119,7 +119,7 @@ export default function AppLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar scrollbar-hide">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar scrollbar-hide">
           <div className={`text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-4 flex items-center ${collapsed ? 'justify-center' : ''}`}>
             {collapsed ? '—' : 'Menú Principal'}
           </div>
@@ -261,7 +261,7 @@ export default function AppLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-10 custom-scrollbar bg-slate-50/50">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-10 custom-scrollbar bg-slate-50/50">
           <div className="max-w-[1600px] mx-auto">
             <Outlet />
           </div>

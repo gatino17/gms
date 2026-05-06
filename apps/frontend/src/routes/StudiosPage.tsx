@@ -279,273 +279,287 @@ export default function StudiosPage() {
   }
 
   return (
-    <div className="max-w-screen-xl mx-auto space-y-6 px-3 sm:px-6 lg:px-8">
-      <div className="bg-white rounded-xl shadow p-6 space-y-6">
+    <div className="max-w-[1600px] mx-auto space-y-8 md:space-y-12 pb-20 px-4 md:px-0">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+        <div className="space-y-1 text-center sm:text-left">
+           <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Administración Central</span>
+           <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight leading-none">Estudios</h1>
+           <p className="text-gray-500 font-medium text-sm md:text-lg">Gestión de sedes y configuración de tenants.</p>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 md:p-10 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-8">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Estudios</h1>
-          <p className="text-gray-600">Registra un nuevo estudio; el tenant se asigna de forma automatica.</p>
+          <h2 className="text-lg md:text-xl font-black text-gray-900">Registrar Nuevo Estudio</h2>
+          <p className="text-gray-400 text-xs md:text-sm font-medium">El tenant se asignará de forma automática según el nombre.</p>
         </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del estudio</label>
+        <form className="space-y-8" onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del estudio</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 required
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
                 placeholder="Estudio Norte"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Correo administrador</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Correo administrador</label>
               <input
                 type="email"
                 value={form.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 required
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
                 placeholder="admin@estudio.com"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Clave inicial</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clave inicial</label>
               <input
                 type="password"
                 value={form.password}
                 onChange={(e) => handleChange('password', e.target.value)}
                 required
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
                 placeholder="********"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                id="is_superuser"
-                type="checkbox"
-                checked={form.is_superuser}
-                onChange={(e) => handleChange('is_superuser', e.target.checked)}
-                className="h-4 w-4 text-fuchsia-600 border-gray-300 rounded"
-              />
-              <label htmlFor="is_superuser" className="text-sm text-gray-700">Crear admin como superusuario</label>
+            <div className="flex items-center gap-3 px-2">
+              <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${form.is_superuser ? 'bg-fuchsia-600 border-fuchsia-600' : 'border-gray-200'}`}>
+                 <input
+                    id="is_superuser"
+                    type="checkbox"
+                    checked={form.is_superuser}
+                    onChange={(e) => handleChange('is_superuser', e.target.checked)}
+                    className="hidden"
+                  />
+                  {form.is_superuser && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+              </div>
+              <label htmlFor="is_superuser" className="text-xs font-black text-gray-500 uppercase tracking-widest cursor-pointer">Admin Superusuario</label>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Direccion</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Direccion</label>
               <input
                 type="text"
                 value={form.address}
                 onChange={(e) => handleChange('address', e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
                 placeholder="Av. Principal 123"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pais</label>
-              <input
-                type="text"
-                value={form.country}
-                onChange={(e) => handleChange('country', e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                placeholder="Chile"
-              />
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Pais / Ciudad</label>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  value={form.country}
+                  onChange={(e) => handleChange('country', e.target.value)}
+                  className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                  placeholder="Chile"
+                />
+                <input
+                  type="text"
+                  value={form.city}
+                  onChange={(e) => handleChange('city', e.target.value)}
+                  className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                  placeholder="Santiago"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
-              <input
-                type="text"
-                value={form.city}
-                onChange={(e) => handleChange('city', e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                placeholder="Ciudad"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Telefono</label>
               <input
                 type="text"
                 value={form.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+                className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
                 placeholder="+56 9 1234 5678"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
-              <input
-                type="text"
-                value={form.instagram_url}
-                onChange={(e) => handleChange('instagram_url', e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                placeholder="https://instagram.com/tuestudio"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">TikTok</label>
-              <input
-                type="text"
-                value={form.tiktok_url}
-                onChange={(e) => handleChange('tiktok_url', e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                placeholder="https://tiktok.com/@tuestudio"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Facebook</label>
-              <input
-                type="text"
-                value={form.facebook_url}
-                onChange={(e) => handleChange('facebook_url', e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                placeholder="https://facebook.com/tuestudio"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sitio web</label>
-              <input
-                type="text"
-                value={form.website_url}
-                onChange={(e) => handleChange('website_url', e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                placeholder="https://www.tuestudio.cl"
-              />
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Redes Sociales (Insta / TikTok)</label>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  value={form.instagram_url}
+                  onChange={(e) => handleChange('instagram_url', e.target.value)}
+                  className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                  placeholder="@insta"
+                />
+                <input
+                  type="text"
+                  value={form.tiktok_url}
+                  onChange={(e) => handleChange('tiktok_url', e.target.value)}
+                  className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                  placeholder="@tiktok"
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Logo (opcional)</label>
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full border bg-white flex items-center justify-center overflow-hidden">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Sitio Web / Facebook</label>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  value={form.website_url}
+                  onChange={(e) => handleChange('website_url', e.target.value)}
+                  className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                  placeholder="www..."
+                />
+                <input
+                  type="text"
+                  value={form.facebook_url}
+                  onChange={(e) => handleChange('facebook_url', e.target.value)}
+                  className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                  placeholder="fb..."
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Logo</label>
+              <div className="flex items-center gap-4 p-2 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                <div className="h-12 w-12 rounded-xl bg-white flex items-center justify-center overflow-hidden border border-gray-100 shrink-0">
                   {createLogoPreview ? (
                     <img src={createLogoPreview} alt="logo preview" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-xs text-gray-500">Sin logo</span>
+                    <span className="text-[8px] font-black text-gray-300 uppercase">Logo</span>
                   )}
                 </div>
-                <label className="px-3 py-2 rounded border border-fuchsia-300 text-sm text-fuchsia-700 font-semibold cursor-pointer hover:bg-fuchsia-50">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      setCreateLogoFile(file)
-                      setCreateLogoPreview(URL.createObjectURL(file))
-                    }}
-                  />
-                  Subir logo
-                </label>
-                {createLogoPreview && (
-                  <button
-                    type="button"
-                    className="text-xs text-gray-600 hover:text-gray-800"
-                    onClick={() => {
-                      setCreateLogoFile(null)
-                      setCreateLogoPreview('')
-                    }}
-                  >
-                    Quitar
-                  </button>
-                )}
+                <div className="flex-1 min-w-0">
+                  <label className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest cursor-pointer hover:text-fuchsia-700 transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setCreateLogoFile(file)
+                        setCreateLogoPreview(URL.createObjectURL(file))
+                      }}
+                    />
+                    Subir Imagen
+                  </label>
+                  {createLogoPreview && (
+                    <button
+                      type="button"
+                      className="block text-[8px] font-black text-rose-500 uppercase tracking-widest"
+                      onClick={() => {
+                        setCreateLogoFile(null)
+                        setCreateLogoPreview('')
+                      }}
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {success && <div className="rounded-md bg-green-50 text-green-800 px-4 py-2">{success}</div>}
-          {error && <div className="rounded-md bg-red-50 text-red-800 px-4 py-2">{error}</div>}
+          {success && <div className="p-4 rounded-2xl border-2 border-emerald-100 bg-emerald-50 text-emerald-600 text-xs font-black uppercase tracking-widest text-center">{success}</div>}
+          {error && <div className="p-4 rounded-2xl border-2 border-rose-100 bg-rose-50 text-rose-600 text-xs font-black uppercase tracking-widest text-center">{error}</div>}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="inline-flex items-center justify-center rounded-md bg-fuchsia-600 px-4 py-2 text-white font-semibold hover:bg-fuchsia-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-500 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? 'Creando...' : 'Crear estudio'}
-          </button>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-lg shadow-fuchsia-200 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none transition-all"
+            >
+              {isSubmitting ? 'Procesando...' : 'Crear Sede / Estudio'}
+            </button>
+          </div>
         </form>
       </div>
 
-      <div className="bg-white rounded-xl shadow">
-        <div className="px-4 py-3 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">Estudios registrados</h2>
-          <p className="text-sm text-gray-600">Listado de todos los tenants disponibles.</p>
+      <div className="bg-white rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-8 py-6 border-b border-gray-50 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-gray-900">Estudios Registrados</h2>
+            <p className="text-gray-400 text-sm font-medium">Listado global de sedes activas.</p>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full">
+             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{studios.length} Sedes</span>
+          </div>
         </div>
-        <div className="p-4">
+        <div className="p-0 sm:p-4">
           {isLoadingStudios ? (
-            <div className="text-sm text-gray-600">Cargando estudios...</div>
+            <div className="p-10 flex flex-col items-center gap-4">
+               <div className="w-10 h-10 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
+               <span className="text-[10px] font-black text-fuchsia-400 uppercase tracking-widest">Sincronizando...</span>
+            </div>
           ) : listError ? (
-            <div className="text-sm text-red-600">{listError}</div>
+            <div className="p-10 text-rose-500 text-center font-black uppercase text-xs">{listError}</div>
           ) : studios.length === 0 ? (
-            <div className="text-sm text-gray-600">No hay estudios registrados.</div>
+            <div className="p-10 text-gray-400 text-center font-black uppercase text-xs">No hay estudios registrados.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-100 text-left text-gray-600">
-                  <tr>
-                    <th className="px-4 py-2 font-medium">Tenant</th>
-                    <th className="px-4 py-2 font-medium">Nombre</th>
-                    <th className="px-4 py-2 font-medium">Correo</th>
-                    <th className="px-4 py-2 font-medium">Direccion</th>
-                    <th className="px-4 py-2 font-medium">Ciudad</th>
-                    <th className="px-4 py-2 font-medium">Pais</th>
-                    <th className="px-4 py-2 font-medium">Telefono</th>
-                    <th className="px-4 py-2 font-medium">Logo</th>
-                    <th className="px-4 py-2 font-medium">Creado</th>
-                    <th className="px-4 py-2 font-medium">Admin super</th>
-                    <th className="px-4 py-2 font-medium text-center">Acciones</th>
+            <div className="overflow-x-auto no-scrollbar">
+              <table className="min-w-full text-sm">
+                <thead className="hidden md:table-header-group bg-gray-50/50">
+                  <tr className="text-left border-b border-gray-100">
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tenant</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estudio / Admin</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ubicación</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Logo</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
+                <tbody className="divide-y divide-gray-50 block md:table-row-group">
                   {studios.map((studio) => (
-                  <tr key={studio.id}>
-                    <td className="px-4 py-2 font-mono text-xs text-gray-700 whitespace-nowrap align-middle">{studio.slug}</td>
-                    <td className="px-4 py-2 text-gray-900 whitespace-nowrap align-middle">{studio.name}</td>
-                    <td className="px-4 py-2 text-gray-700 whitespace-nowrap align-middle">{studio.contact_email ?? '-'}</td>
-                    <td className="px-4 py-2 text-gray-700 align-middle">{studio.address ?? '-'}</td>
-                    <td className="px-4 py-2 text-gray-700 whitespace-nowrap align-middle">{studio.city ?? '-'}</td>
-                    <td className="px-4 py-2 text-gray-700 whitespace-nowrap align-middle">{studio.country ?? '-'}</td>
-                    <td className="px-4 py-2 text-gray-700 whitespace-nowrap align-middle">{studio.phone ?? '-'}</td>
-                    <td className="px-4 py-2 align-middle">
-                        {studio.logo_url ? (
-                          <img
-                            src={toAbsoluteUrl(studio.logo_url)}
-                            alt={studio.name}
-                            className="h-10 w-10 object-cover rounded-full border border-gray-200 bg-white"
-                          />
-                        ) : (
-                          <span className="text-xs text-gray-500">Sin logo</span>
-                        )}
+                  <tr key={studio.id} className="block md:table-row hover:bg-fuchsia-50/10 transition-colors">
+                    <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Tenant ID</div>
+                      <span className="font-mono text-xs font-black text-fuchsia-600 bg-fuchsia-50 px-3 py-1.5 rounded-lg">{studio.slug}</span>
+                    </td>
+                    <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="font-black text-gray-900 text-base">{studio.name}</div>
+                      <div className="text-[10px] font-bold text-gray-400 truncate">{studio.contact_email}</div>
+                    </td>
+                    <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="text-xs font-black text-gray-700">{studio.address || 'Sin dirección'}</div>
+                      <div className="text-[10px] font-bold text-gray-400">{studio.city}, {studio.country}</div>
+                    </td>
+                    <td className="block md:table-cell px-6 py-4 md:py-6 align-middle text-center">
+                        <div className="flex justify-center">
+                          {studio.logo_url ? (
+                            <img
+                              src={toAbsoluteUrl(studio.logo_url)}
+                              alt={studio.name}
+                              className="h-10 w-10 md:h-12 md:w-12 object-cover rounded-xl border border-gray-100 bg-white shadow-sm"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 md:h-12 md:w-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center">
+                               <span className="text-[8px] font-black text-gray-300 uppercase">Sin Logo</span>
+                            </div>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap align-middle">{new Date(studio.created_at).toLocaleDateString()}</td>
-                      <td className="px-4 py-2 text-gray-700 whitespace-nowrap align-middle">{studio.admin_is_superuser ? 'Si' : 'No'}</td>
-                      <td className="px-4 py-2 align-middle">
-                        <div className="flex flex-wrap gap-2 justify-center">
+                      <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                        <div className="flex items-center justify-center gap-3">
                           <button
                             type="button"
-                            className="h-9 w-9 inline-flex items-center justify-center rounded border border-fuchsia-600 text-fuchsia-700 hover:bg-fuchsia-50"
+                            className="p-2.5 rounded-xl border border-gray-100 text-gray-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 hover:border-fuchsia-100 transition-all"
                             onClick={() => setEditTarget(studio)}
-                            aria-label="Editar"
-                            title="Editar"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 11l6.732-6.732a2.5 2.5 0 113.536 3.536L12.536 14.5 9 15.5l1-3.5z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19h14" />
                             </svg>
                           </button>
                           <button
                             type="button"
-                            className="h-9 w-9 inline-flex items-center justify-center rounded border border-red-500 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                            className="p-2.5 rounded-xl border border-gray-100 text-gray-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all disabled:opacity-30"
                             onClick={() => handleDelete(studio.id)}
                             disabled={deletingId === studio.id}
-                            aria-label="Eliminar"
-                            title="Eliminar"
                           >
-                            {deletingId === studio.id ? (
-                              <span className="text-xs">...</span>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-1 12a2 2 0 01-2 2h-4a2 2 0 01-2-2V7h10v12z" />
-                              </svg>
-                            )}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                           </button>
                         </div>
                       </td>
@@ -559,139 +573,110 @@ export default function StudiosPage() {
       </div>
 
       {editTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setEditTarget(null)}
-          />
-          {/* Modal */}
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setEditTarget(null)} />
+          <div className="relative bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div className="sticky top-0 bg-white/80 backdrop-blur-xl z-20 flex items-center justify-between px-8 py-6 border-b border-gray-50">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Editar estudio</h2>
-                <p className="text-sm text-gray-500">Tenant: <span className="font-mono text-fuchsia-600">{editTarget.slug}</span></p>
+                <h2 className="text-xl font-black text-gray-900">Editar Estudio</h2>
+                <div className="flex items-center gap-2 mt-1">
+                   <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-2 py-0.5 rounded-lg">Tenant</span>
+                   <span className="font-mono text-xs font-bold text-gray-500">{editTarget.slug}</span>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setEditTarget(null)}
-                className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                aria-label="Cerrar"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button onClick={() => setEditTarget(null)} className="p-3 rounded-2xl text-gray-400 hover:bg-gray-100 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
-            <form className="p-6 space-y-4" onSubmit={handleUpdate}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del estudio</label>
-                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} required className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Correo administrador</label>
-                  <input type="email" value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} required className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
-                </div>
-                {/* Contraseña */}
-                <div className="md:col-span-2 lg:col-span-3">
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                      <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Contraseña</span>
-                    </div>
-                    <p className="text-xs text-amber-600">
-                      La contraseña actual está cifrada y no puede mostrarse. Deja el campo en blanco para mantenerla sin cambios.
-                    </p>
-                    <div className="relative">
-                      <input
-                        type={showNewPassword ? 'text' : 'password'}
-                        value={editForm.password}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
-                        placeholder="Nueva contraseña (mín. 6 caracteres)"
-                        className="w-full rounded border border-amber-300 bg-white px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-700"
-                        tabIndex={-1}
-                      >
-                        {showNewPassword ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mt-5">
-                  <input id="edit_is_superuser" type="checkbox" checked={editForm.is_superuser} onChange={(e) => setEditForm((prev) => ({ ...prev, is_superuser: e.target.checked }))} className="h-4 w-4 text-fuchsia-600 border-gray-300 rounded" />
-                  <label htmlFor="edit_is_superuser" className="text-sm text-gray-700">Admin es superusuario</label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-                  <input type="text" value={editForm.address} onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">País</label>
-                  <input type="text" value={editForm.country} onChange={(e) => setEditForm((prev) => ({ ...prev, country: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
-                  <input type="text" value={editForm.city} onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                  <input type="text" value={editForm.phone} onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
-                  <input type="text" value={editForm.instagram_url} onChange={(e) => setEditForm((prev) => ({ ...prev, instagram_url: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">TikTok</label>
-                  <input type="text" value={editForm.tiktok_url} onChange={(e) => setEditForm((prev) => ({ ...prev, tiktok_url: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Facebook</label>
-                  <input type="text" value={editForm.facebook_url} onChange={(e) => setEditForm((prev) => ({ ...prev, facebook_url: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sitio web</label>
-                  <input type="text" value={editForm.website_url} onChange={(e) => setEditForm((prev) => ({ ...prev, website_url: e.target.value }))} className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+            <form className="p-8 space-y-10" onSubmit={handleUpdate}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del estudio</label>
+                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} required className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
-                  <div className="flex items-center gap-3">
-                    <div className="h-14 w-14 rounded-full border bg-white flex items-center justify-center overflow-hidden">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Correo administrador</label>
+                  <input type="email" value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} required className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                </div>
+                <div className="lg:col-span-1 space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nueva Contraseña</label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={editForm.password}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
+                      placeholder="Dejar en blanco para no cambiar"
+                      className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none pr-12"
+                    />
+                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                       {showNewPassword ? <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 px-2">
+                  <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${editForm.is_superuser ? 'bg-fuchsia-600 border-fuchsia-600' : 'border-gray-200'}`}>
+                     <input id="edit_is_superuser" type="checkbox" checked={editForm.is_superuser} onChange={(e) => setEditForm((prev) => ({ ...prev, is_superuser: e.target.checked }))} className="hidden" />
+                     {editForm.is_superuser && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  </div>
+                  <label htmlFor="edit_is_superuser" className="text-xs font-black text-gray-500 uppercase tracking-widest cursor-pointer">Admin Superusuario</label>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Dirección</label>
+                  <input type="text" value={editForm.address} onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))} className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                </div>
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Pais / Ciudad</label>
+                   <div className="grid grid-cols-2 gap-4">
+                      <input type="text" value={editForm.country} onChange={(e) => setEditForm((prev) => ({ ...prev, country: e.target.value }))} className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="País" />
+                      <input type="text" value={editForm.city} onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))} className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Ciudad" />
+                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Teléfono</label>
+                  <input type="text" value={editForm.phone} onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))} className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Insta / TikTok</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <input type="text" value={editForm.instagram_url} onChange={(e) => setEditForm((prev) => ({ ...prev, instagram_url: e.target.value }))} className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="@insta" />
+                    <input type="text" value={editForm.tiktok_url} onChange={(e) => setEditForm((prev) => ({ ...prev, tiktok_url: e.target.value }))} className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="@tiktok" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Web / FB</label>
+                   <div className="grid grid-cols-2 gap-4">
+                      <input type="text" value={editForm.website_url} onChange={(e) => setEditForm((prev) => ({ ...prev, website_url: e.target.value }))} className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Web" />
+                      <input type="text" value={editForm.facebook_url} onChange={(e) => setEditForm((prev) => ({ ...prev, facebook_url: e.target.value }))} className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="FB" />
+                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Logo</label>
+                  <div className="flex items-center gap-4 p-2 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                    <div className="h-14 w-14 rounded-xl border bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
                       {editForm.logo_url ? (
                         <img src={toAbsoluteUrl(editForm.logo_url)} alt="logo" className="h-full w-full object-cover" />
                       ) : (
-                        <span className="text-xs text-gray-500">Sin logo</span>
+                        <span className="text-[8px] font-black text-gray-300 uppercase">Logo</span>
                       )}
                     </div>
-                    <label className="px-3 py-2 rounded border border-fuchsia-300 text-sm text-fuchsia-700 font-semibold cursor-pointer hover:bg-fuchsia-50">
+                    <label className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest cursor-pointer hover:text-fuchsia-700 transition-colors">
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; handleUploadLogo(file) }} />
-                      {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
+                      {uploadingLogo ? 'Subiendo...' : 'Actualizar Logo'}
                     </label>
                   </div>
                 </div>
               </div>
-
-              {editMessage && <div className="rounded-md bg-green-50 text-green-800 px-4 py-2 text-sm">{editMessage}</div>}
-              {editError && <div className="rounded-md bg-red-50 text-red-800 px-4 py-2 text-sm">{editError}</div>}
-
-              <div className="flex gap-3 pt-2 border-t border-gray-100">
-                <button type="submit" disabled={isUpdating} className="inline-flex items-center justify-center rounded-md bg-fuchsia-600 px-5 py-2 text-white font-semibold hover:bg-fuchsia-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-500 disabled:opacity-60">
-                  {isUpdating ? 'Guardando...' : 'Guardar cambios'}
-                </button>
-                <button type="button" className="inline-flex items-center justify-center rounded-md border border-gray-300 px-5 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setEditTarget(null)}>
+ 
+              {editMessage && <div className="p-4 rounded-2xl border-2 border-emerald-100 bg-emerald-50 text-emerald-600 text-xs font-black uppercase tracking-widest text-center">{editMessage}</div>}
+              {editError && <div className="p-4 rounded-2xl border-2 border-rose-100 bg-rose-50 text-rose-600 text-xs font-black uppercase tracking-widest text-center">{editError}</div>}
+ 
+              <div className="flex flex-col-reverse sm:flex-row gap-4 pt-6 border-t border-gray-50">
+                 <button type="button" className="flex-1 sm:flex-none px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-all" onClick={() => setEditTarget(null)}>
                   Cancelar
+                </button>
+                <button type="submit" disabled={isUpdating} className="flex-1 sm:flex-none px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-lg shadow-fuchsia-200 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 transition-all">
+                  {isUpdating ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
               </div>
             </form>

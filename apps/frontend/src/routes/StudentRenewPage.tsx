@@ -364,41 +364,45 @@ export default function StudentRenewPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="max-w-4xl mx-auto space-y-6 md:space-y-10 pb-20 px-4 md:px-0">
       {/* Header */}
-      <div className="rounded-2xl overflow-hidden border">
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-4 text-white">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-xl md:text-2xl font-semibold tracking-tight">
-                Renovar Curso
-              </h1>
-              <div className="text-sm/relaxed opacity-90">
-                {studentName} — {course?.name}
-              </div>
+      <div className="bg-white p-6 md:p-10 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-50 rounded-full -mr-16 -mt-16 opacity-50" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="space-y-1 text-center sm:text-left">
+            <div className="flex items-center justify-center sm:justify-start gap-3 mb-2">
+               <button onClick={() => navigate(`/students/${studentId}`)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400">
+                  <HiOutlineArrowLeft size={18} md:size={20} />
+               </button>
+               <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Gestión Académica</span>
             </div>
-            <button
-              onClick={() => navigate(`/students/${studentId}`)}
-              className="px-3 py-2 md:px-4 md:py-2 rounded-lg text-white shadow-sm transition bg-white/10 hover:bg-white/20"
-            >
-              Volver
-            </button>
+            <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">Renovar Curso</h1>
+            <p className="text-gray-500 font-medium text-sm md:text-base">
+               <span className="text-fuchsia-600 font-black">{studentName}</span> — {course?.name}
+            </p>
           </div>
+          <button
+            onClick={() => navigate(`/students/${studentId}`)}
+            className="hidden sm:block px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 border border-gray-100 hover:bg-gray-50 transition-all"
+          >
+            Cancelar
+          </button>
         </div>
       </div>
 
       {/* Información del periodo anterior */}
       {enrollment && (
-        <div className="p-4 rounded-xl border bg-gradient-to-b from-blue-50 to-white">
-          <div className="text-sm font-semibold text-gray-700 mb-2">Periodo anterior</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div>
-              <span className="text-gray-600">Inicio:</span>{' '}
-              <span className="font-medium">{enrollment.start_date ? ymdToCL(enrollment.start_date) : '—'}</span>
+        <div className="bg-fuchsia-50/30 p-5 rounded-[24px] border border-fuchsia-100/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-[10px] font-black text-fuchsia-400 uppercase tracking-widest">Periodo Anterior</div>
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex flex-col items-center sm:items-start">
+              <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Inicio</span>
+              <span className="font-black text-gray-700">{enrollment.start_date ? ymdToCL(enrollment.start_date) : '—'}</span>
             </div>
-            <div>
-              <span className="text-gray-600">Fin:</span>{' '}
-              <span className="font-medium">{enrollment.end_date ? ymdToCL(enrollment.end_date) : '—'}</span>
+            <div className="w-8 h-px bg-fuchsia-200" />
+            <div className="flex flex-col items-center sm:items-start">
+              <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Vencimiento</span>
+              <span className="font-black text-gray-700">{enrollment.end_date ? ymdToCL(enrollment.end_date) : '—'}</span>
             </div>
           </div>
         </div>
@@ -406,149 +410,162 @@ export default function StudentRenewPage() {
 
       {/* Alerta de clases fuera de plan */}
       {showOutOfPlanOptions && outOfPlanDates.length > 0 && (
-        <div className="p-4 rounded-xl border-2 border-amber-400 bg-amber-50">
-          <div className="flex items-start gap-3">
-            <span className="text-3xl">⚠️</span>
-            <div className="flex-1">
-              <div className="font-semibold text-amber-900 text-lg">Clases fuera de plan detectadas</div>
-              <div className="text-sm text-amber-800 mt-2">
-                El alumno asistió en {outOfPlanDates.length} fecha(s) después del periodo anterior:
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {outOfPlanDates.map(d => (
-                    <span key={d} className="px-3 py-1 rounded-lg bg-amber-200 text-sm font-medium">
-                      {ymdToCL(d)}
-                    </span>
-                  ))}
+        <div className="bg-white p-6 md:p-8 rounded-[32px] border-2 border-amber-200 shadow-xl shadow-amber-500/5 space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+               <HiOutlineCalendar size={24} />
+            </div>
+            <div>
+              <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Atención Requerida</div>
+              <h3 className="text-lg md:text-xl font-black text-gray-900 leading-tight">Clases fuera de plan detectadas</h3>
+            </div>
+          </div>
+          
+          <div className="text-sm text-gray-500 font-medium">
+            El alumno asistió en {outOfPlanDates.length} fecha(s) después del periodo anterior:
+            <div className="mt-3 flex flex-wrap gap-2">
+              {outOfPlanDates.map(d => (
+                <span key={d} className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-[10px] font-black text-amber-700 uppercase">
+                  {ymdToCL(d)}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className={`p-5 rounded-2xl border-2 transition-all cursor-pointer group ${outOfPlanOption === 'convert' ? 'border-fuchsia-500 bg-fuchsia-50/30' : 'border-gray-100 bg-gray-50 hover:border-gray-200'}`}>
+              <div className="flex items-start gap-4">
+                <input
+                  type="radio"
+                  name="outOfPlanOption"
+                  value="convert"
+                  checked={outOfPlanOption === 'convert'}
+                  onChange={() => setOutOfPlanOption('convert')}
+                  className="mt-1 w-5 h-5 accent-fuchsia-600"
+                />
+                <div className="min-w-0">
+                  <div className="font-black text-gray-900 text-sm mb-1">Opción A: Clase Suelta</div>
+                  <p className="text-xs text-gray-500 leading-relaxed font-medium">Se cobrarán como pagos individuales adicionales al plan mensual.</p>
                 </div>
               </div>
-              <div className="mt-4 space-y-3">
-                <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 bg-white hover:bg-gray-50 transition">
-                  <input
-                    type="radio"
-                    name="outOfPlanOption"
-                    value="convert"
-                    checked={outOfPlanOption === 'convert'}
-                    onChange={() => setOutOfPlanOption('convert')}
-                    className="mt-1"
-                  />
-                  <div>
-                    <div className="font-semibold text-gray-900">Opción A: Convertir a clases sueltas</div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      Se crearán pagos individuales por cada una de estas asistencias, tratándolas como clases sueltas.
-                    </div>
-                  </div>
-                </label>
-                <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 bg-white hover:bg-gray-50 transition">
-                  <input
-                    type="radio"
-                    name="outOfPlanOption"
-                    value="adjust"
-                    checked={outOfPlanOption === 'adjust'}
-                    onChange={() => setOutOfPlanOption('adjust')}
-                    className="mt-1"
-                  />
-                  <div>
-                    <div className="font-semibold text-gray-900">Opción B: Ajustar periodo hacia atrás</div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      El nuevo periodo iniciará desde <strong>{ymdToCL(outOfPlanDates.sort()[0])}</strong> para cubrir estas fechas.
-                    </div>
-                  </div>
-                </label>
+            </label>
+            <label className={`p-5 rounded-2xl border-2 transition-all cursor-pointer group ${outOfPlanOption === 'adjust' ? 'border-fuchsia-500 bg-fuchsia-50/30' : 'border-gray-100 bg-gray-50 hover:border-gray-200'}`}>
+              <div className="flex items-start gap-4">
+                <input
+                  type="radio"
+                  name="outOfPlanOption"
+                  value="adjust"
+                  checked={outOfPlanOption === 'adjust'}
+                  onChange={() => setOutOfPlanOption('adjust')}
+                  className="mt-1 w-5 h-5 accent-fuchsia-600"
+                />
+                <div className="min-w-0">
+                  <div className="font-black text-gray-900 text-sm mb-1">Opción B: Ajustar Inicio</div>
+                  <p className="text-xs text-gray-500 leading-relaxed font-medium">El nuevo periodo iniciará desde {ymdToCL(outOfPlanDates.sort()[0])}.</p>
+                </div>
               </div>
-            </div>
+            </label>
           </div>
         </div>
       )}
 
       {/* Formulario de renovación */}
-      <div className="p-6 rounded-2xl border bg-white space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Modo de renovación</label>
-          <select
-            className="w-full md:w-64 border rounded-lg px-4 py-2.5 text-base"
-            value={renewMode}
-            onChange={e => {
-              setRenewMode(e.target.value as any)
-              setPayAmount('')
-              setPayReference('')
-            }}
-          >
-            <option value="monthly">Mensual (4 clases / 1 por semana)</option>
-            <option value="single_class">Clase suelta</option>
-          </select>
+      <div className="bg-white p-6 md:p-10 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-8 md:space-y-12">
+        <div className="space-y-4">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Esquema de Renovación</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             {(['monthly', 'single_class'] as const).map(mode => (
+                <button 
+                  key={mode}
+                  onClick={() => {
+                    setRenewMode(mode)
+                    setPayAmount('')
+                    setPayReference('')
+                  }}
+                  className={`p-5 rounded-2xl border-2 text-left transition-all ${renewMode === mode ? 'border-fuchsia-500 bg-fuchsia-50/30' : 'border-gray-50 bg-gray-50 hover:bg-gray-100'}`}
+                >
+                   <div className="font-black text-gray-900 text-sm mb-1">{mode === 'monthly' ? 'Plan Mensual' : 'Clase Suelta'}</div>
+                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{mode === 'monthly' ? '4 Clases / Ciclo' : 'Pago por Asistencia'}</div>
+                </button>
+             ))}
+          </div>
         </div>
 
         {renewMode === 'monthly' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de inicio</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fecha de Inicio</label>
               <input
                 type="date"
-                className="w-full border rounded-lg px-4 py-2.5"
+                className="w-full px-5 py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
                 value={renewStartDate}
                 onChange={e => setRenewStartDate(e.target.value)}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Sugerido: próximo día de semana del curso después del periodo anterior
+              <p className="text-[10px] font-bold text-fuchsia-400/70 px-2 italic">
+                Sugerido: Próxima clase disponible
               </p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de fin (4ta ocurrencia)</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fin del Ciclo</label>
               <input
                 type="date"
-                className="w-full border rounded-lg px-4 py-2.5 bg-gray-50"
+                className="w-full px-5 py-4 bg-gray-50 rounded-2xl font-bold text-gray-300 border-2 border-transparent outline-none cursor-not-allowed"
                 value={computedEndDate}
                 readOnly
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Calculado automáticamente (+3 semanas desde el inicio)
+              <p className="text-[10px] font-bold text-gray-400/70 px-2 italic">
+                Cálculo automático (3 semanas)
               </p>
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de la clase</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-end">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fecha de la Clase</label>
               <input
                 type="date"
-                className="w-full md:w-80 border rounded-lg px-4 py-2.5"
+                className="w-full px-5 py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
                 value={singleDate}
                 onChange={e => setSingleDate(e.target.value)}
               />
             </div>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={markAttendance}
-                onChange={e => setMarkAttendance(e.target.checked)}
-                className="w-5 h-5"
-              />
-              <span className="text-sm text-gray-700">Marcar asistencia automáticamente</span>
-            </label>
+            <div className="pb-4">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${markAttendance ? 'bg-fuchsia-600 border-fuchsia-600' : 'border-gray-200 group-hover:border-fuchsia-200'}`}>
+                   {markAttendance && <HiOutlineCheckCircle className="text-white" />}
+                   <input
+                    type="checkbox"
+                    checked={markAttendance}
+                    onChange={e => setMarkAttendance(e.target.checked)}
+                    className="hidden"
+                  />
+                </div>
+                <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Asistencia automática</span>
+              </label>
+            </div>
           </div>
         )}
 
-        <div className="border-t pt-6">
-          <div className="text-sm font-medium text-gray-700 mb-4">Información de pago</div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Monto {renewMode === 'monthly' ? '(mensual)' : '(clase suelta)'}
-              </label>
-              <input
-                type="number"
-                className="w-full border rounded-lg px-4 py-2.5"
-                placeholder={renewMode === 'monthly'
-                  ? (course?.price_monthly ? fmtCLP.format(course.price_monthly) : 'Ej: 25000')
-                  : (course?.price_single ? fmtCLP.format(course.price_single) : 'Ej: 5000')}
-                value={payAmount}
-                onChange={e => setPayAmount(e.target.value)}
-              />
+        <div className="pt-8 border-t border-gray-50">
+          <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-6">Detalles del Cobro</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Monto</label>
+              <div className="relative">
+                <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-gray-400">$</span>
+                <input
+                  type="number"
+                  className="w-full pl-10 pr-5 py-4 bg-gray-50 rounded-2xl font-black text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                  placeholder="0"
+                  value={payAmount}
+                  onChange={e => setPayAmount(e.target.value)}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Método de pago</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Medio de Pago</label>
               <select
-                className="w-full border rounded-lg px-4 py-2.5"
+                className="w-full px-5 py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
                 value={payMethod}
                 onChange={e => setPayMethod(e.target.value)}
               >
@@ -558,48 +575,48 @@ export default function StudentRenewPage() {
                 <option value="transferencia">Transferencia</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Referencia (opcional)</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Glosa / Ref</label>
               <input
                 type="text"
-                className="w-full border rounded-lg px-4 py-2.5"
-                placeholder="Ej: Renovacion mensual"
+                className="w-full px-5 py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                placeholder="Referencia interna..."
                 value={payReference}
                 onChange={e => setPayReference(e.target.value)}
               />
             </div>
           </div>
         </div>
-      </div>
 
-      {error && (
-        <div className="p-4 rounded-xl border border-rose-300 bg-rose-50">
-          <p className="text-rose-800">{error}</p>
+        {error && (
+          <div className="p-4 rounded-2xl border-2 border-rose-100 bg-rose-50 text-rose-600 text-xs font-black uppercase tracking-widest text-center">
+            {error}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-4 pt-6">
+          <button
+            onClick={() => navigate(`/students/${studentId}`)}
+            className="flex-1 sm:flex-none px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-all"
+            disabled={saving}
+          >
+            Volver
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="flex-1 sm:flex-none px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-lg shadow-fuchsia-200 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none transition-all"
+            disabled={
+              saving ||
+              (renewMode === 'monthly'
+                ? !renewStartDate || (showOutOfPlanOptions && !outOfPlanOption)
+                : !singleDate) ||
+              !payAmount
+            }
+          >
+            {saving ? 'Procesando...' : 'Guardar y Finalizar'}
+          </button>
         </div>
-      )}
-
-      {/* Botones de acción */}
-      <div className="flex justify-end gap-3">
-        <button
-          onClick={() => navigate(`/students/${studentId}`)}
-          className="px-6 py-3 rounded-lg border hover:bg-gray-50 transition"
-          disabled={saving}
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={handleSubmit}
-          className="px-6 py-3 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
-          disabled={
-            saving ||
-            (renewMode === 'monthly'
-              ? !renewStartDate || (showOutOfPlanOptions && !outOfPlanOption)
-              : !singleDate) ||
-            !payAmount
-          }
-        >
-          {saving ? 'Guardando...' : 'Guardar y cobrar'}
-        </button>
       </div>
     </div>
   )

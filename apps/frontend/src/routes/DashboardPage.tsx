@@ -152,27 +152,27 @@ export default function DashboardPage() {
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20">
       {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-             <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Resumen General</span>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4">
+        <div className="space-y-1 text-center sm:text-left">
+          <div className="flex items-center justify-center sm:justify-start gap-3">
+             <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Resumen</span>
              <div className="h-1 w-1 rounded-full bg-gray-300" />
-             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{todayLabel}</span>
+             <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{todayLabel}</span>
           </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Panel de Control</h1>
-          <p className="text-gray-500 font-medium">Bienvenido. Aquí tienes el pulso de tu academia hoy.</p>
+          <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Panel de Control</h1>
+          <p className="text-gray-500 font-medium text-sm md:text-base">Bienvenido a tu gestión diaria.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col xs:flex-row items-center gap-3 md:gap-4 w-full sm:w-auto">
           <button 
             onClick={load} 
-            className="flex items-center gap-2 px-6 py-3.5 rounded-[20px] bg-white text-gray-600 font-black text-xs uppercase tracking-widest border border-gray-100 shadow-sm hover:bg-gray-50 transition-all active:scale-95"
+            className="w-full xs:flex-1 sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white text-gray-600 font-black text-[10px] md:text-xs uppercase tracking-widest border border-gray-100 shadow-sm hover:bg-gray-50 transition-all active:scale-95"
           >
             <HiRefresh className={loading ? 'animate-spin' : ''} />
             Actualizar
           </button>
           <Link 
             to="/payments" 
-            className="flex items-center gap-2 px-8 py-3.5 rounded-[20px] bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-fuchsia-200 hover:scale-[1.02] transition-all active:scale-95"
+            className="w-full xs:flex-[1.5] sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-[10px] md:text-xs uppercase tracking-widest shadow-xl shadow-fuchsia-200 hover:scale-[1.02] transition-all active:scale-95"
           >
             <HiOutlineCurrencyDollar className="text-lg" />
             Nuevo Pago
@@ -188,16 +188,16 @@ export default function DashboardPage() {
       )}
 
       {/* KPI Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 px-4">
         {kpiData.map((k, idx) => (
-          <div key={idx} className="group bg-white rounded-[40px] p-8 border border-gray-100 shadow-sm hover:shadow-2xl hover:border-fuchsia-100 transition-all duration-500 relative overflow-hidden">
-            <div className="relative flex flex-col gap-6">
-              <div className={`w-14 h-14 rounded-2xl bg-${k.color}-50 text-${k.color}-600 flex items-center justify-center text-2xl transition-all duration-500 group-hover:scale-110`}>
+          <div key={idx} className="group bg-white rounded-[32px] md:rounded-[40px] p-5 md:p-8 border border-gray-100 shadow-sm hover:shadow-2xl hover:border-fuchsia-100 transition-all duration-500 relative overflow-hidden">
+            <div className="relative flex flex-col gap-4 md:gap-6">
+              <div className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-${k.color}-50 text-${k.color}-600 flex items-center justify-center text-xl md:text-2xl transition-all duration-500 group-hover:scale-110`}>
                 {k.icon}
               </div>
               <div className="space-y-1">
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{k.label}</div>
-                <div className="text-3xl font-black text-gray-900 tracking-tight">{k.value}</div>
+                <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{k.label}</div>
+                <div className="text-xl md:text-3xl font-black text-gray-900 tracking-tight truncate">{k.value}</div>
               </div>
             </div>
           </div>
@@ -208,58 +208,53 @@ export default function DashboardPage() {
         {/* Main Column */}
         <div className="xl:col-span-8 space-y-8">
           {/* Clases de hoy */}
-          <section className="bg-white rounded-[48px] border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-10 py-8 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center">
-                  <HiCalendar className="text-2xl" />
+          <section className="bg-white md:rounded-[48px] border-y md:border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-6 md:px-10 py-6 md:py-8 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center">
+                  <HiCalendar className="text-xl md:text-2xl" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-gray-900 tracking-tight">Clases de hoy</h2>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{classesToday.length} Sesiones</p>
+                  <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Clases de hoy</h2>
+                  <p className="text-[9px] md:text-xs text-gray-400 font-bold uppercase tracking-widest">{classesToday.length} Sesiones</p>
                 </div>
               </div>
-              <Link to="/calendar" className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest hover:text-fuchsia-700 transition-colors bg-fuchsia-50 px-4 py-2 rounded-full">Ver Calendario</Link>
+              <Link to="/calendar" className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest hover:text-fuchsia-700 transition-colors bg-fuchsia-50 px-3 md:px-4 py-2 rounded-full">Ver Todo</Link>
             </div>
             
-            <div className="p-10">
+            <div className="p-6 md:p-10">
               {classesToday.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-300">
                   <HiClock className="text-6xl mb-4 opacity-20" />
-                  <p className="font-black uppercase tracking-[0.2em] text-xs">No hay clases para hoy</p>
+                  <p className="font-black uppercase tracking-widest text-[10px]">No hay clases hoy</p>
                 </div>
               ) : (
-                <div className="grid sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   {classesToday.map(c => (
-                    <div key={c.id} className="group p-6 rounded-[32px] border border-gray-50 bg-gray-50/30 hover:bg-white hover:border-fuchsia-200 hover:shadow-xl transition-all duration-500 flex gap-6 items-center cursor-pointer">
+                    <div key={c.id} className="group p-4 md:p-6 rounded-[24px] md:rounded-[32px] border border-gray-50 bg-gray-50/30 hover:bg-white hover:border-fuchsia-200 hover:shadow-xl transition-all duration-500 flex gap-4 md:gap-6 items-center cursor-pointer">
                       <div className="relative flex-shrink-0">
                         {c.image_url ? (
-                          <img src={toAbsoluteUrl(c.image_url)} alt={c.name} className="w-24 h-24 rounded-[28px] object-cover border-4 border-white shadow-lg" />
+                          <img src={toAbsoluteUrl(c.image_url)} alt={c.name} className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[28px] object-cover border-2 md:border-4 border-white shadow-lg" />
                         ) : (
-                          <div className="w-24 h-24 rounded-[28px] bg-gradient-to-br from-gray-100 to-gray-200 border-4 border-white flex items-center justify-center text-gray-400 text-3xl shadow-lg">
+                          <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[28px] bg-gradient-to-br from-gray-100 to-gray-200 border-2 md:border-4 border-white flex items-center justify-center text-gray-400 text-xl md:text-3xl shadow-lg">
                             {c.name[0]}
                           </div>
                         )}
-                        {c.level && (
-                          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gray-900 text-white text-[8px] font-black uppercase tracking-widest shadow-xl">
-                            {c.level}
-                          </span>
-                        )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-col gap-2">
-                          <h3 className="text-lg font-black text-gray-900 truncate group-hover:text-fuchsia-600 transition-colors leading-tight">{c.name}</h3>
-                          <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
-                            <span className="bg-white px-3 py-1 rounded-lg border border-gray-100 text-fuchsia-600 font-black">
-                              {(c.start_time || '').slice(0, 5)}
+                        <div className="flex flex-col gap-1 md:gap-2">
+                          <h3 className="text-sm md:text-lg font-black text-gray-900 truncate group-hover:text-fuchsia-600 transition-colors leading-tight">{c.name}</h3>
+                          <div className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold text-gray-500">
+                            <span className="bg-white px-2 py-0.5 md:px-3 md:py-1 rounded-lg border border-gray-100 text-fuchsia-600 font-black">
+                               {(c.start_time || '').slice(0, 5)}
                             </span>
-                            <span className="text-gray-300 font-normal">a</span>
-                            <span className="bg-white px-3 py-1 rounded-lg border border-gray-100 text-gray-600 font-black">
-                              {(c.end_time || '').slice(0, 5)}
+                            <span className="text-gray-300">/</span>
+                            <span className="bg-white px-2 py-0.5 md:px-3 md:py-1 rounded-lg border border-gray-100 text-gray-600 font-black">
+                               {(c.end_time || '').slice(0, 5)}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                            <HiUserGroup size={14} className="text-fuchsia-400" />
+                          <div className="flex items-center gap-1.5 text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">
+                            <HiUserGroup size={12} className="text-fuchsia-400" />
                             <span className="truncate">{c.teacher_name || 'Sin profesor'}</span>
                           </div>
                         </div>
@@ -272,43 +267,43 @@ export default function DashboardPage() {
           </section>
 
           {/* Pagos Recientes */}
-          <section className="bg-white rounded-[48px] border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-10 py-8 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                  <HiOutlineCurrencyDollar className="text-2xl" />
+          <section className="bg-white md:rounded-[48px] border-y md:border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-6 md:px-10 py-6 md:py-8 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <HiOutlineCurrencyDollar className="text-xl md:text-2xl" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-gray-900 tracking-tight">Actividad Reciente</h2>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Finanzas</p>
+                  <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Actividad Reciente</h2>
+                  <p className="text-[9px] md:text-xs text-gray-400 font-bold uppercase tracking-widest">Finanzas</p>
                 </div>
               </div>
-              <Link to="/payments" className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:text-emerald-700 transition-colors bg-emerald-50 px-4 py-2 rounded-full">Ver Detalles</Link>
+              <Link to="/payments" className="text-[9px] md:text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:text-emerald-700 transition-colors bg-emerald-50 px-3 md:px-4 py-2 rounded-full">Ver Más</Link>
             </div>
 
-            <div className="p-10">
+            <div className="p-6 md:p-10">
               {paymentsRecent.length === 0 ? (
-                <div className="text-center py-10 text-gray-300 font-black uppercase tracking-widest text-xs italic">Sin movimientos recientes</div>
+                <div className="text-center py-10 text-gray-300 font-black uppercase tracking-widest text-[10px] italic">Sin movimientos recientes</div>
               ) : (
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-3 md:gap-4">
                   {paymentsRecent.slice(0, 6).map((p: any) => (
-                    <div key={p.id} className="p-5 rounded-[24px] border border-gray-50 hover:border-emerald-100 hover:bg-emerald-50/20 transition-all flex items-center justify-between gap-6 group">
-                      <div className="flex items-center gap-5 min-w-0">
-                        <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 text-emerald-600 flex items-center justify-center font-black text-sm shadow-sm group-hover:scale-110 transition-transform">
+                    <div key={p.id} className="p-4 md:p-5 rounded-2xl md:rounded-[24px] border border-gray-50 hover:border-emerald-100 hover:bg-emerald-50/20 transition-all flex items-center justify-between gap-4 md:gap-6 group">
+                      <div className="flex items-center gap-3 md:gap-5 min-w-0">
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white border border-gray-100 text-emerald-600 flex items-center justify-center font-black text-xs md:text-sm shadow-sm group-hover:scale-110 transition-transform">
                           {p.method?.[0].toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <div className="text-sm font-black text-gray-900 group-hover:text-emerald-600 transition-colors truncate">
+                          <div className="text-xs md:text-sm font-black text-gray-900 group-hover:text-emerald-600 transition-colors truncate">
                             {p.course_name || p.reference || 'Concepto Vario'}
                           </div>
-                          <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                          <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5 truncate">
                              {methodLabel[p.method] || p.method}
                           </div>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <div className="text-lg font-black text-gray-900">{fmtCLP.format(Number(p.amount || 0))}</div>
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{(p.payment_date || '').split('-').reverse().join('/')}</div>
+                        <div className="text-sm md:text-lg font-black text-gray-900">{fmtCLP.format(Number(p.amount || 0))}</div>
+                        <div className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{(p.payment_date || '').split('-').reverse().slice(0,2).join('/')}</div>
                       </div>
                     </div>
                   ))}
@@ -316,11 +311,11 @@ export default function DashboardPage() {
               )}
 
               {/* Resumen por método */}
-              <div className="mt-10 pt-10 border-t border-gray-100 grid grid-cols-3 gap-6">
+              <div className="mt-8 md:mt-10 pt-8 md:pt-10 border-t border-gray-100 grid grid-cols-3 gap-3 md:gap-6">
                 {['cash', 'card', 'transfer'].map(m => (
-                  <div key={m} className="p-6 rounded-[24px] bg-gray-50/50 border border-gray-50 text-center group hover:bg-white hover:border-emerald-100 transition-all">
-                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-2">{methodLabel[m] || m}</div>
-                    <div className="text-xl font-black text-gray-900">{fmtCLP.format(revByMethod[m] || 0)}</div>
+                  <div key={m} className="p-3 md:p-6 rounded-xl md:rounded-[24px] bg-gray-50/50 border border-gray-50 text-center group hover:bg-white hover:border-emerald-100 transition-all">
+                    <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 md:mb-2 truncate">{methodLabel[m] || m}</div>
+                    <div className="text-xs md:text-xl font-black text-gray-900 truncate">{fmtCLP.format(revByMethod[m] || 0)}</div>
                   </div>
                 ))}
               </div>
@@ -403,20 +398,20 @@ export default function DashboardPage() {
           </section>
 
           {/* Estadísticas 30D */}
-          <section className="bg-gray-900 rounded-[48px] p-10 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-fuchsia-500/20 rounded-full -mr-20 -mt-20 blur-[60px] group-hover:bg-fuchsia-500/30 transition-all" />
-            <div className="relative space-y-6">
+          <section className="bg-gray-900 md:rounded-[48px] p-8 md:p-10 shadow-2xl relative overflow-hidden group mx-4 md:mx-0">
+            <div className="absolute top-0 right-0 w-32 md:w-40 h-32 md:h-40 bg-fuchsia-500/20 rounded-full -mr-16 -mt-16 md:-mr-20 md:-mt-20 blur-[40px] md:blur-[60px] group-hover:bg-fuchsia-500/30 transition-all" />
+            <div className="relative space-y-4 md:space-y-6">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
-                  <HiSparkles className="text-fuchsia-400 text-xl" />
+                  <HiSparkles className="text-fuchsia-400 text-lg md:text-xl" />
                 </div>
-                <h2 className="text-xs font-black text-white uppercase tracking-[0.2em]">Asistencias 30D</h2>
+                <h2 className="text-[10px] md:text-xs font-black text-white uppercase tracking-[0.2em]">Asistencias 30D</h2>
               </div>
               <div>
-                <div className="text-5xl font-black text-white tracking-tight leading-none">{attendances30d}</div>
-                <p className="text-gray-400 text-[10px] font-black mt-3 uppercase tracking-widest">Total registros mensuales</p>
+                <div className="text-4xl md:text-5xl font-black text-white tracking-tight leading-none">{attendances30d}</div>
+                <p className="text-gray-400 text-[8px] md:text-[10px] font-black mt-2 md:mt-3 uppercase tracking-widest">Total registros mensuales</p>
               </div>
-              <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden mt-6">
+              <div className="h-1.5 md:h-2 w-full bg-white/10 rounded-full overflow-hidden mt-4 md:mt-6">
                 <div className="h-full bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full shadow-[0_0_20px_rgba(217,70,239,0.4)] transition-all duration-1000" style={{ width: `${Math.min(100, (attendances30d/500)*100)}%` }} />
               </div>
             </div>

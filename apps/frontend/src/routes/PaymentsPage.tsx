@@ -271,20 +271,20 @@ export default function PaymentsPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div className="space-y-1">
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Caja y Pagos</h1>
-          <p className="text-gray-500 font-medium">Control financiero y arqueo de caja en tiempo real.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4">
+        <div className="space-y-1 text-center sm:text-left">
+          <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Caja y Pagos</h1>
+          <p className="text-gray-500 font-medium text-sm md:text-base">Control financiero en tiempo real.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link to="/payments-teachers" className="px-6 py-4 bg-white border-2 border-gray-100 text-gray-700 font-black rounded-2xl hover:border-fuchsia-200 hover:bg-fuchsia-50 transition-all flex items-center gap-2 text-sm uppercase tracking-widest">
-            Pagos Profesores <HiOutlineArrowRight />
+        <div className="flex flex-col xs:flex-row items-center gap-3 w-full sm:w-auto">
+          <Link to="/payments-teachers" className="w-full xs:flex-1 sm:w-auto px-6 py-4 bg-white border-2 border-gray-100 text-gray-700 font-black rounded-2xl hover:border-fuchsia-200 hover:bg-fuchsia-50 transition-all flex items-center justify-center gap-2 text-[10px] md:text-sm uppercase tracking-widest">
+            Profesores <HiOutlineArrowRight />
           </Link>
           <button 
             onClick={downloadExcel} 
-            className="px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 text-sm uppercase tracking-widest"
+            className="w-full xs:flex-1 sm:w-auto px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 text-[10px] md:text-sm uppercase tracking-widest"
           >
-            <HiOutlineDownload size={20} /> Exportar Excel
+            <HiOutlineDownload size={18} md:size={20} /> Excel
           </button>
         </div>
       </div>
@@ -297,36 +297,36 @@ export default function PaymentsPage() {
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 px-4">
         {[
-          { label: 'Total Rango', value: stats.total_amount, icon: HiOutlineCurrencyDollar, color: 'fuchsia' },
+          { label: 'Total', value: stats.total_amount, icon: HiOutlineCurrencyDollar, color: 'fuchsia' },
           { label: 'Efectivo', value: stats.cash_amount, icon: HiOutlineCash, color: 'emerald' },
           { label: 'Tarjeta', value: stats.card_amount, icon: HiOutlineCreditCard, color: 'sky' },
-          { label: 'Transferencia', value: stats.transfer_amount, icon: HiOutlineSwitchHorizontal, color: 'indigo' },
+          { label: 'Transf.', value: stats.transfer_amount, icon: HiOutlineSwitchHorizontal, color: 'indigo' },
           { label: 'Convenio', value: stats.agreement_amount, icon: HiOutlineCheckCircle, color: 'amber' },
         ].map((s, i) => (
-          <div key={i} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm group hover:border-fuchsia-100 transition-all">
-            <div className={`p-3 w-10 h-10 rounded-xl bg-${s.color}-50 text-${s.color}-600 mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
-              <s.icon size={20} />
+          <div key={i} className={`bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm group hover:border-fuchsia-100 transition-all ${i === 0 ? 'col-span-2 lg:col-span-1' : ''}`}>
+            <div className={`p-2.5 w-9 h-9 md:w-10 md:h-10 rounded-xl bg-${s.color}-50 text-${s.color}-600 mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+              <s.icon size={18} md:size={20} />
             </div>
-            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
-            <div className="text-xl font-black text-gray-900">{fmtCLP.format(Number(s.value || 0))}</div>
+            <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
+            <div className="text-base md:text-xl font-black text-gray-900 truncate">{fmtCLP.format(Number(s.value || 0))}</div>
           </div>
         ))}
       </div>
 
       {/* Filters Section */}
-      <div className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+      <div className="bg-white p-6 md:p-8 md:rounded-[40px] border-y md:border border-gray-100 shadow-sm space-y-6 md:space-y-8 mx-0 md:mx-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-6 items-end">
           {/* Quick Range */}
-          <div className="md:col-span-3 space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Rango Rápido</label>
+          <div className="lg:col-span-3 space-y-2">
+            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Rango</label>
             <div className="relative">
               <HiOutlineFilter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <select 
                 value={quickRange} 
                 onChange={e => applyQuickRange(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
+                className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl md:rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
               >
                 <option value="todo">Ver Todo</option>
                 <option value="dia_hoy">Hoy</option>
@@ -338,34 +338,34 @@ export default function PaymentsPage() {
           </div>
 
           {/* Dates */}
-          <div className="md:col-span-3 space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Desde</label>
+          <div className="lg:col-span-3 space-y-2">
+            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Desde</label>
             <input 
               type="date" 
               value={dateFrom} 
               onChange={e => { setDateFrom(e.target.value); setQuickRange('personalizado') }}
-              className="w-full px-4 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+              className="w-full px-4 py-3 bg-gray-50 rounded-xl md:rounded-2xl font-bold text-sm md:text-base text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
             />
           </div>
-          <div className="md:col-span-3 space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Hasta</label>
+          <div className="lg:col-span-3 space-y-2">
+            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Hasta</label>
             <input 
               type="date" 
               value={dateTo} 
               onChange={e => { setDateTo(e.target.value); setQuickRange('personalizado') }}
-              className="w-full px-4 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+              className="w-full px-4 py-3 bg-gray-50 rounded-xl md:rounded-2xl font-bold text-sm md:text-base text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
             />
           </div>
 
           {/* View Mode */}
-          <div className="md:col-span-3 space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 text-right block">Modo de Vista</label>
-            <div className="flex bg-gray-100 p-1 rounded-2xl">
+          <div className="lg:col-span-3 space-y-2">
+            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 text-center lg:text-right block">Vista</label>
+            <div className="flex bg-gray-100 p-1 rounded-xl md:rounded-2xl">
               {(['detalle', 'resumen-diario', 'resumen-profesor'] as ViewMode[]).map(v => (
                 <button 
                   key={v}
                   onClick={() => setViewMode(v)}
-                  className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === v ? 'bg-white text-fuchsia-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                  className={`flex-1 py-2 px-2 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === v ? 'bg-white text-fuchsia-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   {v === 'detalle' ? 'Lista' : v === 'resumen-diario' ? 'Día' : 'Profe'}
                 </button>
@@ -375,21 +375,21 @@ export default function PaymentsPage() {
         </div>
 
         {/* Search and Secondary Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end border-t border-gray-50 pt-8">
-          <div className="md:col-span-6 relative group">
-            <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={24} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-6 items-end border-t border-gray-50 pt-6 md:pt-8">
+          <div className="lg:col-span-6 relative group">
+            <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={20} md:size={24} />
             <input
-              className="w-full bg-gray-50 border-2 border-transparent rounded-3xl pl-14 pr-6 py-4 font-bold text-gray-700 focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 transition-all outline-none"
-              placeholder="Buscar por alumno, curso, referencia..."
+              className="w-full bg-gray-50 border-2 border-transparent rounded-xl md:rounded-3xl pl-12 md:pl-14 pr-6 py-3 md:py-4 font-bold text-sm md:text-base text-gray-700 focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 transition-all outline-none"
+              placeholder="Buscar alumno, curso..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <div className="md:col-span-3">
+          <div className="lg:col-span-3">
              <select 
                value={fMethod} 
                onChange={e => setFMethod(e.target.value)}
-               className="w-full px-4 py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
+               className="w-full px-4 py-3 md:py-4 bg-gray-50 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
              >
                <option value="">Todos los Métodos</option>
                <option value="cash">Efectivo</option>
@@ -398,11 +398,11 @@ export default function PaymentsPage() {
                <option value="agreement">Convenio</option>
              </select>
           </div>
-          <div className="md:col-span-3">
+          <div className="lg:col-span-3">
              <select 
                value={fType} 
                onChange={e => setFType(e.target.value)}
-               className="w-full px-4 py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
+               className="w-full px-4 py-3 md:py-4 bg-gray-50 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
              >
                <option value="">Todos los Tipos</option>
                <option value="monthly">Mensualidad</option>
@@ -426,7 +426,7 @@ export default function PaymentsPage() {
         {viewMode === 'detalle' && (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
+              <thead className="hidden md:table-header-group">
                 <tr className="bg-gray-50/50 text-left border-b border-gray-100">
                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno / Concepto</th>
@@ -435,43 +435,46 @@ export default function PaymentsPage() {
                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 block md:table-row-group">
                 {data.length === 0 && !loading ? (
-                  <tr><td colSpan={5} className="px-8 py-20 text-center text-gray-400 font-bold">No se encontraron pagos en este rango.</td></tr>
+                  <tr className="block md:table-row"><td colSpan={5} className="px-8 py-20 text-center text-gray-400 font-bold block md:table-cell">No se encontraron pagos en este rango.</td></tr>
                 ) : data.map((p) => (
-                  <tr key={p.id} className="hover:bg-fuchsia-50/20 transition-colors group">
-                    <td className="px-8 py-6">
-                      <div className="text-sm font-black text-gray-900">{toDDMMYYYY(p.payment_date)}</div>
-                      <div className="text-[10px] font-bold text-gray-400">ID #{p.id}</div>
+                  <tr key={p.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors group">
+                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6">
+                      <div className="flex md:block items-center justify-between">
+                        <div className="text-sm font-black text-gray-900">{toDDMMYYYY(p.payment_date)}</div>
+                        <div className="text-[10px] font-bold text-gray-400">ID #{p.id}</div>
+                      </div>
                     </td>
-                    <td className="px-6 py-6">
-                      <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors">{p.student_name || students[p.student_id!]?.name || '-'}</div>
-                      <div className="text-xs font-bold text-gray-500">{p.course_name || (p.course_id && courses[p.course_id]?.name) || 'Gasto General'}</div>
-                      {p.notes && <div className="text-[10px] text-gray-400 italic mt-1">"{p.notes}"</div>}
+                    <td className="block md:table-cell px-6 py-2 md:py-6">
+                      <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors truncate">{p.student_name || students[p.student_id!]?.name || '-'}</div>
+                      <div className="text-xs font-bold text-gray-500 truncate">{p.course_name || (p.course_id && courses[p.course_id]?.name) || 'Gasto General'}</div>
+                      {p.notes && <div className="text-[10px] text-gray-400 italic mt-1 line-clamp-1">"{p.notes}"</div>}
                     </td>
-                    <td className="px-6 py-6">
+                    <td className="block md:table-cell px-6 py-2 md:py-6">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${p.method === 'cash' ? 'bg-emerald-50 text-emerald-600' : p.method === 'card' ? 'bg-sky-50 text-sky-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${p.method === 'cash' ? 'bg-emerald-50 text-emerald-600' : p.method === 'card' ? 'bg-sky-50 text-sky-600' : 'bg-indigo-50 text-indigo-600'}`}>
                           {methodLabel(p.method)}
                         </span>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{typeLabel(p.type)}</span>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{typeLabel(p.type)}</span>
                       </div>
-                      <div className="text-[10px] font-bold text-gray-400 mt-1">{findPeriod(p)}</div>
+                      <div className="text-[9px] font-bold text-gray-400 mt-1">{findPeriod(p)}</div>
                     </td>
-                    <td className="px-6 py-6 text-right">
-                      <div className="text-lg font-black text-gray-900">{fmtCLP.format(p.amount)}</div>
+                    <td className="block md:table-cell px-6 py-2 md:py-6 text-left md:text-right">
+                      <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Monto</div>
+                      <div className="text-base md:text-lg font-black text-gray-900">{fmtCLP.format(p.amount)}</div>
                     </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6 text-right">
+                      <div className="flex items-center justify-end gap-2 md:opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => setEditing(p)}
-                          className="p-3 bg-white border border-gray-100 text-amber-500 rounded-xl hover:bg-amber-50 hover:border-amber-100 transition-all shadow-sm"
+                          className="flex-1 md:flex-none p-2.5 bg-white border border-gray-100 text-amber-500 rounded-xl hover:bg-amber-50 hover:border-amber-100 transition-all shadow-sm flex justify-center"
                         >
                           <HiOutlinePencil size={18} />
                         </button>
                         <button 
                           onClick={() => handleDelete(p.id)}
-                          className="p-3 bg-white border border-gray-100 text-rose-500 rounded-xl hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm"
+                          className="flex-1 md:flex-none p-2.5 bg-white border border-gray-100 text-rose-500 rounded-xl hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm flex justify-center"
                         >
                           <HiOutlineTrash size={18} />
                         </button>
@@ -486,24 +489,24 @@ export default function PaymentsPage() {
 
         {/* Pagination */}
         {viewMode === 'detalle' && totalPages > 1 && (
-          <div className="px-8 py-6 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
-            <div className="text-xs font-black text-gray-400 uppercase tracking-widest">
-              Mostrando {data.length} de {totalItems} registros
+          <div className="px-6 md:px-8 py-4 md:py-6 bg-gray-50/50 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              {data.length} de {totalItems} registros
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2">
               <button 
                 disabled={page === 1}
                 onClick={() => setPage(p => p - 1)}
-                className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-30 hover:text-fuchsia-600 transition-all"
+                className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-30 hover:text-fuchsia-600 transition-all"
               >
-                <HiOutlineChevronLeft size={24} />
+                <HiOutlineChevronLeft size={20} md:size={24} />
               </button>
-              <div className="flex gap-1">
+              <div className="flex gap-1 overflow-x-auto max-w-[200px] md:max-w-none no-scrollbar">
                 {[...Array(totalPages)].map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setPage(i + 1)}
-                    className={`w-10 h-10 rounded-xl font-black text-xs transition-all ${page === i + 1 ? 'bg-fuchsia-600 text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`}
+                    className={`min-w-[32px] md:min-w-[40px] h-8 md:h-10 rounded-lg md:rounded-xl font-black text-[10px] md:text-xs transition-all shrink-0 ${page === i + 1 ? 'bg-fuchsia-600 text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`}
                   >
                     {i + 1}
                   </button>
@@ -512,9 +515,9 @@ export default function PaymentsPage() {
               <button 
                 disabled={page === totalPages}
                 onClick={() => setPage(p => p + 1)}
-                className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-30 hover:text-fuchsia-600 transition-all"
+                className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-30 hover:text-fuchsia-600 transition-all"
               >
-                <HiOutlineChevronRight size={24} />
+                <HiOutlineChevronRight size={20} md:size={24} />
               </button>
             </div>
           </div>
@@ -524,7 +527,7 @@ export default function PaymentsPage() {
         {viewMode === 'resumen-diario' && (
            <div className="overflow-x-auto">
              <table className="w-full">
-               <thead>
+               <thead className="hidden md:table-header-group">
                  <tr className="bg-gray-50/50 text-left border-b border-gray-100">
                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Efectivo</th>
@@ -533,14 +536,23 @@ export default function PaymentsPage() {
                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Día</th>
                  </tr>
                </thead>
-               <tbody className="divide-y divide-gray-50">
+               <tbody className="divide-y divide-gray-50 block md:table-row-group">
                  {dailyRows.map(r => (
-                   <tr key={r.date} className="hover:bg-fuchsia-50/20 transition-colors">
-                     <td className="px-8 py-6 font-black text-gray-900">{toDDMMYYYY(r.date)}</td>
-                     <td className="px-6 py-6 text-right font-bold text-emerald-600">{fmtCLP.format(r.cash)}</td>
-                     <td className="px-6 py-6 text-right font-bold text-sky-600">{fmtCLP.format(r.card)}</td>
-                     <td className="px-6 py-6 text-right font-bold text-indigo-600">{fmtCLP.format(r.transfer)}</td>
-                     <td className="px-6 py-6 text-right font-black text-gray-900 text-lg">{fmtCLP.format(r.total)}</td>
+                   <tr key={r.date} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors">
+                     <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6 font-black text-gray-900">{toDDMMYYYY(r.date)}</td>
+                     <td className="block md:table-cell px-6 py-1 md:py-6 text-left md:text-right font-bold text-emerald-600">
+                        <span className="md:hidden text-[8px] font-black text-gray-400 uppercase mr-2">Efect:</span>
+                        {fmtCLP.format(r.cash)}
+                     </td>
+                     <td className="block md:table-cell px-6 py-1 md:py-6 text-left md:text-right font-bold text-sky-600">
+                        <span className="md:hidden text-[8px] font-black text-gray-400 uppercase mr-2">Tarj:</span>
+                        {fmtCLP.format(r.card)}
+                     </td>
+                     <td className="block md:table-cell px-6 py-1 md:py-6 text-left md:text-right font-bold text-indigo-600">
+                        <span className="md:hidden text-[8px] font-black text-gray-400 uppercase mr-2">Trans:</span>
+                        {fmtCLP.format(r.transfer)}
+                     </td>
+                     <td className="block md:table-cell px-6 py-3 md:py-6 text-left md:text-right font-black text-gray-900 text-lg">{fmtCLP.format(r.total)}</td>
                    </tr>
                  ))}
                </tbody>

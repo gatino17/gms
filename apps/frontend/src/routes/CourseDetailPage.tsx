@@ -122,7 +122,7 @@ export default function CourseDetailPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
       {/* Action Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-4">
         <button onClick={() => navigate('/courses')} className="group flex items-center gap-2 text-gray-400 hover:text-fuchsia-600 transition-colors">
            <div className="p-2 rounded-xl group-hover:bg-fuchsia-50 transition-colors"><HiOutlineChevronLeft size={20} /></div>
            <span className="font-black uppercase tracking-widest text-[10px]">Volver al Catálogo</span>
@@ -130,133 +130,136 @@ export default function CourseDetailPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="relative bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
+      <div className="relative bg-white md:rounded-[40px] shadow-sm border-y md:border border-gray-100 overflow-hidden mx-0 md:mx-4">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr,400px]">
           {/* Info */}
-          <div className="p-8 lg:p-12 space-y-8">
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                 <span className="px-3 py-1 bg-fuchsia-100 text-fuchsia-700 text-[10px] font-black uppercase tracking-widest rounded-full">{course.level || 'Sin Nivel'}</span>
-                 <span className="px-3 py-1 bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-widest rounded-full">{course.course_type || 'Regular'}</span>
+          <div className="p-6 md:p-8 lg:p-12 space-y-6 md:space-y-8">
+            <div className="space-y-3 md:space-y-4 text-center md:text-left">
+              <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                 <span className="px-2 md:px-3 py-1 bg-fuchsia-100 text-fuchsia-700 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded-full">{course.level || 'Sin Nivel'}</span>
+                 <span className="px-2 md:px-3 py-1 bg-purple-100 text-purple-700 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded-full">{course.course_type || 'Regular'}</span>
               </div>
-              <h1 className="text-4xl lg:text-5xl font-black text-gray-900 tracking-tight leading-tight">{course.name}</h1>
-              <div className="flex flex-wrap items-center gap-6 text-gray-500 font-bold">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 tracking-tight leading-tight">{course.name}</h1>
+              <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 md:gap-6 text-gray-500 font-bold text-sm md:text-base">
                  <div className="flex items-center gap-2"><HiOutlineUserGroup className="text-fuchsia-500" /> {teacher.name || 'Sin Instructor'}</div>
-                 <div className="flex items-center gap-2"><HiOutlineCalendar className="text-fuchsia-500" /> Sala: {room.name || 'Sin asignar'}</div>
+                 <div className="flex items-center gap-2"><HiOutlineCalendar className="text-fuchsia-500" /> Sala: {room.name || 'Gral.'}</div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-4">
                {[
-                 { label: 'Total Alumnos', value: counts.total, icon: HiOutlineUserGroup, color: 'fuchsia' },
-                 { label: 'Mensualidad', value: fmtCLP(course.price || 0), icon: HiOutlineTicket, color: 'emerald' },
-                 { label: 'Inscripción', value: course.is_active !== false ? 'Abierta' : 'Cerrada', icon: HiOutlineStar, color: 'blue' },
-                 { label: 'Sesiones/Sem', value: course.classes_per_week || 1, icon: HiOutlineClock, color: 'amber' },
+                 { label: 'Alumnos', value: counts.total, icon: HiOutlineUserGroup, color: 'fuchsia' },
+                 { label: 'Precio', value: fmtCLP(course.price || 0), icon: HiOutlineTicket, color: 'emerald' },
+                 { label: 'Estado', value: course.is_active !== false ? 'Abierta' : 'Cerrada', icon: HiOutlineStar, color: 'blue' },
+                 { label: 'Sesiones', value: `${course.classes_per_week || 1}/sem`, icon: HiOutlineClock, color: 'amber' },
                ].map((s, i) => (
-                 <div key={i} className="bg-gray-50/50 p-4 rounded-3xl border border-gray-100">
-                    <div className={`text-${s.color}-600 mb-2`}><s.icon size={20} /></div>
-                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
-                    <div className="text-lg font-black text-gray-900">{s.value}</div>
+                 <div key={i} className="bg-gray-50/50 p-4 rounded-2xl md:rounded-3xl border border-gray-100 flex flex-col items-center md:items-start">
+                    <div className={`text-${s.color}-600 mb-2`}><s.icon size={18} /></div>
+                    <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
+                    <div className="text-base md:text-lg font-black text-gray-900">{s.value}</div>
                  </div>
                ))}
             </div>
           </div>
 
           {/* Image */}
-          <div className="h-64 lg:h-auto bg-gray-100 relative">
+          <div className="h-48 md:h-64 lg:h-auto bg-gray-100 relative order-first lg:order-last">
              {course.image_url ? (
                <img src={toAbsoluteUrl(course.image_url)} className="w-full h-full object-cover" />
              ) : (
                <div className="w-full h-full bg-gradient-to-br from-fuchsia-600 to-purple-600 flex items-center justify-center text-white/20">
-                  <HiOutlineLightningBolt size={120} />
+                  <HiOutlineLightningBolt size={80} className="md:w-[120px] md:h-[120px]" />
                </div>
              )}
-             <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-white via-transparent to-transparent" />
+             <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-white via-transparent to-transparent opacity-50 md:opacity-100" />
           </div>
         </div>
       </div>
 
       {/* Students Section */}
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between px-2 gap-4">
-           <h2 className="text-2xl font-black text-gray-900">Lista de Alumnos</h2>
-           <div className="flex flex-wrap gap-4">
-              <div className="flex items-center gap-2 px-4 py-2 bg-pink-50 rounded-2xl border border-pink-100">
-                 <span className="text-lg">👩</span>
-                 <span className="text-xs font-black text-pink-700">{counts.female} Mujeres</span>
+      <div className="space-y-6 px-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+           <h2 className="text-2xl font-black text-gray-900 text-center md:text-left">Lista de Alumnos</h2>
+           <div className="flex flex-wrap justify-center md:justify-end gap-3 md:gap-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-pink-50 rounded-xl border border-pink-100">
+                 <span className="text-sm">👩</span>
+                 <span className="text-[9px] font-black text-pink-700">{counts.female}</span>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-sky-50 rounded-2xl border border-sky-100">
-                 <span className="text-lg">👨</span>
-                 <span className="text-xs font-black text-sky-700">{counts.male} Hombres</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-sky-50 rounded-xl border border-sky-100">
+                 <span className="text-sm">👨</span>
+                 <span className="text-[9px] font-black text-sky-700">{counts.male}</span>
               </div>
-              <div className="w-px h-8 bg-gray-100 hidden md:block" />
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500" /><span className="text-xs font-bold text-gray-500">{counts.activos} Al día</span></div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-rose-500" /><span className="text-xs font-bold text-gray-500">{counts.pendientes} Pendientes</span></div>
+              <div className="hidden md:block w-px h-6 bg-gray-100" />
+              <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /><span className="text-[10px] font-bold text-gray-500">OK</span></div>
+              <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-rose-500" /><span className="text-[10px] font-bold text-gray-500">PEND</span></div>
            </div>
         </div>
 
-        <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white md:rounded-[40px] shadow-sm border-y md:border border-gray-100 overflow-hidden mx-0 md:-mx-4">
           <table className="w-full">
-            <thead>
+            <thead className="hidden md:table-header-group">
               <tr className="bg-gray-50/50 text-left border-b border-gray-100">
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno</th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Próx. Renovación</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Asistencia Hoy</th>
+                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Renovación</th>
+                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Asistencia</th>
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 block md:table-row-group">
               {(data.students || []).map((s: StudentRow) => {
                 const isPaid = s.payment_status === 'activo'
                 const hasAtt = attendedToday.has(s.id) || !!s.attended_today
 
                 return (
-                  <tr key={s.id} className="hover:bg-fuchsia-50/20 transition-colors">
-                    <td className="px-8 py-6">
+                  <tr key={s.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors">
+                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6">
                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm ${isPaid ? 'bg-fuchsia-100 text-fuchsia-600' : 'bg-gray-100 text-gray-400'}`}>
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 ${isPaid ? 'bg-fuchsia-100 text-fuchsia-600' : 'bg-gray-100 text-gray-400'}`}>
                              {s.first_name[0]}{s.last_name[0]}
                           </div>
-                          <div>
-                             <div className="font-black text-gray-900">{s.first_name} {s.last_name}</div>
-                             <div className="text-[10px] font-bold text-gray-400 uppercase">ID: #{s.id}</div>
+                          <div className="min-w-0">
+                             <div className="font-black text-gray-900 truncate">{s.first_name} {s.last_name}</div>
+                             <div className="text-[9px] font-bold text-gray-400 uppercase">Alumno #{s.id}</div>
                           </div>
                        </div>
                     </td>
-                    <td className="px-6 py-6 text-center">
-                       <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                    <td className="block md:table-cell px-6 py-2 md:py-6 text-left md:text-center">
+                       <span className={`inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                           {isPaid ? 'Al día' : 'Pendiente'}
                        </span>
                     </td>
-                    <td className="px-6 py-6 text-center font-bold text-sm text-gray-600">
+                    <td className="hidden md:table-cell px-6 py-6 text-center font-bold text-sm text-gray-600">
                        {s.renewal_date ? new Date(s.renewal_date).toLocaleDateString('es-CL', { day:'2-digit', month:'short' }) : '---'}
                     </td>
-                    <td className="px-6 py-6 text-center">
+                    <td className="block md:table-cell px-6 py-2 md:py-6 text-left md:text-center">
+                       <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Asistencia Hoy</div>
                        {hasAtt ? (
-                         <div className="inline-flex items-center gap-1.5 text-emerald-600 font-black text-xs uppercase">
-                            <HiOutlineCheckCircle size={18} /> Presente
+                         <div className="inline-flex items-center gap-1.5 text-emerald-600 font-black text-[10px] uppercase">
+                            <HiOutlineCheckCircle size={16} /> Presente
                          </div>
                        ) : (
-                         <span className="text-gray-300 font-bold text-xs uppercase tracking-widest">Ausente</span>
+                         <span className="text-gray-300 font-bold text-[10px] uppercase tracking-widest">Ausente</span>
                        )}
                     </td>
-                    <td className="px-8 py-6 text-right space-x-2">
-                       {!hasAtt && (
-                         <button 
-                            disabled={attLoadingId === s.id}
-                            onClick={() => markAttendance(s.id)}
-                            className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all disabled:opacity-50"
-                         >
-                            {attLoadingId === s.id ? '...' : 'Presente'}
-                         </button>
-                       )}
-                       <button 
-                          onClick={() => navigate(`/students/${s.id}`)}
-                          className="px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all"
-                       >
-                          Perfil
-                       </button>
+                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6 text-left md:text-right">
+                       <div className="flex items-center gap-2">
+                          {!hasAtt && (
+                            <button 
+                               disabled={attLoadingId === s.id}
+                               onClick={() => markAttendance(s.id)}
+                               className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all disabled:opacity-50"
+                            >
+                               {attLoadingId === s.id ? '...' : 'Presente'}
+                            </button>
+                          )}
+                          <button 
+                             onClick={() => navigate(`/students/${s.id}`)}
+                             className="flex-1 md:flex-none px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all border border-gray-100"
+                          >
+                             Perfil
+                          </button>
+                       </div>
                     </td>
                   </tr>
                 )
@@ -264,7 +267,7 @@ export default function CourseDetailPage() {
             </tbody>
           </table>
           {(!data.students || data.students.length === 0) && (
-             <div className="py-20 text-center text-gray-400 font-bold italic">
+             <div className="py-20 text-center text-gray-400 font-bold italic px-4">
                 No hay alumnos inscritos en este curso todavía.
              </div>
           )}

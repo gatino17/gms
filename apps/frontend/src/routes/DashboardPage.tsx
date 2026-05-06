@@ -326,20 +326,25 @@ export default function DashboardPage() {
         {/* Sidebar Column */}
         <div className="xl:col-span-4 space-y-8">
           {/* Alertas */}
-          <section className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-6 border-b border-gray-50 flex items-center gap-4 bg-gray-50/30">
-              <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
-                 <HiExclamationCircle className="text-xl" />
+          <section className="bg-gradient-to-br from-rose-50/80 to-white rounded-[32px] border border-rose-100 shadow-xl shadow-rose-100/20 overflow-hidden relative group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-rose-500/10 transition-all" />
+            
+            <div className="px-6 py-6 border-b border-rose-100/50 flex items-center gap-4 bg-rose-100/20 backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-200">
+                 <HiExclamationCircle className="text-2xl" />
               </div>
-              <h2 className="text-lg font-black text-gray-900 tracking-tight">Alertas</h2>
+              <div>
+                 <h2 className="text-lg font-black text-rose-900 tracking-tight">Alertas Críticas</h2>
+                 <p className="text-[9px] font-bold text-rose-600/60 uppercase tracking-widest">Atención Inmediata</p>
+              </div>
             </div>
             
-            <div className="p-8 space-y-8">
+            <div className="p-6 space-y-6">
               {/* Pagos pendientes */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-2">
-                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Pendientes</div>
-                  <span className="px-3 py-1 rounded-full bg-rose-500 text-white text-[10px] font-black shadow-lg shadow-rose-100">{alerts.pending_count}</span>
+                  <div className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">Pendientes</div>
+                  <span className="px-3 py-1 rounded-full bg-rose-600 text-white text-[10px] font-black shadow-lg shadow-rose-200">{alerts.pending_count}</span>
                 </div>
                 {!alerts.pending_preview || alerts.pending_preview.length === 0 ? (
                    <p className="text-xs text-gray-400 italic text-center py-4">Todo al día</p>

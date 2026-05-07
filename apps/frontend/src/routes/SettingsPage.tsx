@@ -265,9 +265,6 @@ export default function SettingsPage() {
                    <HiOutlineMail className="text-fuchsia-500" /> {settings.contact_email}
                  </div>
                )}
-               <div className="flex items-center gap-2 px-4 py-2 bg-fuchsia-50 rounded-xl text-xs font-black text-fuchsia-600 uppercase tracking-widest border border-fuchsia-100">
-                  Moneda: {settings.currency || 'CLP'}
-               </div>
                {settings.instagram_url && (
                  <div className="flex items-center gap-2 px-4 py-2 bg-pink-50 rounded-xl text-xs font-black text-pink-600 uppercase tracking-widest border border-pink-100">
                     Instagram: {settings.instagram_url}

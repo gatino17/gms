@@ -275,27 +275,35 @@ export default function SettingsPage() {
           </div>
           
           <div className="space-y-4">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Texto Personalizado (Identidad)</label>
             <textarea 
-              className="w-full min-h-[150px] p-6 rounded-2xl border-2 border-transparent focus:border-indigo-100 focus:bg-white bg-white text-gray-700 text-sm font-medium leading-relaxed shadow-inner outline-none transition-all resize-none"
-              placeholder="Escribe aquí el mensaje que se enviará por WhatsApp..."
+              className="w-full min-h-[100px] p-6 rounded-2xl border-2 border-transparent focus:border-indigo-100 focus:bg-white bg-white text-gray-700 text-sm font-medium leading-relaxed shadow-inner outline-none transition-all resize-none"
+              placeholder="Ej: te escribimos de Puerto Montt Salsa."
               value={settings.whatsapp_message || ''}
               onChange={(e) => setSettings(s => ({ ...s, whatsapp_message: e.target.value }))}
             />
             
+            <div className="p-6 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 space-y-3">
+               <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Previsualización del mensaje</div>
+               <div className="bg-white p-4 rounded-xl text-xs text-gray-600 leading-relaxed shadow-sm italic border border-indigo-50">
+                  Hola [Nombre Alumno], <span className="text-indigo-600 font-bold">{settings.whatsapp_message || '[Tu texto aquí]'}</span> Tienes un pago pendiente para el curso [Nombre Curso].
+               </div>
+            </div>
+
             <div className="flex justify-end">
               <button
                 onClick={saveWhatsappMsg}
                 disabled={isSavingMsg}
                 className="px-8 py-3.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
               >
-                {isSavingMsg ? 'Guardando...' : 'Guardar Mensaje'}
+                {isSavingMsg ? 'Guardando...' : 'Guardar Configuración'}
               </button>
             </div>
           </div>
 
-          <div className="px-4 py-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
-             <p className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest leading-relaxed">
-               💡 Tip: Puedes usar etiquetas como {"{nombre}"} o {"{curso}"} (si el sistema lo permite) para personalizar cada envío.
+          <div className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
+             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
+               💡 El sistema añadirá automáticamente el saludo inicial y los detalles del curso/deuda. Solo debes configurar la frase de identidad de tu estudio.
              </p>
           </div>
         </div>

@@ -177,13 +177,6 @@ export default function DashboardPage() {
             <HiRefresh className={loading ? 'animate-spin' : ''} />
             Actualizar
           </button>
-          <Link 
-            to="/payments" 
-            className="w-full xs:flex-[1.5] sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-[10px] md:text-xs uppercase tracking-widest shadow-xl shadow-fuchsia-200 hover:scale-[1.02] transition-all active:scale-95"
-          >
-            <HiOutlineCurrencyDollar className="text-lg" />
-            Nuevo Pago
-          </Link>
         </div>
       </div>
 

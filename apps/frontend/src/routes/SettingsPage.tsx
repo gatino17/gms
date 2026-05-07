@@ -263,7 +263,7 @@ export default function SettingsPage() {
              <HiOutlineChatAlt2 className="text-2xl" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Comunicación Pro</h2>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Mensaje WhatsApp</h2>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Mensajería Automática</p>
           </div>
         </div>

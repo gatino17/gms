@@ -263,7 +263,7 @@ export default function CourseStatusPage() {
                                                   <div className="flex items-center justify-start md:justify-end gap-3">
                                                      {(() => {
                                                         const customPart = tenantInfo?.whatsapp_message || `Te saludamos de ${tenantInfo?.name || 'la academia'}.`
-                                                        const msg = `¡Hola ${s.first_name}! 👋 ${customPart} Esperamos que estés disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente para el curso ${row.course.name}. ¡Nos vemos pronto! ✨`
+                                                        const msg = `\u00A1Hola ${s.first_name}! \uD83D\uDC4B ${customPart} Esperamos que est\u00E9s disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente para el curso ${row.course.name}. \u00A1Nos vemos pronto! \u2728`
                                                         const cleanPhone = s.phone?.replace(/\D/g, '') || ''
                                                         return (
                                                           <a href={cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : '#'} onClick={e => !cleanPhone && e.preventDefault()} target={cleanPhone ? "_blank" : undefined} className={`flex items-center justify-center gap-3 px-5 py-3 md:p-3 rounded-2xl transition-all flex-1 md:flex-none border ${cleanPhone ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-100' : 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50'}`} title={cleanPhone ? "Enviar WhatsApp" : "Sin número de teléfono"}>

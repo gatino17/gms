@@ -128,6 +128,10 @@ export default function StudentsPage() {
       <div className="relative group px-0">
         <HiOutlineSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={18} />
         <input
+          name="search-students"
+          type="search"
+          autoComplete="off"
+          spellCheck={false}
           className="w-full bg-white border-2 border-gray-100 rounded-2xl pl-12 pr-6 py-3 md:py-3.5 text-sm md:text-base font-bold focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 transition-all outline-none shadow-sm"
           placeholder="Buscar alumno por nombre, email..."
           value={q}

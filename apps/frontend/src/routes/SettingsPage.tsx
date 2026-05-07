@@ -286,7 +286,7 @@ export default function SettingsPage() {
             <div className="p-6 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 space-y-3">
                <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Previsualización del mensaje</div>
                <div className="bg-white p-4 rounded-xl text-xs text-gray-600 leading-relaxed shadow-sm italic border border-indigo-50">
-                  \u00A1Hola [Nombre Alumno]! \uD83D\uDC4B <span className="text-indigo-600 font-bold">{settings.whatsapp_message || `Te saludamos de ${settings.name || 'Puerto Montt Salsa'}.`}</span> Esperamos que est\u00E9s disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente para el curso [Nombre Curso]. \u00A1Nos vemos pronto! \u2728
+                  ¡Hola [Nombre Alumno]! 👋 <span className="text-indigo-600 font-bold">{settings.whatsapp_message || `Te saludamos de ${settings.name || 'Puerto Montt Salsa'}.`}</span> Esperamos que estés disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente para el curso [Nombre Curso]. ¡Nos vemos pronto! ✨
                </div>
             </div>
 

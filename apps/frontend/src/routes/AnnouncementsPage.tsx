@@ -81,80 +81,82 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 px-4 md:px-0">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4 md:px-0 pt-4">
-        <div className="space-y-1 text-center sm:text-left">
-           <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Comunicación</span>
-           <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Anuncios</h1>
-           <p className="text-gray-500 font-medium text-xs md:text-sm">Gestiona las novedades para la App.</p>
+    <>
+      <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 px-4 md:px-0">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4 md:px-0 pt-4">
+          <div className="space-y-1 text-center sm:text-left">
+             <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Comunicación</span>
+             <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Anuncios</h1>
+             <p className="text-gray-500 font-medium text-xs md:text-sm">Gestiona las novedades para la App.</p>
+          </div>
+          <button
+            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-sm rounded-xl shadow-xl shadow-fuchsia-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            onClick={() => setShowModal(true)}
+            disabled={items.length >= MAX_ITEMS}
+          >
+            <HiOutlinePlus size={18} /> Crear Nuevo
+          </button>
         </div>
-        <button
-          className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-sm rounded-xl shadow-xl shadow-fuchsia-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-          onClick={() => setShowModal(true)}
-          disabled={items.length >= MAX_ITEMS}
-        >
-          <HiOutlinePlus size={18} /> Crear Nuevo
-        </button>
+
+        {error && (
+          <div className="mx-4 md:mx-0 p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-bold flex items-center gap-2">
+             <HiOutlineX size={14} className="cursor-pointer" onClick={() => setError(null)} />
+             {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex flex-col items-center py-40 gap-4">
+             <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
+             <span className="font-bold text-fuchsia-600/60 uppercase tracking-widest text-xs">Sincronizando tablero...</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 md:px-0">
+            {items.map((a) => (
+              <div key={a.id} className="group bg-white rounded-2xl md:rounded-[28px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col">
+                 <div className="relative h-32 md:h-36 bg-gray-50 cursor-pointer overflow-hidden" onClick={() => a.image_url && setPreviewImage(toAbsoluteUrl(a.image_url))}>
+                    {a.image_url ? (
+                      <img src={toAbsoluteUrl(a.image_url)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-200"><HiOutlinePhotograph size={40} /></div>
+                    )}
+                    <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+                       <button onClick={(e) => { e.stopPropagation(); handleToggleActive(a.id, !a.is_active) }} className={`w-10 h-6 rounded-full flex items-center p-1 transition-colors backdrop-blur-md ${a.is_active ? 'bg-emerald-500/80' : 'bg-gray-400/80'}`}>
+                          <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${a.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
+                       </button>
+                       <button onClick={(e) => { e.stopPropagation(); handleDelete(a.id) }} className="p-2 bg-rose-500/80 hover:bg-rose-600 text-white rounded-xl backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 translate-y-[-10px] group-hover:translate-y-0">
+                          <HiOutlineTrash size={16} />
+                       </button>
+                    </div>
+                 </div>
+
+                 <div className="p-5 md:p-6 space-y-3 flex-1 flex flex-col">
+                    <h3 className="text-base md:text-lg font-black text-gray-900 leading-tight line-clamp-2">{a.title}</h3>
+                    <p className="text-[11px] md:text-xs text-gray-500 font-medium line-clamp-3 flex-1">{a.body}</p>
+                    
+                    <div className="pt-3 md:pt-4 border-t border-gray-50 space-y-3">
+                       <div className="flex items-center gap-2 text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100">
+                          <HiOutlineCalendar size={12} className="text-fuchsia-400" />
+                          {fmtDisplayDate(a.start_date)} - {fmtDisplayDate(a.end_date)}
+                       </div>
+                       {a.link_url && (
+                          <a href={a.link_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[10px] font-black text-fuchsia-600 hover:text-fuchsia-700 transition-colors">
+                             Más Información <HiOutlineExternalLink size={14} />
+                          </a>
+                       )}
+                    </div>
+                 </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {error && (
-        <div className="mx-4 md:mx-0 p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-bold flex items-center gap-2">
-           <HiOutlineX size={14} className="cursor-pointer" onClick={() => setError(null)} />
-           {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex flex-col items-center py-40 gap-4">
-           <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
-           <span className="font-bold text-fuchsia-600/60 uppercase tracking-widest text-xs">Sincronizando tablero...</span>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 md:px-0">
-          {items.map((a) => (
-            <div key={a.id} className="group bg-white rounded-2xl md:rounded-[28px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col">
-               <div className="relative h-32 md:h-36 bg-gray-50 cursor-pointer overflow-hidden" onClick={() => a.image_url && setPreviewImage(toAbsoluteUrl(a.image_url))}>
-                  {a.image_url ? (
-                    <img src={toAbsoluteUrl(a.image_url)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-200"><HiOutlinePhotograph size={40} /></div>
-                  )}
-                  <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
-                     <button onClick={(e) => { e.stopPropagation(); handleToggleActive(a.id, !a.is_active) }} className={`w-10 h-6 rounded-full flex items-center p-1 transition-colors backdrop-blur-md ${a.is_active ? 'bg-emerald-500/80' : 'bg-gray-400/80'}`}>
-                        <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${a.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
-                     </button>
-                     <button onClick={(e) => { e.stopPropagation(); handleDelete(a.id) }} className="p-2 bg-rose-500/80 hover:bg-rose-600 text-white rounded-xl backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 translate-y-[-10px] group-hover:translate-y-0">
-                        <HiOutlineTrash size={16} />
-                     </button>
-                  </div>
-               </div>
-
-               <div className="p-5 md:p-6 space-y-3 flex-1 flex flex-col">
-                  <h3 className="text-base md:text-lg font-black text-gray-900 leading-tight line-clamp-2">{a.title}</h3>
-                  <p className="text-[11px] md:text-xs text-gray-500 font-medium line-clamp-3 flex-1">{a.body}</p>
-                  
-                  <div className="pt-3 md:pt-4 border-t border-gray-50 space-y-3">
-                     <div className="flex items-center gap-2 text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100">
-                        <HiOutlineCalendar size={12} className="text-fuchsia-400" />
-                        {fmtDisplayDate(a.start_date)} - {fmtDisplayDate(a.end_date)}
-                     </div>
-                     {a.link_url && (
-                        <a href={a.link_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[10px] font-black text-fuchsia-600 hover:text-fuchsia-700 transition-colors">
-                           Más Información <HiOutlineExternalLink size={14} />
-                        </a>
-                     )}
-                  </div>
-               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Modal Form */}
+      {/* Modal Form - Portal-like behavior */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4">
-           <div className="absolute inset-0 bg-black/60 backdrop-blur-xl animate-in fade-in duration-300" onClick={()=>setShowModal(false)} />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-4 overflow-hidden">
+           <div className="fixed inset-0 bg-black/60 backdrop-blur-xl animate-in fade-in duration-500" onClick={()=>setShowModal(false)} />
            <div className="relative w-full h-full md:h-auto md:max-w-lg bg-white rounded-none md:rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col border border-white/20">
               <div className="p-4 md:p-6 bg-gradient-to-br from-fuchsia-600 to-purple-600 text-white flex justify-between items-center shrink-0">
                  <div>
@@ -220,10 +222,11 @@ export default function AnnouncementsPage() {
       )}
 
       {previewImage && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl" onClick={()=>setPreviewImage(null)}>
-           <img src={previewImage} className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" alt="" />
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+           <div className="fixed inset-0 bg-black/90 backdrop-blur-xl" onClick={()=>setPreviewImage(null)} />
+           <img src={previewImage} className="relative z-10 max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" alt="" />
         </div>
       )}
-    </div>
+    </>
   )
 }

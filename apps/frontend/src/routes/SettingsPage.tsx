@@ -260,9 +260,9 @@ export default function SettingsPage() {
                  </div>
               </div>
               <div className="bg-gray-50/50 p-5 rounded-3xl border border-gray-100 group-hover:bg-white transition-colors">
-                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Código Postal</div>
+                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tipo de Moneda</div>
                  <div className="text-sm font-black text-gray-700 flex items-center gap-2">
-                   <HiOutlineOfficeBuilding className="text-fuchsia-400" /> {settings.postal_code || '--'}
+                   <HiOutlineCog className="text-fuchsia-400" /> {settings.currency || 'CLP'}
                  </div>
               </div>
             </div>

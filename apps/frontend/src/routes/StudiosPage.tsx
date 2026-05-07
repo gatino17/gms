@@ -292,14 +292,14 @@ export default function StudiosPage() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="space-y-1 text-center sm:text-left">
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Administración Central</span>
-           <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight leading-none">Estudios</h1>
-           <p className="text-gray-500 font-medium text-sm md:text-lg">Gestión de sedes y configuración de tenants.</p>
+           <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Estudios</h1>
+           <p className="text-gray-500 font-medium text-sm md:text-base">Gestión de sedes y configuración de tenants.</p>
         </div>
       </div>
 
-      <div className="bg-white p-6 md:p-10 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-8">
+      <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-8">
         <div>
-          <h2 className="text-lg md:text-xl font-black text-gray-900">Registrar Nuevo Estudio</h2>
+          <h2 className="text-base md:text-lg font-black text-gray-900">Registrar Nuevo Estudio</h2>
           <p className="text-gray-400 text-xs md:text-sm font-medium">El tenant se asignará de forma automática según el nombre.</p>
         </div>
 
@@ -498,10 +498,10 @@ export default function StudiosPage() {
       </div>
 
       <div className="bg-white rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-8 py-6 border-b border-gray-50 flex items-center justify-between">
+        <div className="px-8 py-5 border-b border-gray-50 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-black text-gray-900">Estudios Registrados</h2>
-            <p className="text-gray-400 text-sm font-medium">Listado global de sedes activas.</p>
+            <h2 className="text-lg md:text-xl font-black text-gray-900">Estudios Registrados</h2>
+            <p className="text-gray-400 text-xs md:text-sm font-medium">Listado global de sedes activas.</p>
           </div>
           <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full">
              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -538,7 +538,7 @@ export default function StudiosPage() {
                       <span className="font-mono text-xs font-black text-fuchsia-600 bg-fuchsia-50 px-3 py-1.5 rounded-lg">{studio.slug}</span>
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
-                      <div className="font-black text-gray-900 text-base">{studio.name}</div>
+                      <div className="font-black text-gray-900 text-sm">{studio.name}</div>
                       <div className="text-[10px] font-bold text-gray-400 truncate">{studio.contact_email}</div>
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
@@ -598,7 +598,7 @@ export default function StudiosPage() {
           <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar border border-gray-100 flex flex-col">
             <div className="sticky top-0 bg-white/80 backdrop-blur-xl z-20 flex items-center justify-between px-8 py-6 border-b border-gray-50">
               <div>
-                <h2 className="text-xl font-black text-gray-900">Editar Estudio</h2>
+                <h2 className="text-lg font-black text-gray-900">Editar Estudio</h2>
                 <div className="flex items-center gap-2 mt-1">
                    <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-2 py-0.5 rounded-lg">Tenant</span>
                    <span className="font-mono text-xs font-bold text-gray-500">{editTarget.slug}</span>
@@ -609,15 +609,15 @@ export default function StudiosPage() {
               </button>
             </div>
 
-            <form className="p-8 space-y-8" onSubmit={handleUpdate}>
+            <form className="p-8 space-y-6" onSubmit={handleUpdate}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del estudio</label>
-                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} required className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} required className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Correo administrador</label>
-                  <input type="email" value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} required className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                  <input type="email" value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} required className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nueva Contraseña</label>
@@ -627,7 +627,7 @@ export default function StudiosPage() {
                       value={editForm.password}
                       onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
                       placeholder="Sin cambios"
-                      className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none pr-12 text-sm"
+                      className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none pr-12 text-sm"
                     />
                     <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
                        {showNewPassword ? <HiOutlineEyeOff size={18} /> : <HiOutlineEye size={18} />}
@@ -643,25 +643,25 @@ export default function StudiosPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Dirección</label>
-                  <input type="text" value={editForm.address} onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))} className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                  <input type="text" value={editForm.address} onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
                 </div>
                 <div className="space-y-2">
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Pais / Ciudad</label>
                    <div className="grid grid-cols-2 gap-4">
-                      <input type="text" value={editForm.country} onChange={(e) => setEditForm((prev) => ({ ...prev, country: e.target.value }))} className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="País" />
-                      <input type="text" value={editForm.city} onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))} className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Ciudad" />
+                      <input type="text" value={editForm.country} onChange={(e) => setEditForm((prev) => ({ ...prev, country: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="País" />
+                      <input type="text" value={editForm.city} onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Ciudad" />
                    </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Teléfono</label>
-                  <input type="text" value={editForm.phone} onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))} className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                  <input type="text" value={editForm.phone} onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Moneda</label>
                   <select
                     value={editForm.currency}
                     onChange={(e) => setEditForm((prev) => ({ ...prev, currency: e.target.value }))}
-                    className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
+                    className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
                   >
                     <option value="CLP">CLP - Peso Chileno ($)</option>
                     <option value="ARS">ARS - Peso Argentino ($)</option>
@@ -671,15 +671,15 @@ export default function StudiosPage() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Insta / TikTok</label>
                   <div className="grid grid-cols-2 gap-4">
-                    <input type="text" value={editForm.instagram_url} onChange={(e) => setEditForm((prev) => ({ ...prev, instagram_url: e.target.value }))} className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="@insta" />
-                    <input type="text" value={editForm.tiktok_url} onChange={(e) => setEditForm((prev) => ({ ...prev, tiktok_url: e.target.value }))} className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="@tiktok" />
+                    <input type="text" value={editForm.instagram_url} onChange={(e) => setEditForm((prev) => ({ ...prev, instagram_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="@insta" />
+                    <input type="text" value={editForm.tiktok_url} onChange={(e) => setEditForm((prev) => ({ ...prev, tiktok_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="@tiktok" />
                   </div>
                 </div>
                 <div className="space-y-2">
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Web / FB</label>
                    <div className="grid grid-cols-2 gap-4">
-                      <input type="text" value={editForm.website_url} onChange={(e) => setEditForm((prev) => ({ ...prev, website_url: e.target.value }))} className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Web" />
-                      <input type="text" value={editForm.facebook_url} onChange={(e) => setEditForm((prev) => ({ ...prev, facebook_url: e.target.value }))} className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="FB" />
+                      <input type="text" value={editForm.website_url} onChange={(e) => setEditForm((prev) => ({ ...prev, website_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Web" />
+                      <input type="text" value={editForm.facebook_url} onChange={(e) => setEditForm((prev) => ({ ...prev, facebook_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="FB" />
                    </div>
                 </div>
                 <div className="md:col-span-2 space-y-2">

@@ -451,6 +451,7 @@ export default function SettingsPage() {
            </div>
         </div>
       </div>
+      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">

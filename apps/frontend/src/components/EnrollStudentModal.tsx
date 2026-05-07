@@ -5,7 +5,8 @@ import {
   HiOutlineSearch, 
   HiOutlinePlus,
   HiOutlineCalendar,
-  HiOutlineUserCircle
+  HiOutlineUserCircle,
+  HiOutlineCheckCircle
 } from 'react-icons/hi'
 
 type Course = {
@@ -130,16 +131,16 @@ export default function EnrollStudentModal({ studentId, studentName, onClose, on
                     key={c.id}
                     disabled={enrolling || isEnrolled}
                     onClick={() => handleEnroll(c.id)}
-                    className={`p-5 border rounded-[32px] transition-all group text-left flex flex-col justify-between h-full shadow-sm hover:shadow-md ${isEnrolled ? 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed' : 'bg-white border-gray-100 hover:border-fuchsia-200 hover:bg-fuchsia-50/30'}`}
+                    className={`p-5 border rounded-[32px] transition-all group text-left flex flex-col justify-between h-full shadow-sm ${isEnrolled ? 'bg-emerald-50/50 border-emerald-100 cursor-not-allowed' : 'bg-white border-gray-100 hover:shadow-md hover:border-fuchsia-200 hover:bg-fuchsia-50/30'}`}
                   >
                     <div className="space-y-3">
                       <div className="flex items-start justify-between">
-                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black transition-transform ${isEnrolled ? 'bg-gray-200 text-gray-400' : 'bg-fuchsia-100 text-fuchsia-600 group-hover:scale-110'}`}>
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black transition-transform ${isEnrolled ? 'bg-emerald-100 text-emerald-600' : 'bg-fuchsia-100 text-fuchsia-600 group-hover:scale-110'}`}>
                           {c.name[0]}
                         </div>
                         {isEnrolled ? (
-                          <div className="px-3 py-1 bg-gray-200 text-gray-500 text-[8px] font-black uppercase tracking-widest rounded-full">
-                             Inscrito
+                          <div className="px-3 py-1.5 bg-emerald-100 text-emerald-700 border border-emerald-200 text-[8px] font-black uppercase tracking-widest rounded-full flex items-center gap-1">
+                             <HiOutlineCheckCircle size={12} /> Ya inscrito
                           </div>
                         ) : (
                           <div className="p-2 rounded-xl bg-gray-50 text-gray-400 group-hover:bg-fuchsia-600 group-hover:text-white transition-all">

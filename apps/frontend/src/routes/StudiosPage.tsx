@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
+import { HiOutlinePlus, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi'
 
 type StudioForm = {
   name: string

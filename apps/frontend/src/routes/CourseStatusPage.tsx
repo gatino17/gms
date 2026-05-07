@@ -12,7 +12,8 @@ import {
   HiOutlineViewGrid, 
   HiOutlineViewList,
   HiOutlineChartBar,
-  HiOutlineExclamationCircle 
+  HiOutlineExclamationCircle,
+  HiOutlinePlus
 } from 'react-icons/hi'
 import { useTenant } from '../lib/tenant'
 import RenewModal from '../components/RenewModal'
@@ -57,6 +58,12 @@ export default function CourseStatusPage() {
   const [studentQ, setStudentQ] = useState('')
   const [selectedDay, setSelectedDay] = useState<string>('')
   
+  // Enrollment Modal States
+  const [enrollModalCourseId, setEnrollModalCourseId] = useState<number | null>(null)
+  const [allStudents, setAllStudents] = useState<any[]>([])
+  const [enrollSearchQ, setEnrollSearchQ] = useState('')
+  const [isEnrolling, setIsEnrolling] = useState(false)
+  
   const load = async () => {
     if (tenantId == null) return
     setLoading(true)
@@ -83,6 +90,34 @@ export default function CourseStatusPage() {
     const id = setTimeout(() => load(), 400)
     return () => clearTimeout(id)
   }, [courseQ, studentQ, selectedDay])
+
+  const loadAllStudents = async () => {
+    try {
+      const { data } = await api.get('/api/pms/students', { params: { limit: 1000 } })
+      setAllStudents(data.items || [])
+    } catch (e) {
+      console.error('Error al cargar alumnos', e)
+    }
+  }
+
+  const handleEnroll = async (studentId: number) => {
+    if (!enrollModalCourseId) return
+    setIsEnrolling(true)
+    try {
+      await api.post('/api/pms/enrollments/', {
+        student_id: studentId,
+        course_id: enrollModalCourseId,
+        start_date: new Date().toISOString().split('T')[0]
+      })
+      setEnrollModalCourseId(null)
+      setEnrollSearchQ('')
+      load() // Refresh data
+    } catch (e: any) {
+      alert('Error al inscribir: ' + (e.response?.data?.detail || e.message))
+    } finally {
+      setIsEnrolling(false)
+    }
+  }
 
   const filteredData = useMemo(() => {
     return data.map(row => ({
@@ -184,14 +219,20 @@ export default function CourseStatusPage() {
                                    </div>
                                 </div>
                              </div>
-                             {viewMode === 'summary' ? (
-                                <div className="flex flex-col items-end">
-                                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Inscritos</span>
-                                   <span className="px-4 py-1 bg-indigo-50 text-indigo-600 text-[11px] font-black rounded-full border border-indigo-100">{row.students.length}</span>
-                                </div>
-                             ) : (
-                                <button onClick={() => navigate(`/courses/${row.course.id}`)} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-fuchsia-600 hover:shadow-lg transition-all group/btn"><HiOutlineChevronRight size={24} className="group-hover/btn:translate-x-0.5 transition-transform" /></button>
-                             )}
+                             <div className="flex items-center gap-2">
+                                <button 
+                                   onClick={() => { setEnrollModalCourseId(row.course.id); loadAllStudents(); }} 
+                                   className="flex items-center gap-2 px-4 py-2.5 bg-fuchsia-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 shadow-lg shadow-fuchsia-200 transition-all active:scale-95"
+                                >
+                                   <HiOutlinePlus size={14} />
+                                   Inscribir
+                                </button>
+                                {viewMode !== 'summary' && (
+                                   <button onClick={() => navigate(`/courses/${row.course.id}`)} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-fuchsia-600 hover:shadow-lg transition-all group/btn">
+                                      <HiOutlineChevronRight size={24} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                                   </button>
+                                )}
+                             </div>
                           </div>
 
                           {/* Detailed/Compact Table */}
@@ -320,6 +361,69 @@ export default function CourseStatusPage() {
                  </div>
               </div>
            ))}
+        </div>
+      )}
+
+      {/* Enrollment Modal */}
+      {enrollModalCourseId && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+           <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setEnrollModalCourseId(null)} />
+           <div className="relative bg-white rounded-[40px] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh] border border-gray-100">
+              <div className="p-8 border-b border-gray-50 bg-gray-50/30">
+                 <h2 className="text-xl font-black text-gray-900">Inscribir Alumno</h2>
+                 <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Busca y selecciona un alumno</p>
+                 
+                 <div className="mt-6 relative">
+                    <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input 
+                       type="text" 
+                       placeholder="Nombre, apellido o correo..." 
+                       value={enrollSearchQ}
+                       onChange={(e) => setEnrollSearchQ(e.target.value)}
+                       autoFocus
+                       className="w-full pl-12 pr-6 py-4 bg-white rounded-[24px] border-2 border-transparent focus:border-fuchsia-100 shadow-sm font-bold text-gray-700 transition-all outline-none"
+                    />
+                 </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                 <div className="space-y-2">
+                    {allStudents
+                       .filter(s => {
+                          const q = enrollSearchQ.toLowerCase()
+                          return !q || (s.first_name + ' ' + s.last_name).toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q)
+                       })
+                       .slice(0, 50)
+                       .map(s => (
+                          <button 
+                             key={s.id}
+                             disabled={isEnrolling}
+                             onClick={() => handleEnroll(s.id)}
+                             className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-fuchsia-50 group transition-all text-left border border-transparent hover:border-fuchsia-100"
+                          >
+                             <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs overflow-hidden shrink-0 border border-gray-50">
+                                   {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
+                                </div>
+                                <div>
+                                   <div className="text-sm font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors">{s.first_name} {s.last_name}</div>
+                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.email || 'Sin correo'}</div>
+                                </div>
+                             </div>
+                             <div className="p-2 rounded-lg bg-gray-50 text-gray-400 group-hover:bg-fuchsia-600 group-hover:text-white transition-all">
+                                <HiOutlinePlus size={16} />
+                             </div>
+                          </button>
+                       ))
+                    }
+                    {allStudents.length === 0 && <div className="py-10 text-center text-gray-300 font-black uppercase text-[10px] tracking-widest italic animate-pulse">Buscando alumnos...</div>}
+                 </div>
+              </div>
+
+              <div className="p-6 bg-gray-50/50 border-t border-gray-100 text-center">
+                 <button onClick={() => setEnrollModalCourseId(null)} className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] hover:text-gray-600 transition-colors">Cerrar</button>
+              </div>
+           </div>
         </div>
       )}
 

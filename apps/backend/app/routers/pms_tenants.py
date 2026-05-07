@@ -91,6 +91,80 @@ async def create_tenant(
     return tenant
 
 
+@router.get("/me", response_model=TenantOut)
+async def get_current_tenant(
+    tenant_id: int = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = res.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+    return tenant
+
+
+@router.put("/me", response_model=TenantOut)
+async def update_current_tenant(
+    payload: TenantSelfUpdate,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: models.User = Depends(get_current_user),
+    x_tenant_id: str | None = Header(default=None, alias="X-Tenant-ID"),
+):
+    # Determinar tenant según permisos:
+    # - Super: usa header si viene y es válido, si no usa su tenant_id si existe.
+    # - No super: usa su tenant_id; si viene header y difiere, rechaza.
+    tenant_id: int | None = None
+
+    def parse_int(value: str | None) -> int | None:
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except Exception:
+            return None
+
+    header_tid = parse_int(x_tenant_id)
+
+    if current_user.is_superuser:
+        tenant_id = header_tid if header_tid is not None else current_user.tenant_id
+    else:
+        # Usuarios no super: siempre usar su tenant_id, ignorando el header (para evitar 400/403).
+        if current_user.tenant_id is None:
+            raise HTTPException(status_code=403, detail="Usuario sin tenant asignado")
+        tenant_id = current_user.tenant_id
+        header_tid = tenant_id
+
+    if not tenant_id:
+        logger.warning(
+            "update_current_tenant: tenant_id missing",
+            extra={
+                "user_id": current_user.id,
+                "is_superuser": current_user.is_superuser,
+                "user_tenant_id": current_user.tenant_id,
+                "header_tenant_id": x_tenant_id,
+                "parsed_header_tenant_id": header_tid,
+            },
+        )
+        detail = (
+            "Tenant no asignado "
+            f"(user_id={current_user.id}, user_tenant_id={current_user.tenant_id}, "
+            f"is_superuser={current_user.is_superuser}, header={x_tenant_id}, parsed={header_tid})"
+        )
+        raise HTTPException(status_code=400, detail=detail)
+
+    tenant = await db.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+
+    data = payload.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(tenant, field, value)
+
+    await db.commit()
+    await db.refresh(tenant)
+    return tenant
+
+
 @router.put("/{tenant_id}", response_model=TenantOut)
 async def update_tenant(
     tenant_id: int,
@@ -186,80 +260,6 @@ async def delete_tenant(
     await db.delete(tenant)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.get("/me", response_model=TenantOut)
-async def get_current_tenant(
-    tenant_id: int = Depends(get_tenant_id),
-    db: AsyncSession = Depends(get_db_session),
-):
-    res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
-    tenant = res.scalar_one_or_none()
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant no encontrado")
-    return tenant
-
-
-@router.put("/me", response_model=TenantOut)
-async def update_current_tenant(
-    payload: TenantSelfUpdate,
-    db: AsyncSession = Depends(get_db_session),
-    current_user: models.User = Depends(get_current_user),
-    x_tenant_id: str | None = Header(default=None, alias="X-Tenant-ID"),
-):
-    # Determinar tenant según permisos:
-    # - Super: usa header si viene y es válido, si no usa su tenant_id si existe.
-    # - No super: usa su tenant_id; si viene header y difiere, rechaza.
-    tenant_id: int | None = None
-
-    def parse_int(value: str | None) -> int | None:
-        if value is None:
-            return None
-        try:
-            return int(value)
-        except Exception:
-            return None
-
-    header_tid = parse_int(x_tenant_id)
-
-    if current_user.is_superuser:
-        tenant_id = header_tid if header_tid is not None else current_user.tenant_id
-    else:
-        # Usuarios no super: siempre usar su tenant_id, ignorando el header (para evitar 400/403).
-        if current_user.tenant_id is None:
-            raise HTTPException(status_code=403, detail="Usuario sin tenant asignado")
-        tenant_id = current_user.tenant_id
-        header_tid = tenant_id
-
-    if not tenant_id:
-        logger.warning(
-            "update_current_tenant: tenant_id missing",
-            extra={
-                "user_id": current_user.id,
-                "is_superuser": current_user.is_superuser,
-                "user_tenant_id": current_user.tenant_id,
-                "header_tenant_id": x_tenant_id,
-                "parsed_header_tenant_id": header_tid,
-            },
-        )
-        detail = (
-            "Tenant no asignado "
-            f"(user_id={current_user.id}, user_tenant_id={current_user.tenant_id}, "
-            f"is_superuser={current_user.is_superuser}, header={x_tenant_id}, parsed={header_tid})"
-        )
-        raise HTTPException(status_code=400, detail=detail)
-
-    tenant = await db.get(Tenant, tenant_id)
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant no encontrado")
-
-    data = payload.model_dump(exclude_unset=True)
-    for field, value in data.items():
-        setattr(tenant, field, value)
-
-    await db.commit()
-    await db.refresh(tenant)
-    return tenant
 
 
 @router.post("/upload-logo")

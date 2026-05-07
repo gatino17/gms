@@ -64,7 +64,12 @@ export default function EditStudentModal({ student, onClose, onSuccess }: Props)
       
       onSuccess()
     } catch (e: any) {
-      setError(e.response?.data?.detail || 'Error al actualizar alumno')
+      const detail = e.response?.data?.detail
+      if (Array.isArray(detail)) {
+        setError(detail.map((d: any) => d.msg).join(', '))
+      } else {
+        setError(detail || 'Error al actualizar alumno')
+      }
     } finally {
       setLoading(false)
     }

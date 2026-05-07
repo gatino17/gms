@@ -59,7 +59,12 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
       
       onSuccess()
     } catch (e: any) {
-      setError(e.response?.data?.detail || 'Error al crear alumno')
+      const detail = e.response?.data?.detail
+      if (Array.isArray(detail)) {
+        setError(detail.map((d: any) => d.msg).join(', '))
+      } else {
+        setError(detail || 'Error al crear alumno')
+      }
     } finally {
       setLoading(false)
     }

@@ -6,7 +6,7 @@ from sqlalchemy import select, func, and_, or_
 from datetime import date, timedelta
 from typing import Any
 
-from app.pms.models import Course, Enrollment, Student, Payment, Attendance
+from app.pms.models import Course, Enrollment, Student, Payment, Attendance, Teacher
 from app.pms.deps import get_tenant_id, get_db_session
 
 router = APIRouter(prefix="/api/pms/dashboard", tags=["pms-dashboard"])
@@ -21,13 +21,19 @@ async def get_summary(
     soon_end_date = today + timedelta(days=7)
     dow = today.weekday()
     
-    # We consolidate almost EVERYTHING into a single result row using subqueries.
-    # This is extremely efficient for remote databases as it minimizes round-trips.
-    
-    # Subquery for Revenue by Method
-    # We'll fetch this separately as it's a group-by, but we can also use a subquery if we wanted.
-    # For now, let's keep group-by separate or use a JSON aggregation.
-    
+    # Subquery for Birthdays (Students + Teachers)
+    birthday_sub = select((Student.first_name + ' ' + Student.last_name).label("name")).where(
+        Student.tenant_id == tenant_id, Student.is_active == True,
+        func.extract('month', Student.birthdate) == today.month,
+        func.extract('day', Student.birthdate) == today.day
+    ).union_all(
+        select((Teacher.name + ' (Profesor)').label("name")).where(
+            Teacher.tenant_id == tenant_id,
+            func.extract('month', Teacher.birthdate) == today.month,
+            func.extract('day', Teacher.birthdate) == today.day
+        )
+    ).alias("bday_union")
+
     main_stmt = select(
         # KPIs
         select(func.count(Student.id)).where(Student.tenant_id == tenant_id, Student.is_active == True).label("students"),
@@ -38,11 +44,7 @@ async def get_summary(
         select(func.count(Attendance.id)).where(Attendance.tenant_id == tenant_id, Attendance.attended_at >= (today - timedelta(days=30))).label("att_30d"),
         
         # Birthdays (JSON array of names)
-        select(func.coalesce(func.json_agg(Student.first_name + ' ' + Student.last_name), func.json_build_array())).where(
-            Student.tenant_id == tenant_id, Student.is_active == True,
-            func.extract('month', Student.birthdate) == today.month,
-            func.extract('day', Student.birthdate) == today.day
-        ).label("birthdays"),
+        select(func.coalesce(func.json_agg(birthday_sub.c.name), func.json_build_array())).select_from(birthday_sub).label("birthdays"),
         
         # Classes Today (JSON array of objects)
         # Using a subquery with json_agg

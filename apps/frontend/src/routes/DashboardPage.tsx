@@ -390,20 +390,38 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Cumpleaños */}
-              <div className="pt-8 border-t border-gray-50 space-y-4">
-                <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">
-                  <FaBirthdayCake className="text-pink-400" />
-                  <span>Hoy cumplen</span>
-                </div>
-                {alerts.birthdays.length === 0 ? <p className="text-xs text-gray-400 italic text-center py-2">Nadie cumple hoy</p> : (
-                  <div className="flex flex-wrap gap-2 px-1">
-                    {alerts.birthdays.map((n, i) => (
-                      <span key={i} className="px-4 py-2 rounded-xl bg-pink-50 text-pink-700 text-[10px] font-black border border-pink-100 animate-bounce" style={{ animationDelay: `${i*100}ms`, animationIterationCount: 1 }}>{n} 🎂</span>
-                    ))}
-                  </div>
-                )}
+            </div>
+          </section>
+
+          {/* Cumpleaños */}
+          <section className="bg-gradient-to-br from-pink-50 to-white rounded-[32px] border border-pink-100 shadow-xl shadow-pink-100/20 overflow-hidden relative group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-pink-500/10 transition-all" />
+            
+            <div className="px-6 py-6 border-b border-pink-100/50 flex items-center gap-4 bg-pink-100/20 backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-xl bg-pink-500 text-white flex items-center justify-center shadow-lg shadow-pink-200">
+                 <FaBirthdayCake className="text-xl" />
               </div>
+              <div>
+                 <h2 className="text-lg font-black text-pink-900 tracking-tight">Cumpleaños</h2>
+                 <p className="text-[9px] font-bold text-pink-600/60 uppercase tracking-widest">Celebraciones de hoy</p>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {alerts.birthdays.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-pink-300">
+                   <p className="text-[10px] font-black uppercase tracking-widest italic">Nadie cumple hoy</p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {alerts.birthdays.map((n: string, i: number) => (
+                    <div key={i} className="px-4 py-3 rounded-2xl bg-white border border-pink-100 text-pink-700 text-xs font-black shadow-sm flex items-center gap-2 animate-in zoom-in duration-500" style={{ animationDelay: `${i*100}ms` }}>
+                       <span className="text-base">🎂</span>
+                       {n}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
 

@@ -56,6 +56,7 @@ export default function SettingsPage() {
   const [roomCapacity, setRoomCapacity] = useState<string>('')
   const [roomsLoading, setRoomsLoading] = useState(false)
   const [roomsError, setRoomsError] = useState<string | null>(null)
+  const [isSavingMsg, setIsSavingMsg] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -154,6 +155,28 @@ export default function SettingsPage() {
     }
   }
 
+  const saveWhatsappMsg = async () => {
+    const currentTenantId = tenantId ?? (() => {
+      const raw = getTenant()
+      const n = raw ? Number(raw) : null
+      return Number.isFinite(n) ? n : null
+    })()
+    if (currentTenantId == null) return
+    setIsSavingMsg(true)
+    try {
+      await api.put('/api/pms/tenants/me', {
+        whatsapp_message: settings.whatsapp_message
+      }, {
+        headers: { 'X-Tenant-ID': currentTenantId }
+      })
+      alert('Mensaje de WhatsApp actualizado correctamente.')
+    } catch (e: any) {
+      alert('Error al guardar: ' + e.message)
+    } finally {
+      setIsSavingMsg(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="py-40 text-center space-y-4">
@@ -245,13 +268,35 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-3">
+        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-6">
           <div className="flex items-center justify-between px-2">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Mensaje Predeterminado WhatsApp</span>
-            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Activo</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Plantilla de Mensaje WhatsApp</span>
+            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Personalizable</span>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 text-gray-700 text-sm font-medium leading-relaxed italic shadow-inner">
-            {settings.whatsapp_message || 'No se ha configurado un mensaje predeterminado.'}
+          
+          <div className="space-y-4">
+            <textarea 
+              className="w-full min-h-[150px] p-6 rounded-2xl border-2 border-transparent focus:border-indigo-100 focus:bg-white bg-white text-gray-700 text-sm font-medium leading-relaxed shadow-inner outline-none transition-all resize-none"
+              placeholder="Escribe aquí el mensaje que se enviará por WhatsApp..."
+              value={settings.whatsapp_message || ''}
+              onChange={(e) => setSettings(s => ({ ...s, whatsapp_message: e.target.value }))}
+            />
+            
+            <div className="flex justify-end">
+              <button
+                onClick={saveWhatsappMsg}
+                disabled={isSavingMsg}
+                className="px-8 py-3.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSavingMsg ? 'Guardando...' : 'Guardar Mensaje'}
+              </button>
+            </div>
+          </div>
+
+          <div className="px-4 py-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+             <p className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest leading-relaxed">
+               💡 Tip: Puedes usar etiquetas como {"{nombre}"} o {"{curso}"} (si el sistema lo permite) para personalizar cada envío.
+             </p>
           </div>
         </div>
       </div>

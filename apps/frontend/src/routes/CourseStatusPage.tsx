@@ -66,7 +66,17 @@ export default function CourseStatusPage() {
   
   // Quick Create Student States
   const [showQuickCreate, setShowQuickCreate] = useState(false)
-  const [newStudent, setNewStudent] = useState({ first_name: '', last_name: '', email: '' })
+  const [newStudent, setNewStudent] = useState({ 
+    first_name: '', 
+    last_name: '', 
+    email: '',
+    phone: '',
+    gender: '',
+    birthdate: '',
+    notes: '',
+    joined_at: new Date().toISOString().slice(0, 10),
+    is_active: true
+  })
   
   const load = async () => {
     if (tenantId == null) return
@@ -146,7 +156,17 @@ export default function CourseStatusPage() {
       
       setEnrollModalCourseId(null)
       setShowQuickCreate(false)
-      setNewStudent({ first_name: '', last_name: '', email: '' })
+      setNewStudent({ 
+        first_name: '', 
+        last_name: '', 
+        email: '',
+        phone: '',
+        gender: '',
+        birthdate: '',
+        notes: '',
+        joined_at: new Date().toISOString().slice(0, 10),
+        is_active: true
+      })
       setEnrollSearchQ('')
       load()
     } catch (e: any) {
@@ -405,30 +425,32 @@ export default function CourseStatusPage() {
       {enrollModalCourseId && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setEnrollModalCourseId(null)} />
-           <div className="relative bg-white rounded-[40px] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh] border border-gray-100">
+           <div className="relative bg-white rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] border border-gray-100 transition-all duration-500">
               <div className="p-8 border-b border-gray-50 bg-gray-50/30">
-                 <h2 className="text-xl font-black text-gray-900">Inscribir Alumno</h2>
-                 <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Busca y selecciona un alumno</p>
+                 <h2 className="text-xl font-black text-gray-900">{showQuickCreate ? 'Registrar Nuevo Alumno' : 'Inscribir Alumno'}</h2>
+                 <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">{showQuickCreate ? 'Completa los datos del perfil oficial' : 'Busca y selecciona un alumno'}</p>
                  
-                 <div className="mt-6 relative">
-                    <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                    <input 
-                       type="text" 
-                       placeholder="Nombre, apellido o correo..." 
-                       value={enrollSearchQ}
-                       onChange={(e) => setEnrollSearchQ(e.target.value)}
-                       autoFocus
-                       className="w-full pl-12 pr-6 py-4 bg-white rounded-[24px] border-2 border-transparent focus:border-fuchsia-100 shadow-sm font-bold text-gray-700 transition-all outline-none"
-                    />
-                 </div>
+                 {!showQuickCreate && (
+                    <div className="mt-6 relative animate-in fade-in zoom-in duration-300">
+                       <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                       <input 
+                          type="text" 
+                          placeholder="Nombre, apellido o correo..." 
+                          value={enrollSearchQ}
+                          onChange={(e) => setEnrollSearchQ(e.target.value)}
+                          autoFocus
+                          className="w-full pl-12 pr-6 py-4 bg-white rounded-[24px] border-2 border-transparent focus:border-fuchsia-100 shadow-sm font-bold text-gray-700 transition-all outline-none"
+                       />
+                    </div>
+                 )}
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
                  {showQuickCreate ? (
-                    <div className="p-4 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                       <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nombre</label>
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                          <div className="space-y-1.5">
+                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nombres</label>
                              <input 
                                 type="text" 
                                 value={newStudent.first_name}
@@ -437,8 +459,8 @@ export default function CourseStatusPage() {
                                 placeholder="Ej: Juan"
                              />
                           </div>
-                          <div className="space-y-2">
-                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Apellido</label>
+                          <div className="space-y-1.5">
+                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Apellidos</label>
                              <input 
                                 type="text" 
                                 value={newStudent.last_name}
@@ -447,30 +469,80 @@ export default function CourseStatusPage() {
                                 placeholder="Ej: Pérez"
                              />
                           </div>
+                          <div className="space-y-1.5">
+                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email</label>
+                             <input 
+                                type="email" 
+                                value={newStudent.email}
+                                onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}
+                                className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
+                                placeholder="ejemplo@correo.com"
+                             />
+                          </div>
+                          <div className="space-y-1.5">
+                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Teléfono / WhatsApp</label>
+                             <input 
+                                type="text" 
+                                value={newStudent.phone}
+                                onChange={(e) => setNewStudent({...newStudent, phone: e.target.value})}
+                                className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
+                                placeholder="+56 9 ..."
+                             />
+                          </div>
+                          <div className="space-y-1.5">
+                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Género</label>
+                             <select 
+                                value={newStudent.gender}
+                                onChange={(e) => setNewStudent({...newStudent, gender: e.target.value})}
+                                className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all appearance-none"
+                             >
+                                <option value="">Seleccionar...</option>
+                                <option value="Femenino">Femenino</option>
+                                <option value="Masculino">Masculino</option>
+                                <option value="Otro">Otro</option>
+                             </select>
+                          </div>
+                          <div className="space-y-1.5">
+                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Fecha Nacimiento</label>
+                             <input 
+                                type="date" 
+                                value={newStudent.birthdate}
+                                onChange={(e) => setNewStudent({...newStudent, birthdate: e.target.value})}
+                                className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
+                             />
+                          </div>
                        </div>
-                       <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Correo Electrónico (Opcional)</label>
-                          <input 
-                             type="email" 
-                             value={newStudent.email}
-                             onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}
-                             className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
-                             placeholder="ejemplo@correo.com"
+                       <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Notas / Observaciones</label>
+                          <textarea 
+                             value={newStudent.notes}
+                             onChange={(e) => setNewStudent({...newStudent, notes: e.target.value})}
+                             className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all resize-none"
+                             placeholder="Nivel de danza, lesiones, etc..."
+                             rows={2}
                           />
                        </div>
-                       <button 
-                          onClick={handleQuickCreateAndEnroll}
-                          disabled={isEnrolling}
-                          className="w-full py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black rounded-2xl shadow-xl shadow-fuchsia-200 hover:shadow-fuchsia-300 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
-                       >
-                          {isEnrolling ? 'Procesando...' : 'Crear e Inscribir Ahora'}
-                       </button>
-                       <button 
-                          onClick={() => setShowQuickCreate(false)}
-                          className="w-full py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
-                       >
-                          Volver a la búsqueda
-                       </button>
+
+                       <div className="pt-2">
+                          <button 
+                             onClick={handleQuickCreateAndEnroll}
+                             disabled={isEnrolling || !newStudent.first_name || !newStudent.last_name}
+                             className="w-full py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black rounded-2xl shadow-xl shadow-fuchsia-200 hover:shadow-fuchsia-300 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                          >
+                             {isEnrolling ? 'Procesando...' : (
+                                <>
+                                   <HiOutlinePlus size={18} />
+                                   Registrar e Inscribir
+                                </>
+                             )}
+                          </button>
+                          <button 
+                             onClick={() => setShowQuickCreate(false)}
+                             className="w-full py-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] hover:text-gray-600 transition-colors"
+                          >
+                             Volver a la búsqueda
+                          </button>
+                       </div>
                     </div>
                  ) : (
                     <div className="space-y-2">

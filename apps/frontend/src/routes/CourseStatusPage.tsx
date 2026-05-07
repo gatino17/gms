@@ -262,7 +262,7 @@ export default function CourseStatusPage() {
                                                <td className="block md:table-cell pr-8 md:pr-12 pl-8 py-4 md:py-6 text-right">
                                                   <div className="flex items-center justify-start md:justify-end gap-3">
                                                      {(() => {
-                                                        const waMsgTemplate = tenantInfo?.whatsapp_message || "Hola {nombre}, te escribimos de {academia}. Tienes un pago pendiente para el curso {curso}."
+                                                        const waMsgTemplate = tenantInfo?.whatsapp_message || "¡Hola {nombre}! 👋 Te saludamos de {academia}. Esperamos que estés disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente para el curso {curso}. ¡Nos vemos pronto! ✨"
                                                         const msg = waMsgTemplate
                                                           .replace('{nombre}', s.first_name)
                                                           .replace('{curso}', row.course.name)

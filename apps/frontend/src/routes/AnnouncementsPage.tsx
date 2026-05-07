@@ -66,7 +66,7 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 px-6">
+    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 px-4 md:px-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4 md:px-0 pt-4">
         <div className="space-y-1 text-center sm:text-left">
@@ -89,7 +89,7 @@ export default function AnnouncementsPage() {
            <span className="font-bold text-fuchsia-600/60 uppercase tracking-widest text-xs">Sincronizando tablero...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 px-4 md:px-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 md:px-0">
           {items.map((a) => (
             <div key={a.id} className="group bg-white rounded-2xl md:rounded-[28px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col">
                <div className="relative h-32 md:h-36 bg-gray-50 cursor-pointer overflow-hidden" onClick={() => a.image_url && setPreviewImage(toAbsoluteUrl(a.image_url))}>
@@ -133,35 +133,35 @@ export default function AnnouncementsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4">
            <div className="absolute inset-0 bg-black/60 backdrop-blur-xl animate-in fade-in duration-300" onClick={()=>setShowModal(false)} />
-           <div className="relative w-full h-full md:h-auto md:max-w-2xl bg-white rounded-none md:rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col border border-white/20">
-              <div className="p-5 md:p-8 bg-gradient-to-br from-fuchsia-600 to-purple-600 text-white flex justify-between items-center shrink-0">
+           <div className="relative w-full h-full md:h-auto md:max-w-lg bg-white rounded-none md:rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col border border-white/20">
+              <div className="p-4 md:p-6 bg-gradient-to-br from-fuchsia-600 to-purple-600 text-white flex justify-between items-center shrink-0">
                  <div>
-                    <h2 className="text-xl md:text-2xl font-black">Nuevo Anuncio</h2>
-                    <p className="text-fuchsia-100 font-bold uppercase tracking-widest text-[8px] md:text-[9px] mt-1">Visible en App de Alumnos</p>
+                    <h2 className="text-lg md:text-xl font-black">Nuevo Anuncio</h2>
+                    <p className="text-fuchsia-100 font-bold uppercase tracking-widest text-[8px] mt-1">Visible en App de Alumnos</p>
                  </div>
-                 <button onClick={()=>setShowModal(false)} className="p-2 md:p-3 hover:bg-white/10 rounded-xl transition-colors">
-                    <HiOutlineX size={24} />
+                 <button onClick={()=>setShowModal(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                    <HiOutlineX size={20} />
                  </button>
               </div>
 
-              <div className="p-6 md:p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar bg-gray-50/30">
+              <div className="p-5 md:p-6 space-y-5 overflow-y-auto flex-1 custom-scrollbar bg-gray-50/30">
                  <div className="space-y-4">
-                    <div className="space-y-2">
-                       <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Título</label>
-                       <input className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-5 py-3 md:py-3.5 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm" value={draft.title || ''} onChange={e=>setDraft({...draft, title:e.target.value})} placeholder="Ej: Nueva Temporada 2026" />
+                    <div className="space-y-1.5">
+                       <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">Título</label>
+                       <input className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 py-2.5 rounded-xl font-bold text-sm text-gray-700 outline-none transition-all shadow-sm" value={draft.title || ''} onChange={e=>setDraft({...draft, title:e.target.value})} placeholder="Ej: Nueva Temporada 2026" />
                     </div>
-                    <div className="space-y-2">
-                       <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Descripción</label>
-                       <textarea rows={3} className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-5 py-3 md:py-3.5 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none transition-all resize-none shadow-sm" value={draft.body || ''} onChange={e=>setDraft({...draft, body:e.target.value})} placeholder="Detalles del anuncio..." />
+                    <div className="space-y-1.5">
+                       <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">Descripción</label>
+                       <textarea rows={3} className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 py-2.5 rounded-xl font-bold text-sm text-gray-700 outline-none transition-all resize-none shadow-sm" value={draft.body || ''} onChange={e=>setDraft({...draft, body:e.target.value})} placeholder="Detalles del anuncio..." />
                     </div>
-                    <div className="grid grid-cols-2 gap-4 md:gap-5">
-                       <div className="space-y-2">
-                          <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Desde</label>
-                          <input type="date" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-5 py-3 md:py-3.5 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm" value={draft.start_date || ''} onChange={e=>setDraft({...draft, start_date:e.target.value})} />
+                    <div className="grid grid-cols-2 gap-3">
+                       <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">Desde</label>
+                          <input type="date" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 py-2.5 rounded-xl font-bold text-[11px] text-gray-700 outline-none transition-all shadow-sm" value={draft.start_date || ''} onChange={e=>setDraft({...draft, start_date:e.target.value})} />
                        </div>
-                       <div className="space-y-2">
-                          <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Hasta</label>
-                          <input type="date" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-5 py-3 md:py-3.5 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm" value={draft.end_date || ''} onChange={e=>setDraft({...draft, end_date:e.target.value})} />
+                       <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">Hasta</label>
+                          <input type="date" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 py-2.5 rounded-xl font-bold text-[11px] text-gray-700 outline-none transition-all shadow-sm" value={draft.end_date || ''} onChange={e=>setDraft({...draft, end_date:e.target.value})} />
                        </div>
                     </div>
                  </div>
@@ -187,9 +187,9 @@ export default function AnnouncementsPage() {
                   </div>
               </div>
 
-                <div className="p-5 md:p-8 bg-gray-50 border-t border-gray-100 flex gap-4 shrink-0">
-                   <button onClick={()=>setShowModal(false)} className="flex-1 font-black uppercase tracking-widest text-[9px] text-gray-400">Cancelar</button>
-                   <button onClick={handleSave} className="flex-[2] py-3.5 md:py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-xs md:text-sm rounded-xl md:rounded-2xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 transition-all">
+                <div className="p-4 md:p-6 bg-gray-50 border-t border-gray-100 flex gap-3 shrink-0">
+                   <button onClick={()=>setShowModal(false)} className="flex-1 font-black uppercase tracking-widest text-[9px] text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
+                   <button onClick={handleSave} className="flex-[2] py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-[10px] md:text-xs rounded-xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 transition-all">
                       Publicar Anuncio
                    </button>
                 </div>

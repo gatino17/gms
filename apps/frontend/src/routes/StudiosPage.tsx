@@ -596,7 +596,7 @@ export default function StudiosPage() {
       {editTarget && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6">
           <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setEditTarget(null)} />
-          <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar border border-gray-100 flex flex-col">
+          <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-100 flex flex-col">
             <div className="sticky top-0 bg-white/80 backdrop-blur-xl z-20 flex items-center justify-between px-8 py-6 border-b border-gray-50">
               <div>
                 <h2 className="text-lg font-black text-gray-900">Editar Estudio</h2>

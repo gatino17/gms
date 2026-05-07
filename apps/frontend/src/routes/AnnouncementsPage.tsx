@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react"
 import { api, toAbsoluteUrl } from "../lib/api"
-import { HiOutlineSpeakerphone, HiOutlinePlus, HiOutlineX, HiOutlineTrash, HiOutlinePhotograph, HiOutlineExternalLink, HiOutlineCalendar, HiOutlineClock } from "react-icons/hi"
+import { 
+  HiOutlinePlus, 
+  HiOutlineX, 
+  HiOutlineTrash, 
+  HiOutlinePhotograph, 
+  HiOutlineExternalLink, 
+  HiOutlineCalendar 
+} from "react-icons/hi"
 
 type Announcement = {
   id: number
@@ -20,7 +27,6 @@ export default function AnnouncementsPage() {
   const [draft, setDraft] = useState<Partial<Announcement>>({})
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [uploading, setUploading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const MAX_ITEMS = 4
@@ -29,6 +35,7 @@ export default function AnnouncementsPage() {
 
   const load = async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await api.get<Announcement[]>("/api/pms/announcements", { params: { active_only: false, limit: 50 } })
       setItems(res.data || [])
@@ -42,12 +49,16 @@ export default function AnnouncementsPage() {
   useEffect(() => { load() }, [])
 
   const handleSave = async () => {
-    if (!draft.title) return setError("El título es obligatorio")
+    if (!draft.title) return
+    setError(null)
     try {
       const res = await api.post<Announcement>("/api/pms/announcements", draft)
       setItems(prev => [res.data, ...prev].slice(0, MAX_ITEMS))
-      setDraft({}); setShowModal(false)
-    } catch (e: any) { setError(e.message) }
+      setDraft({})
+      setShowModal(false)
+    } catch (e: any) { 
+      setError(e.message) 
+    }
   }
 
   const handleDelete = async (id: number) => {
@@ -55,14 +66,18 @@ export default function AnnouncementsPage() {
     try {
       await api.delete(`/api/pms/announcements/${id}`)
       setItems(prev => prev.filter(a => a.id !== id))
-    } catch (e: any) { setError(e.message) }
+    } catch (e: any) { 
+      setError(e.message) 
+    }
   }
 
   const handleToggleActive = async (id: number, next: boolean) => {
     try {
       await api.put<Announcement>(`/api/pms/announcements/${id}`, { is_active: next })
       setItems(prev => prev.map(a => a.id === id ? { ...a, is_active: next } : a))
-    } catch (e: any) { setError(e.message) }
+    } catch (e: any) { 
+      setError(e.message) 
+    }
   }
 
   return (
@@ -83,6 +98,13 @@ export default function AnnouncementsPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="mx-4 md:mx-0 p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-bold flex items-center gap-2">
+           <HiOutlineX size={14} className="cursor-pointer" onClick={() => setError(null)} />
+           {error}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex flex-col items-center py-40 gap-4">
            <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
@@ -94,7 +116,7 @@ export default function AnnouncementsPage() {
             <div key={a.id} className="group bg-white rounded-2xl md:rounded-[28px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col">
                <div className="relative h-32 md:h-36 bg-gray-50 cursor-pointer overflow-hidden" onClick={() => a.image_url && setPreviewImage(toAbsoluteUrl(a.image_url))}>
                   {a.image_url ? (
-                    <img src={toAbsoluteUrl(a.image_url)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <img src={toAbsoluteUrl(a.image_url)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-200"><HiOutlinePhotograph size={40} /></div>
                   )}
@@ -167,14 +189,14 @@ export default function AnnouncementsPage() {
                  </div>
 
                   <div className="space-y-2">
-                     <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Imagen / Banner</label>
+                     <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">Imagen / Banner</label>
                      <div className="relative group aspect-[16/9] rounded-xl md:rounded-[24px] bg-white border-2 border-dashed border-gray-200 flex flex-col items-center justify-center overflow-hidden hover:border-fuchsia-400 transition-colors cursor-pointer shadow-sm">
                         {draft.image_url ? (
-                           <img src={toAbsoluteUrl(draft.image_url)} className="w-full h-full object-cover" />
+                           <img src={toAbsoluteUrl(draft.image_url)} className="w-full h-full object-cover" alt="" />
                         ) : (
                            <>
                               <HiOutlinePhotograph size={40} className="text-gray-200" />
-                              <span className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase mt-4">Subir Imagen</span>
+                              <span className="text-[8px] font-black text-gray-400 uppercase mt-4">Subir Imagen</span>
                            </>
                         )}
                         <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async e=>{
@@ -187,19 +209,19 @@ export default function AnnouncementsPage() {
                   </div>
               </div>
 
-                <div className="p-4 md:p-6 bg-gray-50 border-t border-gray-100 flex gap-3 shrink-0">
-                   <button onClick={()=>setShowModal(false)} className="flex-1 font-black uppercase tracking-widest text-[9px] text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
-                   <button onClick={handleSave} className="flex-[2] py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-[10px] md:text-xs rounded-xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 transition-all">
-                      Publicar Anuncio
-                   </button>
-                </div>
+              <div className="p-4 md:p-6 bg-gray-50 border-t border-gray-100 flex gap-3 shrink-0">
+                 <button onClick={()=>setShowModal(false)} className="flex-1 font-black uppercase tracking-widest text-[9px] text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
+                 <button onClick={handleSave} className="flex-[2] py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-[10px] md:text-xs rounded-xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 transition-all">
+                    Publicar Anuncio
+                 </button>
+              </div>
            </div>
         </div>
       )}
 
       {previewImage && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl" onClick={()=>setPreviewImage(null)}>
-           <img src={previewImage} className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" />
+           <img src={previewImage} className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" alt="" />
         </div>
       )}
     </div>

@@ -288,7 +288,7 @@ export default function StudentRenewPage() {
           }
         }
 
-        await api.patch(`/api/pms/enrollments/${enrollmentId}`, {
+        await api.put(`/api/pms/enrollments/${enrollmentId}`, {
           start_date: finalStartDate,
           end_date: finalEndDate,
         })

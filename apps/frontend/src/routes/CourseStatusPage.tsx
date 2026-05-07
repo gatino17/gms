@@ -64,6 +64,10 @@ export default function CourseStatusPage() {
   const [enrollSearchQ, setEnrollSearchQ] = useState('')
   const [isEnrolling, setIsEnrolling] = useState(false)
   
+  // Quick Create Student States
+  const [showQuickCreate, setShowQuickCreate] = useState(false)
+  const [newStudent, setNewStudent] = useState({ first_name: '', last_name: '', email: '' })
+  
   const load = async () => {
     if (tenantId == null) return
     setLoading(true)
@@ -114,6 +118,39 @@ export default function CourseStatusPage() {
       load() // Refresh data
     } catch (e: any) {
       alert('Error al inscribir: ' + (e.response?.data?.detail || e.message))
+    } finally {
+      setIsEnrolling(false)
+    }
+  }
+
+  const handleQuickCreateAndEnroll = async () => {
+    if (!enrollModalCourseId) return
+    if (!newStudent.first_name || !newStudent.last_name) {
+      alert('Nombre y Apellido son obligatorios')
+      return
+    }
+    setIsEnrolling(true)
+    try {
+      // 1. Create Student
+      const { data: student } = await api.post('/api/pms/students/', {
+        ...newStudent,
+        is_active: true
+      })
+      
+      // 2. Enroll Student
+      await api.post('/api/pms/enrollments/', {
+        student_id: student.id,
+        course_id: enrollModalCourseId,
+        start_date: new Date().toISOString().split('T')[0]
+      })
+      
+      setEnrollModalCourseId(null)
+      setShowQuickCreate(false)
+      setNewStudent({ first_name: '', last_name: '', email: '' })
+      setEnrollSearchQ('')
+      load()
+    } catch (e: any) {
+      alert('Error: ' + (e.response?.data?.detail || e.message))
     } finally {
       setIsEnrolling(false)
     }
@@ -387,37 +424,98 @@ export default function CourseStatusPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                 <div className="space-y-2">
-                    {allStudents
-                       .filter(s => {
-                          const q = enrollSearchQ.toLowerCase()
-                          return !q || (s.first_name + ' ' + s.last_name).toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q)
-                       })
-                       .slice(0, 50)
-                       .map(s => (
+                 {showQuickCreate ? (
+                    <div className="p-4 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nombre</label>
+                             <input 
+                                type="text" 
+                                value={newStudent.first_name}
+                                onChange={(e) => setNewStudent({...newStudent, first_name: e.target.value})}
+                                className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
+                                placeholder="Ej: Juan"
+                             />
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Apellido</label>
+                             <input 
+                                type="text" 
+                                value={newStudent.last_name}
+                                onChange={(e) => setNewStudent({...newStudent, last_name: e.target.value})}
+                                className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
+                                placeholder="Ej: Pérez"
+                             />
+                          </div>
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Correo Electrónico (Opcional)</label>
+                          <input 
+                             type="email" 
+                             value={newStudent.email}
+                             onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}
+                             className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
+                             placeholder="ejemplo@correo.com"
+                          />
+                       </div>
+                       <button 
+                          onClick={handleQuickCreateAndEnroll}
+                          disabled={isEnrolling}
+                          className="w-full py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black rounded-2xl shadow-xl shadow-fuchsia-200 hover:shadow-fuchsia-300 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                       >
+                          {isEnrolling ? 'Procesando...' : 'Crear e Inscribir Ahora'}
+                       </button>
+                       <button 
+                          onClick={() => setShowQuickCreate(false)}
+                          className="w-full py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
+                       >
+                          Volver a la búsqueda
+                       </button>
+                    </div>
+                 ) : (
+                    <div className="space-y-2">
+                       {allStudents
+                          .filter(s => {
+                             const q = enrollSearchQ.toLowerCase()
+                             return !q || (s.first_name + ' ' + s.last_name).toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q)
+                          })
+                          .slice(0, 50)
+                          .map(s => (
+                             <button 
+                                key={s.id}
+                                disabled={isEnrolling}
+                                onClick={() => handleEnroll(s.id)}
+                                className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-fuchsia-50 group transition-all text-left border border-transparent hover:border-fuchsia-100"
+                             >
+                                <div className="flex items-center gap-4">
+                                   <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs overflow-hidden shrink-0 border border-gray-50">
+                                      {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
+                                   </div>
+                                   <div>
+                                      <div className="text-sm font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors">{s.first_name} {s.last_name}</div>
+                                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.email || 'Sin correo'}</div>
+                                   </div>
+                                </div>
+                                <div className="p-2 rounded-lg bg-gray-50 text-gray-400 group-hover:bg-fuchsia-600 group-hover:text-white transition-all">
+                                   <HiOutlinePlus size={16} />
+                                </div>
+                             </button>
+                          ))
+                       }
+                       
+                       <div className="pt-4 border-t border-gray-50">
                           <button 
-                             key={s.id}
-                             disabled={isEnrolling}
-                             onClick={() => handleEnroll(s.id)}
-                             className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-fuchsia-50 group transition-all text-left border border-transparent hover:border-fuchsia-100"
+                             onClick={() => setShowQuickCreate(true)}
+                             className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl bg-gray-50 text-gray-600 hover:bg-gray-100 border border-dashed border-gray-200 transition-all group"
                           >
-                             <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs overflow-hidden shrink-0 border border-gray-50">
-                                   {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
-                                </div>
-                                <div>
-                                   <div className="text-sm font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors">{s.first_name} {s.last_name}</div>
-                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.email || 'Sin correo'}</div>
-                                </div>
-                             </div>
-                             <div className="p-2 rounded-lg bg-gray-50 text-gray-400 group-hover:bg-fuchsia-600 group-hover:text-white transition-all">
+                             <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-gray-400 group-hover:text-fuchsia-600 transition-colors shadow-sm">
                                 <HiOutlinePlus size={16} />
                              </div>
+                             <span className="text-xs font-black uppercase tracking-widest">¿Alumno nuevo? Crear aquí</span>
                           </button>
-                       ))
-                    }
-                    {allStudents.length === 0 && <div className="py-10 text-center text-gray-300 font-black uppercase text-[10px] tracking-widest italic animate-pulse">Buscando alumnos...</div>}
-                 </div>
+                       </div>
+                    </div>
+                 )}
               </div>
 
               <div className="p-6 bg-gray-50/50 border-t border-gray-100 text-center">

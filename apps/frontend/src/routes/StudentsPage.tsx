@@ -20,6 +20,8 @@ import {
 
 import CreateStudentModal from "../components/CreateStudentModal"
 import EditStudentModal   from "../components/EditStudentModal"
+import EnrollStudentModal from "../components/EnrollStudentModal"
+import RenewModal         from "../components/RenewModal"
 
 type Student = {
   id: number
@@ -45,6 +47,10 @@ export default function StudentsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+
+  const [showEnroll, setShowEnroll] = useState(false)
+  const [showPay, setShowPay] = useState(false)
+  const [payData, setPayData] = useState<{ studentId: number, courseId: number, enrollmentId: number } | null>(null)
 
   // Pagination states
   const [page, setPage] = useState(1)
@@ -181,9 +187,16 @@ export default function StudentsPage() {
                         {s.joined_at ? new Date(s.joined_at).toLocaleDateString('es-CL') : '-'}
                       </td>
                       <td className="block md:table-cell px-6 py-3 md:py-4 text-left md:text-right">
-                        <div className="flex items-center justify-start md:justify-end gap-2">
-                          <button
-                            onClick={() => navigate(`/students/${s.id}`)}
+                         <div className="flex items-center justify-start md:justify-end gap-2">
+                           <button
+                             onClick={() => { setSelectedStudent(s); setShowEnroll(true) }}
+                             className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white shadow-sm transition-all active:scale-95"
+                           >
+                             <HiOutlinePlus size={14} />
+                             Inscribir
+                           </button>
+                           <button
+                             onClick={() => navigate(`/students/${s.id}`)}
                             className="p-2 bg-fuchsia-50 text-fuchsia-600 rounded-lg hover:bg-fuchsia-600 hover:text-white transition-all shadow-sm"
                             title="Ver Perfil"
                           >
@@ -267,6 +280,30 @@ export default function StudentsPage() {
       </div>
 
       {/* Modals */}
+      {showEnroll && selectedStudent && (
+        <EnrollStudentModal 
+           studentId={selectedStudent.id}
+           studentName={`${selectedStudent.first_name} ${selectedStudent.last_name}`}
+           onClose={() => setShowEnroll(false)}
+           onSuccess={(courseId, enrollmentId) => {
+              setShowEnroll(false)
+              setPayData({ studentId: selectedStudent.id, courseId, enrollmentId })
+              setShowPay(true)
+           }}
+        />
+      )}
+
+      {showPay && payData && (
+        <RenewModal 
+           isOpen={true}
+           studentId={payData.studentId}
+           courseId={payData.courseId}
+           enrollmentId={payData.enrollmentId}
+           onClose={() => { setShowPay(false); setPayData(null); load(); }}
+           onSuccess={() => { setShowPay(false); setPayData(null); load(); }}
+        />
+      )}
+
       {showCreate && <CreateStudentModal onClose={() => setShowCreate(false)} onSuccess={() => { setShowCreate(false); load() }} />}
       {showEdit && selectedStudent && (
         <EditStudentModal

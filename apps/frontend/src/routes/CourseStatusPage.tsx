@@ -118,13 +118,20 @@ export default function CourseStatusPage() {
     if (!enrollModalCourseId) return
     setIsEnrolling(true)
     try {
-      await api.post('/api/pms/enrollments/', {
+      const { data } = await api.post('/api/pms/enrollments/', {
         student_id: studentId,
         course_id: enrollModalCourseId,
         start_date: new Date().toISOString().split('T')[0]
       })
+      const enrollmentId = data.id
+      const cid = enrollModalCourseId
+      
       setEnrollModalCourseId(null)
       setEnrollSearchQ('')
+      
+      // Open Payment Modal (initial payment)
+      setRenewModalData({ studentId, courseId: cid, enrollmentId })
+      
       load() // Refresh data
     } catch (e: any) {
       alert('Error al inscribir: ' + (e.response?.data?.detail || e.message))
@@ -148,12 +155,16 @@ export default function CourseStatusPage() {
       })
       
       // 2. Enroll Student
-      await api.post('/api/pms/enrollments/', {
+      const { data: enrollment } = await api.post('/api/pms/enrollments/', {
         student_id: student.id,
         course_id: enrollModalCourseId,
         start_date: new Date().toISOString().split('T')[0]
       })
       
+      const cid = enrollModalCourseId
+      const sid = student.id
+      const eid = enrollment.id
+
       setEnrollModalCourseId(null)
       setShowQuickCreate(false)
       setNewStudent({ 
@@ -168,6 +179,10 @@ export default function CourseStatusPage() {
         is_active: true
       })
       setEnrollSearchQ('')
+
+      // Open Payment Modal (initial payment)
+      setRenewModalData({ studentId: sid, courseId: cid, enrollmentId: eid })
+
       load()
     } catch (e: any) {
       alert('Error: ' + (e.response?.data?.detail || e.message))

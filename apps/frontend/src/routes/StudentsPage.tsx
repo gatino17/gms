@@ -15,7 +15,8 @@ import {
   HiOutlineCheckCircle,
   HiOutlineXCircle,
   HiOutlineChevronLeft,
-  HiOutlineChevronRight
+  HiOutlineChevronRight,
+  HiOutlinePlus
 } from 'react-icons/hi'
 
 import CreateStudentModal from "../components/CreateStudentModal"

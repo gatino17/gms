@@ -14,6 +14,7 @@ type StudioForm = {
   facebook_url: string
   website_url: string
   is_superuser: boolean
+  currency: string
 }
 
 type StudioUpdateForm = {
@@ -30,6 +31,7 @@ type StudioUpdateForm = {
   facebook_url: string
   website_url: string
   is_superuser: boolean
+  currency: string
 }
 
 type Studio = {
@@ -48,6 +50,7 @@ type Studio = {
   website_url?: string | null
   created_at: string
   admin_is_superuser?: boolean | null
+  currency?: string | null
 }
 
 const defaultForm: StudioForm = {
@@ -63,6 +66,7 @@ const defaultForm: StudioForm = {
   facebook_url: '',
   website_url: '',
   is_superuser: false,
+  currency: 'CLP',
 }
 
 const defaultEditForm: StudioUpdateForm = {
@@ -79,6 +83,7 @@ const defaultEditForm: StudioUpdateForm = {
   facebook_url: '',
   website_url: '',
   is_superuser: false,
+  currency: 'CLP',
 }
 
 const normalizeOptional = (value: string) => {
@@ -138,6 +143,7 @@ export default function StudiosPage() {
         facebook_url: editTarget.facebook_url ?? '',
         website_url: editTarget.website_url ?? '',
         is_superuser: !!editTarget.admin_is_superuser,
+        currency: editTarget.currency ?? 'CLP',
       })
       setEditMessage(null)
       setEditError(null)
@@ -171,6 +177,7 @@ export default function StudiosPage() {
         facebook_url: normalizeOptional(form.facebook_url),
         website_url: normalizeOptional(form.website_url),
         is_superuser: !!form.is_superuser,
+        currency: form.currency,
       })
       if (createLogoFile) {
         try {
@@ -215,6 +222,7 @@ export default function StudiosPage() {
         facebook_url: normalizeOptional(editForm.facebook_url),
         website_url: normalizeOptional(editForm.website_url),
         is_superuser: !!editForm.is_superuser,
+        currency: editForm.currency,
       })
       setEditMessage('Estudio actualizado correctamente.')
       setSuccess('Estudio actualizado correctamente.')
@@ -381,6 +389,18 @@ export default function StudiosPage() {
                 className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
                 placeholder="+56 9 1234 5678"
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Moneda</label>
+              <select
+                value={form.currency}
+                onChange={(e) => handleChange('currency', e.target.value)}
+                className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
+              >
+                <option value="CLP">CLP - Peso Chileno ($)</option>
+                <option value="ARS">ARS - Peso Argentino ($)</option>
+                <option value="USD">USD - Dólar Estadounidense (US$)</option>
+              </select>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Redes Sociales (Insta / TikTok)</label>
@@ -635,6 +655,18 @@ export default function StudiosPage() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Teléfono</label>
                   <input type="text" value={editForm.phone} onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))} className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Moneda</label>
+                  <select
+                    value={editForm.currency}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, currency: e.target.value }))}
+                    className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
+                  >
+                    <option value="CLP">CLP - Peso Chileno ($)</option>
+                    <option value="ARS">ARS - Peso Argentino ($)</option>
+                    <option value="USD">USD - Dólar Estadounidense (US$)</option>
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Insta / TikTok</label>

@@ -25,6 +25,7 @@ type TenantSettings = {
   phone?: string | null
   whatsapp_message?: string | null
   logo_url?: string | null
+  currency?: string | null
 }
 
 type RoomItem = {
@@ -47,6 +48,7 @@ export default function SettingsPage() {
     phone: '',
     whatsapp_message: '',
     logo_url: '',
+    currency: 'CLP',
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -155,7 +157,7 @@ export default function SettingsPage() {
     }
   }
 
-  const saveWhatsappMsg = async () => {
+  const saveGlobalSettings = async (fields: Partial<TenantSettings>) => {
     const currentTenantId = tenantId ?? (() => {
       const raw = getTenant()
       const n = raw ? Number(raw) : null
@@ -164,17 +166,26 @@ export default function SettingsPage() {
     if (currentTenantId == null) return
     setIsSavingMsg(true)
     try {
-      await api.put('/api/pms/tenants/me', {
-        whatsapp_message: settings.whatsapp_message
-      }, {
+      await api.put('/api/pms/tenants/me', fields, {
         headers: { 'X-Tenant-ID': currentTenantId }
       })
-      alert('Mensaje de WhatsApp actualizado correctamente.')
+      // No alert here, we'll use it in specific buttons
     } catch (e: any) {
       alert('Error al guardar: ' + e.message)
     } finally {
       setIsSavingMsg(false)
     }
+  }
+
+  const handleSaveWhatsapp = async () => {
+    await saveGlobalSettings({ whatsapp_message: settings.whatsapp_message })
+    alert('Mensaje de WhatsApp actualizado correctamente.')
+  }
+
+  const handleSaveCurrency = async (newCurrency: string) => {
+    setSettings(s => ({ ...s, currency: newCurrency }))
+    await saveGlobalSettings({ currency: newCurrency })
+    alert(`Moneda actualizada a ${newCurrency} correctamente.`)
   }
 
   if (loading) {
@@ -236,6 +247,9 @@ export default function SettingsPage() {
                    <HiOutlineMail className="text-fuchsia-500" /> {settings.contact_email}
                  </div>
                )}
+               <div className="flex items-center gap-2 px-4 py-2 bg-fuchsia-50 rounded-xl text-xs font-black text-fuchsia-600 uppercase tracking-widest border border-fuchsia-100">
+                  Moneda: {settings.currency || 'CLP'}
+               </div>
             </div>
             
             <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -292,7 +306,7 @@ export default function SettingsPage() {
 
             <div className="flex justify-end">
               <button
-                onClick={saveWhatsappMsg}
+                onClick={handleSaveWhatsapp}
                 disabled={isSavingMsg}
                 className="px-8 py-3.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
               >
@@ -309,7 +323,44 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Rooms Section */}
+      {/* Global Config Section (Currency) */}
+      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+             <HiOutlineCog className="text-2xl" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Moneda y Región</h2>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Configuración Financiera</p>
+          </div>
+        </div>
+
+        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-6">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+              <div className="space-y-3">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de Moneda</label>
+                 <select 
+                    className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-amber-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm appearance-none cursor-pointer"
+                    value={settings.currency || 'CLP'}
+                    onChange={(e) => handleSaveCurrency(e.target.value)}
+                 >
+                    <option value="CLP">CLP - Peso Chileno ($)</option>
+                    <option value="ARS">ARS - Peso Argentino ($)</option>
+                    <option value="USD">USD - Dólar Estadounidense (US$)</option>
+                 </select>
+              </div>
+              <div className="p-5 bg-white rounded-2xl border border-gray-100 flex items-center gap-4">
+                 <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-black text-lg">
+                    {settings.currency === 'USD' ? 'US$' : '$'}
+                 </div>
+                 <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Símbolo actual</p>
+                    <p className="text-sm font-black text-gray-700">Se usará en todos los cobros y reportes.</p>
+                 </div>
+              </div>
+           </div>
+        </div>
+      </div>
       <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">

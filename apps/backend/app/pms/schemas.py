@@ -18,6 +18,7 @@ class TenantOut(BaseModel):
     phone: Optional[str] = None
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
+    currency: Optional[str] = "CLP"
     created_at: datetime
     admin_is_superuser: Optional[bool] = None
 
@@ -36,6 +37,7 @@ class TenantCreate(BaseModel):
     phone: Optional[str] = Field(default=None, max_length=40)
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
+    currency: Optional[str] = "CLP"
     is_superuser: bool = False
 
 
@@ -50,6 +52,7 @@ class TenantUpdate(BaseModel):
     phone: Optional[str] = Field(default=None, max_length=40)
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
+    currency: Optional[str] = None
     is_superuser: Optional[bool] = None
 
 
@@ -61,6 +64,7 @@ class TenantSelfUpdate(BaseModel):
     phone: Optional[str] = Field(default=None, max_length=40)
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
+    currency: Optional[str] = None
 
 
 class StudentBase(BaseModel):

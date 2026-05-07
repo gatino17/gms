@@ -48,6 +48,7 @@ class Tenant(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(40))
     whatsapp_message: Mapped[Optional[str]] = mapped_column(Text())
     logo_url: Mapped[Optional[str]] = mapped_column(String(255))
+    currency: Mapped[Optional[str]] = mapped_column(String(10), default="CLP")
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
 
 

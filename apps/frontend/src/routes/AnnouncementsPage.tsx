@@ -115,7 +115,7 @@ export default function AnnouncementsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 md:px-0">
             {items.map((a) => (
               <div key={a.id} className="group bg-white rounded-2xl md:rounded-[28px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col">
-                 <div className="relative h-32 md:h-36 bg-gray-50 cursor-pointer overflow-hidden" onClick={() => a.image_url && setPreviewImage(toAbsoluteUrl(a.image_url))}>
+                 <div className="relative h-32 md:h-36 bg-gray-50 cursor-pointer overflow-hidden" onClick={() => a.image_url && setPreviewImage(toAbsoluteUrl(a.image_url) ?? null)}>
                     {a.image_url ? (
                       <img src={toAbsoluteUrl(a.image_url)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                     ) : (

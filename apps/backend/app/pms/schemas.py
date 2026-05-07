@@ -19,6 +19,10 @@ class TenantOut(BaseModel):
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
     currency: Optional[str] = "CLP"
+    instagram_url: Optional[str] = None
+    tiktok_url: Optional[str] = None
+    facebook_url: Optional[str] = None
+    website_url: Optional[str] = None
     created_at: datetime
     admin_is_superuser: Optional[bool] = None
 
@@ -38,6 +42,10 @@ class TenantCreate(BaseModel):
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
     currency: Optional[str] = "CLP"
+    instagram_url: Optional[str] = None
+    tiktok_url: Optional[str] = None
+    facebook_url: Optional[str] = None
+    website_url: Optional[str] = None
     is_superuser: bool = False
 
 
@@ -53,6 +61,10 @@ class TenantUpdate(BaseModel):
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
     currency: Optional[str] = None
+    instagram_url: Optional[str] = None
+    tiktok_url: Optional[str] = None
+    facebook_url: Optional[str] = None
+    website_url: Optional[str] = None
     is_superuser: Optional[bool] = None
 
 
@@ -65,6 +77,10 @@ class TenantSelfUpdate(BaseModel):
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
     currency: Optional[str] = None
+    instagram_url: Optional[str] = None
+    tiktok_url: Optional[str] = None
+    facebook_url: Optional[str] = None
+    website_url: Optional[str] = None
 
 
 class StudentBase(BaseModel):

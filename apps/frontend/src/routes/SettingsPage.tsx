@@ -26,6 +26,10 @@ type TenantSettings = {
   whatsapp_message?: string | null
   logo_url?: string | null
   currency?: string | null
+  instagram_url?: string | null
+  tiktok_url?: string | null
+  facebook_url?: string | null
+  website_url?: string | null
 }
 
 type RoomItem = {
@@ -49,6 +53,10 @@ export default function SettingsPage() {
     whatsapp_message: '',
     logo_url: '',
     currency: 'CLP',
+    instagram_url: '',
+    tiktok_url: '',
+    facebook_url: '',
+    website_url: '',
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -188,6 +196,16 @@ export default function SettingsPage() {
     alert(`Moneda actualizada a ${newCurrency} correctamente.`)
   }
 
+  const handleSaveSocial = async () => {
+    await saveGlobalSettings({
+      instagram_url: settings.instagram_url,
+      tiktok_url: settings.tiktok_url,
+      facebook_url: settings.facebook_url,
+      website_url: settings.website_url,
+    })
+    alert('Redes sociales actualizadas correctamente.')
+  }
+
   if (loading) {
     return (
       <div className="py-40 text-center space-y-4">
@@ -250,6 +268,16 @@ export default function SettingsPage() {
                <div className="flex items-center gap-2 px-4 py-2 bg-fuchsia-50 rounded-xl text-xs font-black text-fuchsia-600 uppercase tracking-widest border border-fuchsia-100">
                   Moneda: {settings.currency || 'CLP'}
                </div>
+               {settings.instagram_url && (
+                 <div className="flex items-center gap-2 px-4 py-2 bg-pink-50 rounded-xl text-xs font-black text-pink-600 uppercase tracking-widest border border-pink-100">
+                    Instagram: {settings.instagram_url}
+                 </div>
+               )}
+               {settings.tiktok_url && (
+                 <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl text-xs font-black text-gray-600 uppercase tracking-widest border border-gray-100">
+                    TikTok: {settings.tiktok_url}
+                 </div>
+               )}
             </div>
             
             <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -361,7 +389,68 @@ export default function SettingsPage() {
            </div>
         </div>
       </div>
-      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-10">
+      {/* Social Media Section */}
+      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center">
+             <HiOutlineSparkles className="text-2xl" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Redes Sociales</h2>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Presencia Digital</p>
+          </div>
+        </div>
+
+        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-8">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Instagram (@usuario)</label>
+                 <input 
+                    className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-pink-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm"
+                    placeholder="Ej: @puertomonttsalsa"
+                    value={settings.instagram_url || ''}
+                    onChange={(e) => setSettings(s => ({ ...s, instagram_url: e.target.value }))}
+                 />
+              </div>
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">TikTok (@usuario)</label>
+                 <input 
+                    className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-pink-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm"
+                    placeholder="Ej: @puertomonttsalsa"
+                    value={settings.tiktok_url || ''}
+                    onChange={(e) => setSettings(s => ({ ...s, tiktok_url: e.target.value }))}
+                 />
+              </div>
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Facebook (URL)</label>
+                 <input 
+                    className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-pink-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm"
+                    placeholder="Ej: facebook.com/academia"
+                    value={settings.facebook_url || ''}
+                    onChange={(e) => setSettings(s => ({ ...s, facebook_url: e.target.value }))}
+                 />
+              </div>
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Sitio Web (URL)</label>
+                 <input 
+                    className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-pink-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm"
+                    placeholder="Ej: www.academia.com"
+                    value={settings.website_url || ''}
+                    onChange={(e) => setSettings(s => ({ ...s, website_url: e.target.value }))}
+                 />
+              </div>
+           </div>
+
+           <div className="flex justify-end">
+              <button
+                onClick={handleSaveSocial}
+                className="px-8 py-3.5 bg-pink-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-pink-100 hover:bg-pink-700 transition-all active:scale-95 flex items-center gap-2"
+              >
+                Guardar Redes Sociales
+              </button>
+           </div>
+        </div>
+      </div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">

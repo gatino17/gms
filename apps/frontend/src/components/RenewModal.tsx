@@ -314,7 +314,7 @@ export default function RenewModal({
           }
         }
 
-        await api.patch(`/api/pms/enrollments/${enrollmentId}`, {
+        await api.put(`/api/pms/enrollments/${enrollmentId}`, {
           start_date: finalStartDate,
           end_date: finalEndDate,
         })
@@ -375,7 +375,9 @@ export default function RenewModal({
         {/* Header (Gradient) */}
         <div className="bg-gradient-to-br from-fuchsia-600 to-purple-700 px-6 py-5 sm:px-8 sm:py-6 flex-shrink-0 flex items-start justify-between">
           <div className="text-white">
-            <h2 className="text-2xl font-black tracking-tight">Renovar Curso</h2>
+            <h2 className="text-2xl font-black tracking-tight">
+               {(!enrollment?.end_date) ? 'Registrar Pago Inicial' : 'Renovar Curso'}
+            </h2>
             <p className="text-fuchsia-100 font-medium mt-1">
               {studentName ? `${studentName} — ${course?.name || ''}` : 'Cargando...'}
             </p>

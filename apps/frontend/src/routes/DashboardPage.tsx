@@ -334,8 +334,8 @@ export default function DashboardPage() {
                  <HiExclamationCircle className="text-2xl" />
               </div>
               <div>
-                 <h2 className="text-lg font-black text-rose-900 tracking-tight">Alertas Críticas</h2>
-                 <p className="text-[9px] font-bold text-rose-600/60 uppercase tracking-widest">Atención Inmediata</p>
+                 <h2 className="text-lg font-black text-rose-900 tracking-tight">Alertas pendientes</h2>
+                 <p className="text-[9px] font-bold text-rose-600/60 uppercase tracking-widest">Seguimiento</p>
               </div>
             </div>
             

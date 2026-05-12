@@ -276,5 +276,6 @@ export default function EditTeacherModal({ teacher, onClose, onSuccess }: Props)
         </div>
       </div>
     </div>
+  </div>
   )
 }

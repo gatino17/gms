@@ -261,5 +261,6 @@ export default function CreateTeacherModal({ onClose, onSuccess }: Props) {
         </div>
       </div>
     </div>
+  </div>
   )
 }

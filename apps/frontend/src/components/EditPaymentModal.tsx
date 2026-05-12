@@ -185,5 +185,6 @@ export default function EditPaymentModal({ payment, onClose, onSuccess }: Props)
         </div>
       </div>
     </div>
+  </div>
   )
 }

@@ -186,5 +186,6 @@ export default function EnrollStudentModal({ studentId, studentName, onClose, on
         </div>
       </div>
     </div>
+  </div>
   )
 }

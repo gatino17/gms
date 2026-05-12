@@ -237,5 +237,6 @@ export default function EditStudentModal({ student, onClose, onSuccess }: Props)
         </div>
       </div>
     </div>
+  </div>
   )
 }

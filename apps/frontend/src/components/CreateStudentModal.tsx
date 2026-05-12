@@ -239,5 +239,6 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
         </div>
       </div>
     </div>
+  </div>
   )
 }

@@ -82,9 +82,9 @@ export default function EditTeacherModal({ teacher, onClose, onSuccess }: Props)
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
       
-      <div className="relative bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border border-gray-100">
+      <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col border border-gray-100">
         {/* Header */}
-        <div className="px-10 py-8 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white flex items-center justify-between shrink-0">
+        <div className="px-6 py-5 md:px-8 md:py-6 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white flex items-center justify-between shrink-0">
            <div>
               <h2 className="text-2xl font-black tracking-tight">Editar Perfil del Profesor</h2>
               <p className="text-fuchsia-100 text-xs font-bold uppercase tracking-widest mt-1">Actualizando información de ID: #{teacher.id}</p>
@@ -95,14 +95,14 @@ export default function EditTeacherModal({ teacher, onClose, onSuccess }: Props)
         </div>
 
         {/* Content */}
-        <div className="p-10 overflow-y-auto space-y-10 custom-scrollbar">
+        <div className="p-6 md:p-8 overflow-y-auto space-y-6 custom-scrollbar">
            {error && (
               <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-sm font-bold flex items-center gap-3">
                  <HiOutlineX className="shrink-0" /> {error}
               </div>
            )}
 
-           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left Column: Photo */}
               <div className="lg:col-span-4 space-y-6">
                  <div className="space-y-4">
@@ -259,7 +259,7 @@ export default function EditTeacherModal({ teacher, onClose, onSuccess }: Props)
         </div>
 
         {/* Footer */}
-        <div className="px-10 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-4 shrink-0">
+        <div className="px-6 py-4 md:px-8 md:py-5 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
            <button onClick={onClose} className="px-8 py-4 font-black uppercase tracking-widest text-[10px] text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
            <button 
               onClick={handleSave}

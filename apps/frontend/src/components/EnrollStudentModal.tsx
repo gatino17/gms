@@ -83,10 +83,11 @@ export default function EnrollStudentModal({ studentId, studentName, onClose, on
   }
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto">
-      <div className="flex min-h-full items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100]">
+      {/* Backdrop - full screen always */}
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-      
+      {/* Scrollable container */}
+      <div className="relative overflow-y-auto h-full flex items-center justify-center p-4">
       <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-gray-100">
         {/* Header */}
         <div className="p-8 border-b border-gray-50 bg-gray-50/30">

@@ -83,12 +83,14 @@ export default function EnrollStudentModal({ studentId, studentName, onClose, on
   }
 
   return (
-    <div className="fixed inset-0 z-[100]">
-      {/* Backdrop - full screen always */}
-      <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
+    <div className="relative z-[100]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+      
       {/* Scrollable container */}
-      <div className="relative overflow-y-auto h-full flex items-start justify-center p-4">
-      <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-gray-100">
+      <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div className="flex min-h-full items-start justify-center p-4 sm:p-8">
+          <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-gray-100">
         {/* Header */}
         <div className="p-8 border-b border-gray-50 bg-gray-50/30">
           <div className="flex items-center justify-between">
@@ -181,7 +183,7 @@ export default function EnrollStudentModal({ studentId, studentName, onClose, on
         <div className="p-6 bg-gray-50 border-t border-gray-100 text-center">
           <button onClick={onClose} className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] hover:text-gray-600 transition-colors">Cancelar</button>
         </div>
-      </div>
+        </div>
       </div>
     </div>
   )

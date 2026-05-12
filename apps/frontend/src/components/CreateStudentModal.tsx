@@ -71,10 +71,11 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
+      <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
       
-      <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-hidden flex flex-col border border-gray-100">
+      <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col border border-gray-100">
         {/* Header */}
         <div className="px-6 py-5 md:px-8 md:py-6 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white flex items-center justify-between shrink-0">
            <div>
@@ -232,6 +233,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
               {loading ? 'Procesando...' : 'Guardar Alumno'} <HiOutlineChevronRight size={16} />
            </button>
         </div>
+      </div>
       </div>
     </div>
   )

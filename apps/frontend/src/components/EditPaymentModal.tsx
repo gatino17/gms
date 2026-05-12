@@ -62,12 +62,13 @@ export default function EditPaymentModal({ payment, onClose, onSuccess }: Props)
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
+      <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
       
-      <div className="relative bg-white rounded-[40px] shadow-2xl w-full max-w-xl overflow-hidden flex flex-col border border-gray-100">
+      <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-xl overflow-hidden flex flex-col border border-gray-100">
         {/* Header */}
-        <div className="px-10 py-8 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-between shrink-0">
+        <div className="px-6 py-5 md:px-8 md:py-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-between shrink-0">
            <div>
               <h2 className="text-2xl font-black tracking-tight">Editar Pago</h2>
               <p className="text-emerald-100 text-xs font-bold uppercase tracking-widest mt-1">ID Transacción: #{payment.id}</p>
@@ -168,7 +169,7 @@ export default function EditPaymentModal({ payment, onClose, onSuccess }: Props)
         </div>
 
         {/* Footer */}
-        <div className="px-10 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-4 shrink-0">
+        <div className="px-6 py-4 md:px-8 md:py-5 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
            <button onClick={onClose} className="px-8 py-4 font-black uppercase tracking-widest text-[10px] text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
            <button 
               onClick={handleSave}
@@ -178,6 +179,7 @@ export default function EditPaymentModal({ payment, onClose, onSuccess }: Props)
               {loading ? 'Guardando...' : 'Guardar Cambios'} <HiOutlineChevronRight size={16} />
            </button>
         </div>
+      </div>
       </div>
     </div>
   )

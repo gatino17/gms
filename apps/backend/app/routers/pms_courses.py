@@ -73,6 +73,7 @@ async def get_course(
 
 
 @router.post("/", response_model=CourseOut, status_code=201)
+@router.post("", response_model=CourseOut, status_code=201)
 async def create_course(
     payload: CourseCreate,
     tenant_id: int = Depends(get_tenant_id),

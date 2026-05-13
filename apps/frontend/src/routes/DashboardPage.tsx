@@ -230,7 +230,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-                  {classesToday.map(c => (
+                  {classesToday.map((c: any) => (
                     <div key={c.id} className="group p-3 md:p-4 rounded-2xl md:rounded-[28px] border border-gray-50 bg-gray-50/30 hover:bg-white hover:border-fuchsia-200 hover:shadow-xl transition-all duration-500 flex gap-3 md:gap-4 items-center cursor-pointer">
                       <div className="relative flex-shrink-0">
                         {c.image_url ? (

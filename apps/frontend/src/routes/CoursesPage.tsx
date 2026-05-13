@@ -52,16 +52,37 @@ const DAY_NAMES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','D
 const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' })
 const hhmm = (t?: string | null) => (t ? String(t).slice(0, 5) : '--:--')
 
-function getCourseGradient(c: Course, idx: number): string {
+function getCourseGradient(c: Course): string {
   if (c.is_active === false) return 'from-gray-300 to-gray-500'
+  
+  const name = (c.name || '').toLowerCase()
+  
+  // Asignar colores temáticos según el tipo de baile
+  if (name.includes('salsa')) return 'from-amber-400 to-orange-500'
+  if (name.includes('heel')) return 'from-fuchsia-500 to-pink-600'
+  if (name.includes('bachata')) return 'from-indigo-500 to-blue-600'
+  if (name.includes('ballet') || name.includes('lyrical')) return 'from-rose-400 to-pink-500'
+  if (name.includes('reggaeton') || name.includes('urbano') || name.includes('dancehall')) return 'from-emerald-500 to-teal-600'
+  if (name.includes('hip hop') || name.includes('k-pop') || name.includes('kpop')) return 'from-violet-500 to-purple-600'
+  if (name.includes('contemporaneo') || name.includes('jazz')) return 'from-cyan-500 to-blue-500'
+  if (name.includes('twerk')) return 'from-rose-500 to-red-600'
+
+  // Fallback: usar el nombre del curso para generar un hash y asignar un color consistente
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  
   const gradients = [
     'from-fuchsia-500 to-purple-600',
     'from-indigo-500 to-blue-600',
     'from-emerald-500 to-teal-600',
     'from-rose-500 to-pink-600',
-    'from-amber-500 to-orange-600'
+    'from-amber-500 to-orange-600',
+    'from-violet-500 to-indigo-600',
+    'from-cyan-500 to-teal-500'
   ]
-  return gradients[idx % gradients.length]
+  return gradients[Math.abs(hash) % gradients.length]
 }
 
 export default function CoursesPage() {
@@ -74,6 +95,7 @@ export default function CoursesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState<any>({ is_active: true, course_type: 'regular' })
+  const [visibleSlots, setVisibleSlots] = useState(1)
   const [teachers, setTeachers] = useState<any[]>([])
   const [rooms, setRooms] = useState<any[]>([])
   
@@ -109,9 +131,23 @@ export default function CoursesPage() {
   const grouped = useMemo(() => {
     const map = new Map<number | 'nd', { label: string, items: Course[] }>()
     for (const c of data) {
-      const key = (c.day_of_week ?? 'nd') as number | 'nd'
-      if (!map.has(key)) map.set(key, { label: typeof key === 'number' ? DAY_NAMES[key] : 'Sin día', items: [] })
-      map.get(key)!.items.push(c)
+      const days = [
+        c.day_of_week, 
+        c.day_of_week_2, 
+        c.day_of_week_3, 
+        c.day_of_week_4, 
+        c.day_of_week_5
+      ].filter(d => d != null) as number[]
+
+      if (days.length === 0) {
+        if (!map.has('nd')) map.set('nd', { label: 'Sin día', items: [] })
+        map.get('nd')!.items.push(c)
+      } else {
+        for (const day of Array.from(new Set(days))) {
+          if (!map.has(day)) map.set(day, { label: DAY_NAMES[day], items: [] })
+          map.get(day)!.items.push(c)
+        }
+      }
     }
     return Array.from(map.entries()).sort((a,b)=> (a[0] === 'nd' ? 99 : (a[0] as number)) - (b[0] === 'nd' ? 99 : (b[0] as number))).map(([,v])=>v)
   }, [data])
@@ -121,6 +157,7 @@ export default function CoursesPage() {
     if (!course) {
       setEditId(null)
       setForm({ is_active: true, course_type: 'regular' })
+      setVisibleSlots(1)
     } else {
       const f = (t: any) => t ? String(t).slice(0, 5) : ''
       setEditId(course.id)
@@ -132,6 +169,12 @@ export default function CoursesPage() {
         start_time_4: f(course.start_time_4), end_time_4: f(course.end_time_4),
         start_time_5: f(course.start_time_5), end_time_5: f(course.end_time_5),
       })
+      let slots = 1
+      if (course.day_of_week_5 != null || course.start_time_5 != null) slots = 5
+      else if (course.day_of_week_4 != null || course.start_time_4 != null) slots = 4
+      else if (course.day_of_week_3 != null || course.start_time_3 != null) slots = 3
+      else if (course.day_of_week_2 != null || course.start_time_2 != null) slots = 2
+      setVisibleSlots(slots)
     }
     setShowForm(true)
   }
@@ -185,7 +228,7 @@ export default function CoursesPage() {
                 {g.items.map((c, i) => (
                    <div key={c.id} className="group relative bg-white rounded-2xl md:rounded-[28px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden cursor-pointer" onClick={() => window.location.href=`/courses/${c.id}`}>
                     {/* Visual Header */}
-                    <div className={`h-32 md:h-36 relative bg-gradient-to-br ${getCourseGradient(c, i)}`}>
+                    <div className={`h-32 md:h-36 relative bg-gradient-to-br ${getCourseGradient(c)}`}>
                        {c.image_url && <img src={toAbsoluteUrl(c.image_url)} className="w-full h-full object-cover opacity-60 mix-blend-overlay group-hover:scale-110 transition-transform duration-700" />}
                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                        <div className="absolute top-4 right-4">
@@ -269,157 +312,169 @@ export default function CoursesPage() {
 
       {/* Modal Form */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4">
-           <div className="absolute inset-0 bg-black/60 backdrop-blur-xl animate-in fade-in duration-300" onClick={()=>setShowForm(false)} />
-           <div className="relative w-full h-full md:h-auto md:max-w-4xl bg-white rounded-none md:rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-300 md:max-h-[90vh] flex flex-col border border-white/20">
-              <div className="p-5 md:p-8 bg-gradient-to-br from-fuchsia-600 to-purple-600 text-white flex justify-between items-center shrink-0">
-                 <div>
-                    <h2 className="text-xl md:text-2xl font-black">{editId ? 'Editar Clase' : 'Nueva Clase'}</h2>
-                    <p className="text-fuchsia-100 font-bold uppercase tracking-widest text-[8px] md:text-[9px] mt-1">Configuración de programa</p>
-                 </div>
-                 <button onClick={()=>setShowForm(false)} className="p-2 md:p-3 hover:bg-white/10 rounded-xl transition-colors">
-                    <HiOutlineX size={24} />
-                 </button>
-              </div>
-
-              <div className="p-6 md:p-8 overflow-y-auto space-y-6 md:space-y-8 custom-scrollbar flex-1 bg-gray-50/50">
-                 <div className="flex flex-col-reverse md:grid md:grid-cols-12 gap-6 md:gap-10">
-                    <div className="md:col-span-8 space-y-6 md:space-y-8">
-                       <div className="space-y-2">
-                          <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del Curso</label>
-                          <input className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none" value={form.name || ''} onChange={(e)=>setForm({...form, name:e.target.value})} placeholder="Ej: Salsa Cubana" />
-                       </div>
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-                          <div className="space-y-2">
-                             <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nivel</label>
-                             <input className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none" value={form.level || ''} onChange={(e)=>setForm({...form, level:e.target.value})} placeholder="Intermedio" />
-                          </div>
-                          <div className="space-y-2">
-                             <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de Programa</label>
-                             <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none" value={form.course_type || 'regular'} onChange={(e)=>setForm({...form, course_type:e.target.value})}>
-                                <option value="regular">Regular</option>
-                                <option value="choreography">Coreografía</option>
-                             </select>
-                          </div>
-                       </div>
-                    </div>
-                    <div className="md:col-span-4">
-                       <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-2 block">Imagen del Curso</label>
-                       <div className="relative group aspect-square md:aspect-square rounded-2xl md:rounded-[32px] bg-white border-2 border-dashed border-gray-200 flex flex-col items-center justify-center overflow-hidden hover:border-fuchsia-400 transition-colors cursor-pointer" onClick={()=>fileInputRef.current?.click()}>
-                          {(imagePreview || form.image_url) ? (
-                             <img src={imagePreview || toAbsoluteUrl(form.image_url)} className="w-full h-full object-cover" />
-                          ) : (
-                             <>
-                                <HiOutlinePhotograph size={48} className="text-gray-200 group-hover:text-fuchsia-200 transition-colors" />
-                                <span className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase mt-2 md:mt-4">Subir Foto</span>
-                             </>
-                          )}
-                          <input type="file" ref={fileInputRef} className="hidden" onChange={(e)=>{
-                             const f = e.target.files?.[0]
-                             if(f) {
-                                setImageFile(f)
-                                const reader = new FileReader()
-                                reader.onload = (ev) => setImagePreview(ev.target?.result as string)
-                                reader.readAsDataURL(f)
-                             }
-                          }} />
-                       </div>
-                    </div>
-                 </div>
-
-                 {/* Horarios Grid */}
-                  <div className="bg-white p-6 md:p-8 rounded-3xl md:rounded-[40px] border border-gray-100 shadow-sm space-y-4 md:space-y-6">
-                    <div className="flex items-center gap-3 text-fuchsia-600 font-black uppercase tracking-widest text-[9px] md:text-[10px]">
-                       <HiOutlineClock size={18} /> Programación Semanal
-                    </div>
-                    <div className="space-y-3 md:space-y-4">
-                       {[1,2,3,4,5].map(num => {
-                          const suffix = num === 1 ? '' : `_${num}`
-                          const dowK = `day_of_week${suffix}`; const stK = `start_time${suffix}`; const etK = `end_time${suffix}`
-                          return (
-                             <div key={num} className="grid grid-cols-12 gap-2 md:gap-4 pb-3 md:pb-4 border-b border-gray-50 last:border-0 last:pb-0 items-end">
-                                <div className="col-span-5 md:col-span-4">
-                                   <select className="w-full bg-gray-50 border-none px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-fuchsia-100 appearance-none" value={form[dowK] ?? ''} onChange={(e)=>setForm({...form, [dowK]: e.target.value==='' ? null : Number(e.target.value)})}>
-                                      <option value="">(No asig.)</option>
-                                      {DAY_NAMES.map((n,i)=><option key={i} value={i}>{n.slice(0,3)}</option>)}
-                                   </select>
-                                </div>
-                                <div className="col-span-3 md:col-span-4">
-                                   <input type="time" className="w-full bg-gray-50 border-none px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-fuchsia-100" value={form[stK] || ''} onChange={(e)=>setForm({...form, [stK]:e.target.value})} />
-                                </div>
-                                <div className="col-span-4 md:col-span-4">
-                                   <input type="time" className="w-full bg-gray-50 border-none px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-fuchsia-100" value={form[etK] || ''} onChange={(e)=>setForm({...form, [etK]:e.target.value})} />
-                                </div>
-                             </div>
-                          )
-                       })}
-                    </div>
+        <div className="relative z-[60]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+           <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300" onClick={()=>setShowForm(false)} />
+           <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+             <div className="flex min-h-full items-start justify-center p-4 sm:p-8">
+               <div className="relative w-full max-w-4xl bg-white rounded-[24px] md:rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col border border-gray-100">
+                  <div className="p-5 md:p-8 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white flex justify-between items-center shrink-0">
+                     <div>
+                        <h2 className="text-xl md:text-2xl font-black">{editId ? 'Editar Clase' : 'Nueva Clase'}</h2>
+                        <p className="text-fuchsia-100 font-bold uppercase tracking-widest text-[8px] md:text-[9px] mt-1">Configuración de programa</p>
+                     </div>
+                     <button onClick={()=>setShowForm(false)} className="p-2 md:p-3 hover:bg-white/10 rounded-xl transition-colors">
+                        <HiOutlineX size={24} />
+                     </button>
                   </div>
 
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-                    <div className="space-y-2">
-                       <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Instructor Principal</label>
-                       <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none" value={form.teacher_id || ''} onChange={(e)=>setForm({...form, teacher_id:e.target.value})}>
-                          <option value="">Instructor...</option>
-                          {teachers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-                       </select>
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Sala Asignada</label>
-                       <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none" value={form.room_id || ''} onChange={(e)=>setForm({...form, room_id:e.target.value})}>
-                          <option value="">Sala...</option>
-                          {rooms.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
-                       </select>
-                    </div>
-                 </div>
+                  <div className="p-6 md:p-8 overflow-y-auto space-y-6 md:space-y-8 custom-scrollbar bg-gray-50/30">
+                     <div className="flex flex-col-reverse md:grid md:grid-cols-12 gap-6 md:gap-10">
+                        <div className="md:col-span-8 space-y-6 md:space-y-8">
+                           <div className="space-y-2">
+                              <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del Curso</label>
+                              <input className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none shadow-sm" value={form.name || ''} onChange={(e)=>setForm({...form, name:e.target.value})} placeholder="Ej: Salsa Cubana" />
+                           </div>
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                              <div className="space-y-2">
+                                 <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nivel</label>
+                                 <input className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none shadow-sm" value={form.level || ''} onChange={(e)=>setForm({...form, level:e.target.value})} placeholder="Intermedio" />
+                              </div>
+                              <div className="space-y-2">
+                                 <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de Programa</label>
+                                 <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm" value={form.course_type || 'regular'} onChange={(e)=>setForm({...form, course_type:e.target.value})}>
+                                    <option value="regular">Regular</option>
+                                    <option value="choreography">Coreografía</option>
+                                 </select>
+                              </div>
+                           </div>
+                        </div>
+                        <div className="md:col-span-4">
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-2 block">Imagen del Curso</label>
+                           <div className="relative group aspect-square md:aspect-square rounded-2xl md:rounded-[32px] bg-white shadow-sm border-2 border-dashed border-gray-200 flex flex-col items-center justify-center overflow-hidden hover:border-fuchsia-400 transition-colors cursor-pointer" onClick={()=>fileInputRef.current?.click()}>
+                              {(imagePreview || form.image_url) ? (
+                                 <img src={imagePreview || toAbsoluteUrl(form.image_url)} className="w-full h-full object-cover" />
+                              ) : (
+                                 <>
+                                    <HiOutlinePhotograph size={48} className="text-gray-200 group-hover:text-fuchsia-200 transition-colors" />
+                                    <span className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase mt-2 md:mt-4">Subir Foto</span>
+                                 </>
+                              )}
+                              <input type="file" ref={fileInputRef} className="hidden" onChange={(e)=>{
+                                 const f = e.target.files?.[0]
+                                 if(f) {
+                                    setImageFile(f)
+                                    const reader = new FileReader()
+                                    reader.onload = (ev) => setImagePreview(ev.target?.result as string)
+                                    reader.readAsDataURL(f)
+                                 }
+                              }} />
+                           </div>
+                        </div>
+                     </div>
 
-                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
-                    <div className="space-y-2">
-                       <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Mensualidad ($)</label>
-                       <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none" value={form.price || ''} onChange={(e)=>setForm({...form, price:e.target.value})} />
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clase Suelta ($)</label>
-                       <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none" value={form.class_price || ''} onChange={(e)=>setForm({...form, class_price:e.target.value})} />
-                    </div>
-                    <div className="space-y-2 col-span-2 md:col-span-1">
-                       <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Capacidad Máx.</label>
-                       <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none" value={form.max_capacity || ''} onChange={(e)=>setForm({...form, max_capacity:e.target.value})} />
-                    </div>
-                 </div>
-              </div>
+                     {/* Horarios Grid */}
+                      <div className="bg-white p-6 md:p-8 rounded-3xl md:rounded-[40px] border border-gray-100 shadow-sm space-y-4 md:space-y-6">
+                        <div className="flex items-center gap-3 text-fuchsia-600 font-black uppercase tracking-widest text-[9px] md:text-[10px]">
+                           <HiOutlineClock size={18} /> Programación Semanal
+                        </div>
+                        <div className="space-y-3 md:space-y-4">
+                           {[1,2,3,4,5].slice(0, visibleSlots).map(num => {
+                              const suffix = num === 1 ? '' : `_${num}`
+                              const dowK = `day_of_week${suffix}`; const stK = `start_time${suffix}`; const etK = `end_time${suffix}`
+                              return (
+                                 <div key={num} className="grid grid-cols-12 gap-2 md:gap-4 pb-3 md:pb-4 border-b border-gray-50 last:border-0 last:pb-0 items-end">
+                                    <div className="col-span-5 md:col-span-4">
+                                       <select className="w-full bg-gray-50 border-none px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-fuchsia-100 appearance-none" value={form[dowK] ?? ''} onChange={(e)=>setForm({...form, [dowK]: e.target.value==='' ? null : Number(e.target.value)})}>
+                                          <option value="">(No asig.)</option>
+                                          {DAY_NAMES.map((n,i)=><option key={i} value={i}>{n.slice(0,3)}</option>)}
+                                       </select>
+                                    </div>
+                                    <div className="col-span-3 md:col-span-4">
+                                       <input type="time" className="w-full bg-gray-50 border-none px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-fuchsia-100" value={form[stK] || ''} onChange={(e)=>setForm({...form, [stK]:e.target.value})} />
+                                    </div>
+                                    <div className="col-span-4 md:col-span-4">
+                                       <input type="time" className="w-full bg-gray-50 border-none px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-fuchsia-100" value={form[etK] || ''} onChange={(e)=>setForm({...form, [etK]:e.target.value})} />
+                                    </div>
+                                 </div>
+                              )
+                           })}
+                        </div>
+                        {visibleSlots < 5 && (
+                           <button 
+                             onClick={() => setVisibleSlots(v => v + 1)}
+                             className="mt-4 px-4 py-3 w-full border-2 border-dashed border-fuchsia-200 text-fuchsia-600 hover:bg-fuchsia-50 hover:border-fuchsia-300 rounded-xl font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all flex items-center justify-center gap-2"
+                           >
+                             <HiOutlinePlus size={16} /> Añadir otro horario
+                           </button>
+                        )}
+                      </div>
 
-              <div className="p-6 md:p-10 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between shrink-0 gap-6 md:gap-0">
-                 <button onClick={()=>setForm({...form, is_active: !form.is_active})} className="flex items-center gap-3 md:gap-4 group w-full sm:w-auto justify-center">
-                    <div className={`w-10 md:w-14 h-6 md:h-8 rounded-full flex items-center p-1 transition-all ${form.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`}>
-                       <div className={`w-4 md:w-6 h-4 md:h-6 bg-white rounded-full shadow-sm transition-transform ${form.is_active ? 'translate-x-4 md:translate-x-6' : 'translate-x-0'}`} />
-                    </div>
-                    <span className="text-[10px] md:text-sm font-black text-gray-700 uppercase tracking-widest">Activo</span>
-                 </button>
-                 
-                 <div className="flex gap-3 md:gap-4 w-full sm:w-auto">
-                    <button onClick={()=>setShowForm(false)} className="flex-1 sm:flex-none px-6 py-4 font-black uppercase tracking-widest text-[9px] md:text-[10px] text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
-                    <button
-                      disabled={saving}
-                      onClick={async () => {
-                         setSaving(true)
-                         try {
-                           const fd = { ...form }
-                           const clean = (v:any) => (v===""||v===undefined)?null:v
-                           const keys = ['start_time','end_time','start_time_2','end_time_2','start_time_3','end_time_3','start_time_4','end_time_4','start_time_5','end_time_5','price','class_price','max_capacity','teacher_id','room_id']
-                           keys.forEach(k=> fd[k]=clean(fd[k]))
-                           let r; if(editId) r=await api.put(`/api/pms/courses/${editId}`, fd); else r=await api.post('/api/pms/courses', fd)
-                           if(imageFile){ const f=new FormData(); f.append('file', imageFile); await api.post(`/api/pms/courses/${r.data.id}/image`, f) }
-                           setShowForm(false); load()
-                         } catch(e:any){ alert("Error: "+ (e.response?.data?.detail || e.message)) }
-                         finally { setSaving(false) }
-                      }}
-                      className="px-10 py-5 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black uppercase tracking-widest text-[10px] rounded-3xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
-                    >
-                       {saving ? 'Guardando...' : editId ? 'Actualizar Programa' : 'Crear Programa'}
-                    </button>
-                 </div>
-              </div>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                        <div className="space-y-2">
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Instructor Principal</label>
+                           <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm" value={form.teacher_id || ''} onChange={(e)=>setForm({...form, teacher_id:e.target.value})}>
+                              <option value="">Instructor...</option>
+                              {teachers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+                           </select>
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Sala Asignada</label>
+                           <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm" value={form.room_id || ''} onChange={(e)=>setForm({...form, room_id:e.target.value})}>
+                              <option value="">Sala...</option>
+                              {rooms.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                           </select>
+                        </div>
+                     </div>
+
+                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
+                        <div className="space-y-2">
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Mensualidad ($)</label>
+                           <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.price || ''} onChange={(e)=>setForm({...form, price:e.target.value})} />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clase Suelta ($)</label>
+                           <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.class_price || ''} onChange={(e)=>setForm({...form, class_price:e.target.value})} />
+                        </div>
+                        <div className="space-y-2 col-span-2 md:col-span-1">
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Capacidad Máx.</label>
+                           <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.max_capacity || ''} onChange={(e)=>setForm({...form, max_capacity:e.target.value})} />
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="p-6 md:p-8 bg-white border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between shrink-0 gap-6 md:gap-0">
+                     <button onClick={()=>setForm({...form, is_active: !form.is_active})} className="flex items-center gap-3 md:gap-4 group w-full sm:w-auto justify-center">
+                        <div className={`w-10 md:w-14 h-6 md:h-8 rounded-full flex items-center p-1 transition-all ${form.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`}>
+                           <div className={`w-4 md:w-6 h-4 md:h-6 bg-white rounded-full shadow-sm transition-transform ${form.is_active ? 'translate-x-4 md:translate-x-6' : 'translate-x-0'}`} />
+                        </div>
+                        <span className="text-[10px] md:text-sm font-black text-gray-700 uppercase tracking-widest">Activo</span>
+                     </button>
+                     
+                     <div className="flex gap-3 md:gap-4 w-full sm:w-auto">
+                        <button onClick={()=>setShowForm(false)} className="flex-1 sm:flex-none px-6 py-4 font-black uppercase tracking-widest text-[9px] md:text-[10px] text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
+                        <button
+                          disabled={saving}
+                          onClick={async () => {
+                             setSaving(true)
+                             try {
+                               const fd = { ...form }
+                               const clean = (v:any) => (v===""||v===undefined)?null:v
+                               const keys = ['start_time','end_time','start_time_2','end_time_2','start_time_3','end_time_3','start_time_4','end_time_4','start_time_5','end_time_5','price','class_price','max_capacity','teacher_id','room_id']
+                               keys.forEach(k=> fd[k]=clean(fd[k]))
+                               let r; if(editId) r=await api.put(`/api/pms/courses/${editId}`, fd); else r=await api.post('/api/pms/courses', fd)
+                               if(imageFile){ const f=new FormData(); f.append('file', imageFile); await api.post(`/api/pms/courses/${r.data.id}/image`, f) }
+                               setShowForm(false); load()
+                             } catch(e:any){ alert("Error: "+ (e.response?.data?.detail || e.message)) }
+                             finally { setSaving(false) }
+                          }}
+                          className="px-10 py-5 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
+                        >
+                           {saving ? 'Guardando...' : editId ? 'Actualizar Programa' : 'Crear Programa'}
+                        </button>
+                     </div>
+                  </div>
+               </div>
+             </div>
            </div>
         </div>
       )}

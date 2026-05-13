@@ -9,6 +9,18 @@ type Course = {
   day_of_week?: number | null
   start_time?: string | null
   end_time?: string | null
+  day_of_week_2?: number | null
+  start_time_2?: string | null
+  end_time_2?: string | null
+  day_of_week_3?: number | null
+  start_time_3?: string | null
+  end_time_3?: string | null
+  day_of_week_4?: number | null
+  start_time_4?: string | null
+  end_time_4?: string | null
+  day_of_week_5?: number | null
+  start_time_5?: string | null
+  end_time_5?: string | null
   teacher_name?: string | null
   room_name?: string | null
   image_url?: string | null
@@ -20,20 +32,46 @@ const toHour = (t?: string | null) => t ? Number(t.split(':')[0]) : null
 
 const THEME_COLORS = [
   { from: 'from-fuchsia-600', via: 'via-fuchsia-600/90', to: 'to-purple-700', text: 'text-fuchsia-600', light: 'bg-fuchsia-50' },
-  { from: 'from-blue-600', via: 'via-blue-600/90', to: 'to-indigo-700', text: 'text-blue-600', light: 'bg-blue-50' },
+  { from: 'from-indigo-600', via: 'via-indigo-600/90', to: 'to-blue-700', text: 'text-indigo-600', light: 'bg-indigo-50' },
   { from: 'from-emerald-600', via: 'via-emerald-600/90', to: 'to-teal-700', text: 'text-emerald-600', light: 'bg-emerald-50' },
   { from: 'from-rose-600', via: 'via-rose-600/90', to: 'to-pink-700', text: 'text-rose-600', light: 'bg-rose-50' },
   { from: 'from-amber-600', via: 'via-amber-600/90', to: 'to-orange-700', text: 'text-amber-600', light: 'bg-amber-50' },
+  { from: 'from-violet-600', via: 'via-violet-600/90', to: 'to-indigo-700', text: 'text-violet-600', light: 'bg-violet-50' },
+  { from: 'from-cyan-600', via: 'via-cyan-600/90', to: 'to-teal-700', text: 'text-cyan-600', light: 'bg-cyan-50' },
 ]
 
-const hash = (s: string) => { let h=0; for(let i=0; i<s.length; i++) h = (h<<5)-h+s.charCodeAt(i)|0; return Math.abs(h) }
-const getTheme = (c: Course) => THEME_COLORS[hash(c.name + c.id) % THEME_COLORS.length]
+const MULTI_THEMES = [
+  { from: 'from-violet-600', via: 'via-fuchsia-500', to: 'to-orange-500', text: 'text-violet-600', light: 'bg-violet-50' },
+  { from: 'from-cyan-500', via: 'via-blue-500', to: 'to-purple-600', text: 'text-cyan-600', light: 'bg-cyan-50' },
+  { from: 'from-rose-500', via: 'via-pink-500', to: 'to-amber-500', text: 'text-rose-600', light: 'bg-rose-50' },
+  { from: 'from-emerald-500', via: 'via-teal-500', to: 'to-cyan-600', text: 'text-emerald-600', light: 'bg-emerald-50' },
+]
+
+const getTheme = (c: Course) => {
+  const days = [c.day_of_week, c.day_of_week_2, c.day_of_week_3, c.day_of_week_4, c.day_of_week_5].filter(d => d != null)
+  if (new Set(days).size > 1) {
+    return MULTI_THEMES[(c.id || 0) % MULTI_THEMES.length]
+  }
+
+  const name = (c.name || '').toLowerCase()
+  if (name.includes('salsa')) return THEME_COLORS[4]
+  if (name.includes('heel')) return THEME_COLORS[0]
+  if (name.includes('bachata')) return THEME_COLORS[1]
+  if (name.includes('ballet') || name.includes('lyrical')) return THEME_COLORS[3]
+  if (name.includes('reggaeton') || name.includes('urbano') || name.includes('dancehall')) return THEME_COLORS[2]
+  if (name.includes('hip hop') || name.includes('k-pop') || name.includes('kpop')) return THEME_COLORS[5]
+  if (name.includes('contemporaneo') || name.includes('jazz')) return THEME_COLORS[6]
+  if (name.includes('twerk')) return THEME_COLORS[3]
+
+  let h = 0; for(let i=0; i<name.length; i++) h = (h<<5)-h+name.charCodeAt(i)|0; 
+  return THEME_COLORS[Math.abs(h) % THEME_COLORS.length]
+}
 
 export default function CalendarPage() {
   const { tenantId } = useTenant()
   const [data, setData] = useState<Course[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedDay, setSelectedDay] = useState(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1) // 0=Mon, 6=Sun
+  const [selectedDay, setSelectedDay] = useState(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1)
 
   useEffect(() => {
     const load = async () => {
@@ -51,12 +89,16 @@ export default function CalendarPage() {
     let hasValidHours = false
 
     for(const c of data) {
-      const h = toHour(c.start_time)
-      const endH = toHour(c.end_time)
-      if(h != null) { 
-        min = Math.min(min, h)
-        max = Math.max(max, endH != null ? endH + 1 : h + 1)
-        hasValidHours = true
+      const starts = [c.start_time, c.start_time_2, c.start_time_3, c.start_time_4, c.start_time_5]
+      const ends = [c.end_time, c.end_time_2, c.end_time_3, c.end_time_4, c.end_time_5]
+      for (let i = 0; i < 5; i++) {
+        const h = toHour(starts[i])
+        const endH = toHour(ends[i])
+        if(h != null) { 
+          min = Math.min(min, h)
+          max = Math.max(max, endH != null ? endH + 1 : h + 1)
+          hasValidHours = true
+        }
       }
     }
 
@@ -134,11 +176,29 @@ export default function CalendarPage() {
 
                     {/* Day Columns */}
                     {DAY_NAMES.map((_, dayIdx) => {
-                      const classes = data.filter(c => c.day_of_week === dayIdx && toHour(c.start_time) === h)
+                      const classes = data.filter(c => {
+                        const schedules = [
+                          { d: c.day_of_week, t: c.start_time },
+                          { d: c.day_of_week_2, t: c.start_time_2 },
+                          { d: c.day_of_week_3, t: c.start_time_3 },
+                          { d: c.day_of_week_4, t: c.start_time_4 },
+                          { d: c.day_of_week_5, t: c.start_time_5 },
+                        ]
+                        return schedules.some(s => s.d === dayIdx && toHour(s.t) === h)
+                      })
+
                       return (
                         <div key={dayIdx} className={`p-1.5 md:p-2 border-r border-gray-100 last:border-0 min-h-[80px] md:min-h-[110px] transition-colors hover:bg-gray-50/50 relative ${selectedDay !== dayIdx ? 'hidden md:block' : 'block'}`}>
                           <div className="flex flex-col gap-2 md:gap-2 h-full">
                             {classes.map(c => {
+                              const schedules = [
+                                { d: c.day_of_week, t: c.start_time },
+                                { d: c.day_of_week_2, t: c.start_time_2 },
+                                { d: c.day_of_week_3, t: c.start_time_3 },
+                                { d: c.day_of_week_4, t: c.start_time_4 },
+                                { d: c.day_of_week_5, t: c.start_time_5 },
+                              ]
+                              const currentSchedule = schedules.find(s => s.d === dayIdx && toHour(s.t) === h)
                               const theme = getTheme(c)
                               return (
                                 <div 
@@ -159,7 +219,7 @@ export default function CalendarPage() {
                                     <div className="flex flex-wrap gap-1.5">
                                       <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-bold text-white bg-black/20 backdrop-blur-sm px-2 py-1 rounded-lg w-fit shrink-0 border border-white/10">
                                         <HiOutlineClock size={12} />
-                                        {hhmm(c.start_time)}
+                                        {hhmm(currentSchedule?.t || c.start_time)}
                                       </div>
                                       <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-bold text-white bg-black/20 backdrop-blur-sm px-2 py-1 rounded-lg w-fit shrink-0 border border-white/10">
                                         <HiOutlineUser size={12} />

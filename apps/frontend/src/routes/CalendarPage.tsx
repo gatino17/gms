@@ -208,8 +208,8 @@ export default function CalendarPage() {
                                 >
                                   {/* Blurred Background Image */}
                                   {c.image_url && (
-                                    <div className="absolute inset-0 opacity-20 group-hover/card:opacity-40 transition-opacity duration-500">
-                                      <img src={toAbsoluteUrl(c.image_url)} className="w-full h-full object-cover blur-[3px] scale-125 origin-center" />
+                                    <div className="absolute inset-0 opacity-30 group-hover/card:opacity-80 transition-opacity duration-500">
+                                      <img src={toAbsoluteUrl(c.image_url)} className="w-full h-full object-cover blur-[3px] group-hover/card:blur-[1px] scale-125 origin-center transition-all duration-500" />
                                       <div className={`absolute inset-0 bg-gradient-to-br ${theme.from} ${theme.to} mix-blend-overlay`} />
                                     </div>
                                   )}

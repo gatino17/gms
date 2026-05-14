@@ -19,7 +19,7 @@ import { useTenant } from '../lib/tenant'
 import RenewModal from '../components/RenewModal'
 
 type CourseRow = {
-  course: { id: number; name: string; level?: string; start_date?: string | null; price?: number | null; classes_per_week?: number | null; day_of_week?: number | null }
+  course: { id: number; name: string; level?: string; start_date?: string | null; price?: number | null; classes_per_week?: number | null; day_of_week?: number | null; course_type?: string | null; total_classes?: number | null }
   teacher?: { id: number | null; name?: string | null } | null
   counts?: { total: number; female: number; male: number }
   students: {

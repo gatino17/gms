@@ -46,6 +46,7 @@ type Course = {
   teacher_name?: string | null
   room_name?: string | null
   student_count?: number
+  total_classes?: number | null
 }
 
 const DAY_NAMES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
@@ -156,7 +157,7 @@ export default function CoursesPage() {
     setImageFile(null); setImagePreview(null)
     if (!course) {
       setEditId(null)
-      setForm({ is_active: true, course_type: 'regular' })
+      setForm({ is_active: true, course_type: 'regular', classes_per_week: 1 })
       setVisibleSlots(1)
     } else {
       const f = (t: any) => t ? String(t).slice(0, 5) : ''
@@ -169,11 +170,11 @@ export default function CoursesPage() {
         start_time_4: f(course.start_time_4), end_time_4: f(course.end_time_4),
         start_time_5: f(course.start_time_5), end_time_5: f(course.end_time_5),
       })
-      let slots = 1
-      if (course.day_of_week_5 != null || course.start_time_5 != null) slots = 5
-      else if (course.day_of_week_4 != null || course.start_time_4 != null) slots = 4
-      else if (course.day_of_week_3 != null || course.start_time_3 != null) slots = 3
-      else if (course.day_of_week_2 != null || course.start_time_2 != null) slots = 2
+      const slots = course.classes_per_week || 
+                    (course.day_of_week_5 != null ? 5 : 
+                     course.day_of_week_4 != null ? 4 : 
+                     course.day_of_week_3 != null ? 3 : 
+                     course.day_of_week_2 != null ? 2 : 1)
       setVisibleSlots(slots)
     }
     setShowForm(true)
@@ -277,8 +278,13 @@ export default function CoursesPage() {
 
                        <div className="pt-3 border-t border-gray-50 flex items-center justify-between">
                           <div className="flex flex-col">
-                             <span className="text-[8px] font-black text-gray-400 uppercase leading-none mb-1">Mensual</span>
+                             <span className="text-[8px] font-black text-gray-400 uppercase leading-none mb-1">
+                                {c.course_type === 'choreography' ? 'Total Proyecto' : 'Mensual'}
+                             </span>
                              <span className="text-base font-black text-gray-900 leading-none">{fmtCLP.format(Number(c.price || 0))}</span>
+                             {c.course_type === 'choreography' && c.total_classes && (
+                                <span className="text-[8px] font-bold text-fuchsia-400 uppercase mt-1">{c.total_classes} clases</span>
+                             )}
                           </div>
                           <div className="text-right min-w-0">
                              <div className="text-[9px] font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors truncate">{c.teacher_name || 'Sin Instructor'}</div>
@@ -346,6 +352,32 @@ export default function CoursesPage() {
                                     <option value="choreography">Coreografía</option>
                                  </select>
                               </div>
+                              <div className="space-y-2">
+                                 <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clases por Semana</label>
+                                 <select 
+                                    className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm" 
+                                    value={form.classes_per_week || 1} 
+                                    onChange={(e)=>{
+                                       const v = Number(e.target.value)
+                                       setForm({...form, classes_per_week: v})
+                                       setVisibleSlots(v)
+                                    }}
+                                 >
+                                    {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} clase{n>1?'s':''} / sem</option>)}
+                                 </select>
+                              </div>
+                              {form.course_type === 'choreography' && (
+                                 <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                                    <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Total Clases del Proyecto</label>
+                                    <input 
+                                       type="number" 
+                                       className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none shadow-sm" 
+                                       value={form.total_classes || ''} 
+                                       onChange={(e)=>setForm({...form, total_classes: e.target.value==='' ? null : Number(e.target.value)})} 
+                                       placeholder="Ej: 8" 
+                                    />
+                                 </div>
+                              )}
                            </div>
                         </div>
                         <div className="md:col-span-4">
@@ -399,14 +431,6 @@ export default function CoursesPage() {
                               )
                            })}
                         </div>
-                        {visibleSlots < 5 && (
-                           <button 
-                             onClick={() => setVisibleSlots(v => v + 1)}
-                             className="mt-4 px-4 py-3 w-full border-2 border-dashed border-fuchsia-200 text-fuchsia-600 hover:bg-fuchsia-50 hover:border-fuchsia-300 rounded-xl font-black uppercase tracking-widest text-[9px] md:text-[10px] transition-all flex items-center justify-center gap-2"
-                           >
-                             <HiOutlinePlus size={16} /> Añadir otro horario
-                           </button>
-                        )}
                       </div>
 
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
@@ -463,7 +487,7 @@ export default function CoursesPage() {
                              try {
                                const fd = { ...form }
                                const clean = (v:any) => (v===""||v===undefined)?null:v
-                               const keys = ['start_time','end_time','start_time_2','end_time_2','start_time_3','end_time_3','start_time_4','end_time_4','start_time_5','end_time_5','price','class_price','max_capacity','teacher_id','room_id','start_date']
+                               const keys = ['start_time','end_time','start_time_2','end_time_2','start_time_3','end_time_3','start_time_4','end_time_4','start_time_5','end_time_5','price','class_price','max_capacity','teacher_id','room_id','start_date','total_classes','classes_per_week']
                                keys.forEach(k=> fd[k]=clean(fd[k]))
                                let r; if(editId) r=await api.put(`/api/pms/courses/${editId}`, fd); else r=await api.post('/api/pms/courses', fd)
                                if(imageFile){ const f=new FormData(); f.append('file', imageFile); await api.post(`/api/pms/courses/${r.data.id}/image`, f) }

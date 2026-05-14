@@ -411,7 +411,7 @@ export default function CourseStatusByGenderPage() {
 
 type GenderTableProps = {
   title: string
-  students: (CourseRow['students'][number] & { expected: number; attPct: number; extra: number; statusLabel: string; statusClass: string })
+  students: (CourseRow['students'][number] & { expected: number; attPct: number; extra: number; statusLabel: string; statusClass: string })[]
   onView: (id: number) => void
 }
 

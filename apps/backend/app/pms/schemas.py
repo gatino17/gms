@@ -109,6 +109,7 @@ class StudentOut(StudentBase):
     tenant_id: int
     created_at: datetime
     updated_at: datetime
+    enrollment_count: Optional[int] = 0
 
     class Config:
         from_attributes = True

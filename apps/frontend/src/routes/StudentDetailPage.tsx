@@ -34,8 +34,12 @@ type PortalData = {
     id:number; is_active:boolean; payment_status?: string | null;
     start_date?:string|null; end_date?:string|null;
     course:{ 
-      id:number; name:string; day_of_week?:number|null; 
-      start_time?:string|null; end_time?:string|null; 
+      id:number; name:string; 
+      day_of_week?:number|null; start_time?:string|null; end_time?:string|null; 
+      day_of_week_2?:number|null; start_time_2?:string|null; end_time_2?:string|null;
+      day_of_week_3?:number|null; start_time_3?:string|null; end_time_3?:string|null;
+      day_of_week_4?:number|null; start_time_4?:string|null; end_time_4?:string|null;
+      day_of_week_5?:number|null; start_time_5?:string|null; end_time_5?:string|null;
       teacher_name?:string|null; image_url?:string|null 
     }
   }[]
@@ -51,7 +55,7 @@ type PortalData = {
   }
 }
 
-type CalDay = { date:string; expected:boolean; attended:boolean; expected_course_ids?: number[]; attended_course_ids?: number[] }
+type CalDay = { date:string; expected:boolean; attended:boolean; is_recovery?: boolean; expected_course_ids?: number[]; attended_course_ids?: number[] }
 
 const CL_TZ = 'America/Santiago'
 const DAY_NAMES_MON_FIRST = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'] as const
@@ -114,6 +118,29 @@ export default function StudentDetailPage() {
 
   useEffect(() => { loadData() }, [id, tenantId])
   useEffect(() => { loadCalendar() }, [id, calYear, calMonth, tenantId])
+
+  const handleDayClick = async (day: CalDay) => {
+    if (!day.attended || !day.attended_course_ids || day.attended_course_ids.length === 0) return
+
+    const confirmDelete = window.confirm(`¿Seguro que deseas ELIMINAR la asistencia del día ${ymdToCL(day.date)}?`)
+    if (!confirmDelete) return
+
+    try {
+      for (const courseId of day.attended_course_ids) {
+        await api.delete('/api/pms/attendance', {
+          params: {
+            student_id: id,
+            course_id: courseId,
+            attended_date: day.date
+          }
+        })
+      }
+      await loadCalendar()
+      await loadData()
+    } catch (e: any) {
+      alert('Error al eliminar: ' + (e.response?.data?.detail || e.message))
+    }
+  }
 
   if (loading && !data) return (
     <div className="flex flex-col items-center justify-center py-40 gap-4">
@@ -246,12 +273,24 @@ export default function StudentDetailPage() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-4 md:gap-6 p-4 md:p-5 bg-gray-50 rounded-2xl md:rounded-3xl border border-gray-100">
+                              <div>
+                                 <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><HiOutlineClock /> Horario</div>
+                                 <div className="flex flex-col gap-0.5">
+                                   {[
+                                     { d: e.course.day_of_week, t: e.course.start_time },
+                                     { d: e.course.day_of_week_2, t: e.course.start_time_2 },
+                                     { d: e.course.day_of_week_3, t: e.course.start_time_3 },
+                                     { d: e.course.day_of_week_4, t: e.course.start_time_4 },
+                                     { d: e.course.day_of_week_5, t: e.course.start_time_5 },
+                                   ].filter(s => s.d !== null && s.d !== undefined).map((s, idx) => (
+                                     <div key={idx} className="text-[11px] md:text-sm font-black text-gray-700">
+                                       {DAY_NAMES_MON_FIRST[s.d! % 7]} • {(s.t || '').slice(0, 5)}
+                                     </div>
+                                   ))}
+                                 </div>
+                              </div>
                              <div>
-                                <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><HiOutlineClock /> Horario</div>
-                                <div className="text-[12px] md:text-sm font-black text-gray-700">{DAY_NAMES_MON_FIRST[e.course.day_of_week ?? 0]} • {(e.course.start_time||'').slice(0,5)}</div>
-                             </div>
-                             <div>
-                                <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><HiOutlineCalendar /> Ciclo</div>
+                                <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><HiOutlineCalendar /> Próxima Renovación</div>
                                 <div className="text-[12px] md:text-sm font-black text-gray-700">{ymdToCL(e.end_date)}</div>
                              </div>
                           </div>
@@ -271,7 +310,7 @@ export default function StudentDetailPage() {
 
                           <div className="flex flex-col sm:flex-row gap-3 pt-2">
                              <button onClick={() => setRenewModalData({ studentId: student.id, courseId: e.course.id, enrollmentId: e.id })} className="flex-1 py-3.5 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-xl md:rounded-2xl hover:bg-fuchsia-600 hover:scale-[1.02] transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2">
-                                <HiOutlineRefresh size={18} /> Renovar Ciclo
+                                <HiOutlineRefresh size={18} /> Renovar Plan
                              </button>
                              <button onClick={() => { setEditMode('edit'); setShowEdit(true) }} className="p-3.5 bg-gray-50 text-gray-400 rounded-xl md:rounded-2xl hover:text-fuchsia-600 hover:bg-white hover:shadow-lg transition-all flex items-center justify-center">
                                 <HiOutlinePencil size={20} />
@@ -310,8 +349,9 @@ export default function StudentDetailPage() {
                        res.push(
                           <div 
                              key={i} 
+                             onClick={() => handleDayClick(d)}
                              className={`aspect-square rounded-lg md:rounded-2xl border-2 flex flex-col items-center justify-center transition-all duration-300 hover:scale-110 cursor-pointer relative group ${
-                                d.attended ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-100' : 
+                                d.attended ? (d.is_recovery ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-100' : 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-100') : 
                                 d.expected ? 'bg-rose-50 border-rose-100 text-rose-400 hover:bg-rose-100' : 
                                 'bg-white border-gray-50 text-gray-300 hover:border-fuchsia-100'
                              } ${isToday ? 'ring-2 md:ring-4 ring-fuchsia-100 border-fuchsia-500 !text-fuchsia-600' : ''}`}
@@ -327,6 +367,7 @@ export default function StudentDetailPage() {
               
               <div className="flex flex-wrap items-center gap-6 pt-4 border-t border-gray-50">
                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-lg bg-emerald-500 shadow-md" /><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Asistido</span></div>
+                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-lg bg-blue-500 shadow-md" /><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recuperación</span></div>
                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-lg bg-rose-50 border border-rose-100" /><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ausencia</span></div>
                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-lg bg-white border border-gray-50" /><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sin Sesión</span></div>
               </div>

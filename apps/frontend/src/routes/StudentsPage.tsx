@@ -34,6 +34,14 @@ type Student = {
   photo_url?: string | null
   joined_at?: string | null
   is_active?: boolean
+  enrollment_count?: number
+}
+
+function ymdToCL(ymd?: string | null): string { 
+  if (!ymd) return '-'; 
+  const [y,m,d] = ymd.split('-').map(Number); 
+  const dt = new Date(y, (m||1)-1, d||1); 
+  return dt.toLocaleDateString('es-CL'); 
 }
 
 export default function StudentsPage() {
@@ -155,6 +163,7 @@ export default function StudentsPage() {
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contacto</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Registro</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Ingreso</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
                   </tr>
@@ -188,8 +197,24 @@ export default function StudentsPage() {
                           {s.is_active ? 'Activo' : 'Inactivo'}
                         </span>
                       </td>
+                      <td className="block md:table-cell px-6 py-1 md:py-4 text-left md:text-center">
+                        <div className="flex flex-col items-start md:items-center gap-1">
+                          {(s.enrollment_count || 0) > 0 ? (
+                            <span className="inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest bg-fuchsia-50 text-fuchsia-600 border border-fuchsia-100">
+                              Ingresado con Curso
+                            </span>
+                          ) : (
+                            <span className="inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100">
+                              Pendiente Curso
+                            </span>
+                          )}
+                          <span className="text-[7px] font-bold text-gray-400 uppercase tracking-tighter">
+                            {s.enrollment_count || 0} inscripciones
+                          </span>
+                        </div>
+                      </td>
                       <td className="hidden md:table-cell px-6 py-4 text-center font-bold text-xs text-gray-500">
-                        {s.joined_at ? new Date(s.joined_at).toLocaleDateString('es-CL') : '-'}
+                        {ymdToCL(s.joined_at)}
                       </td>
                       <td className="block md:table-cell px-6 py-3 md:py-4 text-left md:text-right">
                          <div className="flex items-center justify-start md:justify-end gap-2">
@@ -309,7 +334,19 @@ export default function StudentsPage() {
         />
       )}
 
-      {showCreate && <CreateStudentModal onClose={() => setShowCreate(false)} onSuccess={() => { setShowCreate(false); load() }} />}
+      {showCreate && (
+        <CreateStudentModal 
+           onClose={() => setShowCreate(false)} 
+           onSuccess={(student, shouldEnroll) => { 
+              setShowCreate(false); 
+              load();
+              if (shouldEnroll) {
+                 setSelectedStudent(student);
+                 setShowEnroll(true);
+              }
+           }} 
+        />
+      )}
       {showEdit && selectedStudent && (
         <EditStudentModal
           student={selectedStudent as any}

@@ -35,10 +35,23 @@ async def list_students(
         like = f"%{q}%"
         conditions.append((Student.first_name.ilike(like)) | (Student.last_name.ilike(like)) | (Student.email.ilike(like)))
 
-    # Fetch items
-    stmt = select(Student).where(*conditions).order_by(Student.created_at.desc()).offset(offset).limit(limit)
+    # Fetch items with enrollment count
+    stmt = (
+        select(Student, func.count(Enrollment.id))
+        .outerjoin(Enrollment, Enrollment.student_id == Student.id)
+        .where(*conditions)
+        .group_by(Student.id)
+        .order_by(Student.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
     res = await db.execute(stmt)
-    items = res.scalars().all()
+    rows = res.all()
+    
+    items = []
+    for s, count in rows:
+        setattr(s, 'enrollment_count', count)
+        items.append(s)
 
     # Combine total count and stats into ONE query
     lower_gender = func.lower(Student.gender)
@@ -196,13 +209,19 @@ async def student_portal_summary(
         .order_by(Enrollment.start_date.desc())
     )
     enroll_rows = eres.all()
+    today_dt = date.today()
     enrollments = []
     for e, c in enroll_rows:
+        is_paid = False
+        if e.end_date and e.end_date >= today_dt:
+            is_paid = True
+
         enrollments.append({
             "id": e.id,
             "start_date": e.start_date.isoformat() if e.start_date else None,
             "end_date": e.end_date.isoformat() if e.end_date else None,
             "is_active": bool(e.is_active),
+            "payment_status": "activo" if is_paid else "pendiente",
             "course": {
                 "id": c.id,
                 "name": c.name,
@@ -250,7 +269,6 @@ async def student_portal_summary(
     att_count = len(attendance_recent)
     att_percent = int(round((att_count / 5) * 100)) if att_count < 5 else 100
 
-    from datetime import date, timedelta
     pres = await db.execute(
         select(Payment, Course, Teacher)
         .join(Course, Course.id == Payment.course_id, isouter=True)
@@ -460,7 +478,7 @@ async def attendance_calendar(
                 cur += timedelta(days=7)
 
     ares = await db.execute(
-        select(Attendance.course_id, Attendance.attended_at)
+        select(Attendance.course_id, Attendance.attended_at, Attendance.is_recovery)
         .where(
             Attendance.tenant_id == tenant_id,
             Attendance.student_id == student_id,
@@ -468,22 +486,25 @@ async def attendance_calendar(
             Attendance.attended_at < (last_day + timedelta(days=1)),
         )
     )
-    attended: set[tuple[date, int]] = set()
-    for cid, at in ares.all():
-        attended.add((at.date(), cid))
+    attended_map: dict[date, list[dict]] = {}
+    for cid, at, rec in ares.all():
+        dt = at.date()
+        if dt not in attended_map: attended_map[dt] = []
+        attended_map[dt].append({"course_id": cid, "is_recovery": bool(rec)})
 
     days = []
     cur = first_day
     while cur <= last_day:
         exp_ids = [cid for (d, cid) in expected if d == cur]
-        att_ids = [cid for (d, cid) in attended if d == cur]
-        exp = len(exp_ids) > 0
-        att = len(att_ids) > 0
+        att_info = attended_map.get(cur, [])
+        att_ids = [i["course_id"] for i in att_info]
+        has_recovery = any(i["is_recovery"] for i in att_info)
+        
         days.append({
             "date": cur.isoformat(),
-            "expected": bool(exp),
-            "attended": bool(att),
-            # Nuevos campos para control fino en frontend
+            "expected": len(exp_ids) > 0,
+            "attended": len(att_ids) > 0,
+            "is_recovery": has_recovery,
             "expected_course_ids": exp_ids,
             "attended_course_ids": att_ids,
         })

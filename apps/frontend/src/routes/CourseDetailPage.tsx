@@ -10,8 +10,10 @@ import {
   HiOutlineCalendar,
   HiOutlineStar,
   HiOutlineLightningBolt,
-  HiOutlineTicket
+  HiOutlineTicket,
+  HiOutlineUser
 } from 'react-icons/hi'
+import { IoMale, IoFemale } from 'react-icons/io5'
 
 type StudentRow = {
   id: number
@@ -24,9 +26,17 @@ type StudentRow = {
   attendance_count?: number
   birthday_today?: boolean
   attended_today?: boolean
+  photo_url?: string | null
 }
 
 const fmtCLP = (n: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(n)
+
+function ymdToCL(ymd?: string | null): string { 
+  if (!ymd) return ''; 
+  const [y,m,d] = ymd.split('-').map(Number); 
+  const dt = new Date(y, (m||1)-1, d||1); 
+  return dt.toLocaleDateString('es-CL', { day:'2-digit', month:'short' }) 
+}
 
 export default function CourseDetailPage() {
   const navigate = useNavigate()
@@ -37,6 +47,7 @@ export default function CourseDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [attLoadingId, setAttLoadingId] = useState<number | null>(null)
   const [attendedToday, setAttendedToday] = useState<Set<number>>(new Set())
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [stuStats, setStuStats] = useState<Record<number, { expected: number; attended: number }>>({})
 
   const fetchTodayAttendance = async () => {
@@ -81,10 +92,10 @@ export default function CourseDetailPage() {
       (s.gender || '').toLowerCase().startsWith('f') ||
       (s.gender || '').toLowerCase().startsWith('muj')
     ).length
-    const male = students.filter(s =>
-      (s.gender || '').toLowerCase().startsWith('m') &&
-      !(s.gender || '').toLowerCase().startsWith('muj')
-    ).length
+    const male = students.filter(s => {
+      const g = (s.gender || '').toLowerCase()
+      return (g.startsWith('m') && !g.startsWith('muj')) || g.startsWith('h')
+    }).length
     return { total, activos, pendientes, female, male }
   }, [data])
 
@@ -92,7 +103,11 @@ export default function CourseDetailPage() {
     if (!id) return
     try {
       setAttLoadingId(studentId)
-      await api.post('/api/pms/attendance', { student_id: studentId, course_id: Number(id) })
+      await api.post('/api/pms/attendance', { 
+        student_id: studentId, 
+        course_id: Number(id),
+        is_recovery: isRecoveryMode
+      })
       setAttendedToday(prev => new Set(prev).add(studentId))
       fetchDetail() // Refresh to update counts
     } catch (e: any) {
@@ -146,17 +161,39 @@ export default function CourseDetailPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                {[
                  { label: 'Alumnos', value: counts.total, icon: HiOutlineUserGroup, color: 'fuchsia' },
                  { label: 'Precio', value: fmtCLP(course.price || 0), icon: HiOutlineTicket, color: 'emerald' },
+                 { label: 'Inicio', value: ymdToCL(course.start_date) || '---', icon: HiOutlineCalendar, color: 'indigo' },
                  { label: 'Estado', value: course.is_active !== false ? 'Abierta' : 'Cerrada', icon: HiOutlineStar, color: 'blue' },
                  { label: 'Sesiones', value: `${course.classes_per_week || 1}/sem`, icon: HiOutlineClock, color: 'amber' },
+                 { 
+                   label: 'Género', 
+                   value: (
+                     <div className="flex items-center gap-3">
+                       <div className="flex items-center gap-1.5">
+                         <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-sm">
+                           <IoMale size={14} />
+                         </div>
+                         <span className="text-sm md:text-base">{counts.male}</span>
+                       </div>
+                       <div className="flex items-center gap-1.5">
+                         <div className="w-6 h-6 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center border border-pink-100 shadow-sm">
+                           <IoFemale size={14} />
+                         </div>
+                         <span className="text-sm md:text-base">{counts.female}</span>
+                       </div>
+                     </div>
+                   ), 
+                   icon: HiOutlineUser, 
+                   color: 'rose' 
+                 },
                ].map((s, i) => (
                  <div key={i} className="bg-gray-50/50 p-4 rounded-2xl md:rounded-3xl border border-gray-100 flex flex-col items-center md:items-start">
                     <div className={`text-${s.color}-600 mb-2`}><s.icon size={18} /></div>
                     <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
-                    <div className="text-base md:text-lg font-black text-gray-900">{s.value}</div>
+                    <div className="text-base md:text-lg font-black text-gray-900 mt-1">{s.value}</div>
                  </div>
                ))}
             </div>
@@ -179,7 +216,16 @@ export default function CourseDetailPage() {
       {/* Students Section */}
       <div className="space-y-6 px-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-           <h2 className="text-2xl font-black text-gray-900 text-center md:text-left">Lista de Alumnos</h2>
+           <div className="flex flex-col md:flex-row items-center gap-4">
+              <h2 className="text-2xl font-black text-gray-900 text-center md:text-left">Lista de Alumnos</h2>
+              <button 
+                onClick={() => setIsRecoveryMode(!isRecoveryMode)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 transition-all ${isRecoveryMode ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm' : 'bg-gray-50 border-gray-100 text-gray-400'}`}
+              >
+                <div className={`w-3 h-3 rounded-full ${isRecoveryMode ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'}`} />
+                <span className="text-[10px] font-black uppercase tracking-widest">{isRecoveryMode ? 'Recuperación Activa' : 'Modo Normal'}</span>
+              </button>
+           </div>
            <div className="flex flex-wrap justify-center md:justify-end gap-3 md:gap-4">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-pink-50 rounded-xl border border-pink-100">
                  <span className="text-sm">👩</span>
@@ -201,7 +247,7 @@ export default function CourseDetailPage() {
               <tr className="bg-gray-50/50 text-left border-b border-gray-100">
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno</th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Renovación</th>
+                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Próxima Renovación</th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Asistencia</th>
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
               </tr>
@@ -215,8 +261,12 @@ export default function CourseDetailPage() {
                   <tr key={s.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors">
                     <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6">
                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 ${isPaid ? 'bg-fuchsia-100 text-fuchsia-600' : 'bg-gray-100 text-gray-400'}`}>
-                             {s.first_name[0]}{s.last_name[0]}
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 overflow-hidden ${isPaid ? 'bg-fuchsia-100 text-fuchsia-600' : 'bg-gray-100 text-gray-400'}`}>
+                             {s.photo_url ? (
+                                <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" />
+                             ) : (
+                                `${s.first_name[0]}${s.last_name[0]}`
+                             )}
                           </div>
                           <div className="min-w-0">
                              <div className="font-black text-gray-900 truncate">{s.first_name} {s.last_name}</div>
@@ -230,7 +280,7 @@ export default function CourseDetailPage() {
                        </span>
                     </td>
                     <td className="hidden md:table-cell px-6 py-6 text-center font-bold text-sm text-gray-600">
-                       {s.renewal_date ? new Date(s.renewal_date).toLocaleDateString('es-CL', { day:'2-digit', month:'short' }) : '---'}
+                       {s.renewal_date ? ymdToCL(s.renewal_date) : '---'}
                     </td>
                     <td className="block md:table-cell px-6 py-2 md:py-6 text-left md:text-center">
                        <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Asistencia Hoy</div>
@@ -248,7 +298,7 @@ export default function CourseDetailPage() {
                             <button 
                                disabled={attLoadingId === s.id}
                                onClick={() => markAttendance(s.id)}
-                               className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all disabled:opacity-50"
+                               className={`flex-1 md:flex-none px-4 py-2.5 text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all disabled:opacity-50 ${isRecoveryMode ? 'bg-blue-500 hover:bg-blue-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
                             >
                                {attLoadingId === s.id ? '...' : 'Presente'}
                             </button>

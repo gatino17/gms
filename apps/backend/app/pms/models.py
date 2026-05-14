@@ -172,6 +172,7 @@ class Attendance(Base):
     attended_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False, index=True)
     marked_by: Mapped[Optional[str]] = mapped_column(String(80))
     notes: Mapped[Optional[str]] = mapped_column(Text())
+    is_recovery: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class Payment(Base):

@@ -15,13 +15,14 @@ import {
 
 type Props = {
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (student: any, shouldEnroll: boolean) => void
 }
 
 export default function CreateStudentModal({ onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false)
   const [courses, setCourses] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [createdStudentId, setCreatedStudentId] = useState<number | null>(null)
   
   // Student Info
   const [form, setForm] = useState({
@@ -44,20 +45,36 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
     api.get('/api/pms/courses').then(res => setCourses(res.data.items || []))
   }, [])
 
-  const handleSave = async () => {
+  const handleSave = async (shouldEnroll: boolean = false) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.post('/api/pms/students', form)
-      const studentId = res.data.id
+      let student = null
+      let studentId = createdStudentId
+
+      if (!studentId) {
+        // First attempt: Create student
+        const res = await api.post('/api/pms/students', form)
+        student = res.data
+        studentId = student.id
+        setCreatedStudentId(studentId)
+      } else {
+        // Retry attempt: Update existing student
+        const res = await api.put(`/api/pms/students/${studentId}`, form)
+        student = res.data
+      }
       
       if (imageFile) {
         const fd = new FormData()
         fd.append('file', imageFile)
         await api.post(`/api/pms/students/${studentId}/photo`, fd)
+        
+        // Refresh student data after photo upload to get the photo_url
+        const refreshRes = await api.get(`/api/pms/students/${studentId}`)
+        student = refreshRes.data
       }
       
-      onSuccess()
+      onSuccess(student, shouldEnroll)
     } catch (e: any) {
       const detail = e.response?.data?.detail
       if (Array.isArray(detail)) {
@@ -227,13 +244,22 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
 
         {/* Footer */}
         <div className="px-6 py-4 md:px-8 md:py-5 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
-           <button onClick={onClose} className="px-8 py-4 font-black uppercase tracking-widest text-[10px] text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
+           <button onClick={onClose} className="px-4 py-4 font-black uppercase tracking-widest text-[10px] text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
+           
            <button 
-              onClick={handleSave}
+              onClick={() => handleSave(false)}
               disabled={loading || !form.first_name || !form.last_name}
-              className="px-10 py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
+              className="px-6 py-4 bg-white border-2 border-gray-200 text-gray-700 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-gray-100 disabled:opacity-50 transition-all flex items-center gap-2"
            >
-              {loading ? 'Procesando...' : 'Guardar Alumno'} <HiOutlineChevronRight size={16} />
+              {loading ? '...' : 'Solo Guardar'}
+           </button>
+
+           <button 
+              onClick={() => handleSave(true)}
+              disabled={loading || !form.first_name || !form.last_name}
+              className="px-8 py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
+           >
+              {loading ? 'Procesando...' : 'Guardar y Pagar'} <HiOutlineChevronRight size={16} />
            </button>
         </div>
         </div>

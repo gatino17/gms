@@ -363,17 +363,20 @@ export default function RenewModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
+    <div className="relative z-[100]" role="dialog" aria-modal="true">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={() => !saving && onClose()}
       />
 
-      {/* Modal Container */}
-      <div className="relative w-full max-w-3xl bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-200">
-        {/* Header (Gradient) */}
-        <div className="bg-gradient-to-br from-fuchsia-600 to-purple-700 px-6 py-5 sm:px-8 sm:py-6 flex-shrink-0 flex items-start justify-between">
+      {/* Scrollable container */}
+      <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+          {/* Modal Container */}
+          <div className="relative w-full max-w-3xl bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 border border-gray-100">
+            {/* Header (Gradient) */}
+            <div className="bg-gradient-to-br from-fuchsia-600 to-purple-700 px-6 py-5 sm:px-8 sm:py-6 flex-shrink-0 flex items-start justify-between">
           <div className="text-white">
             <h2 className="text-2xl font-black tracking-tight">
                {(!enrollment?.end_date) ? 'Registrar Pago Inicial' : 'Renovar Curso'}
@@ -621,5 +624,7 @@ export default function RenewModal({
         </div>
       </div>
     </div>
-  )
+  </div>
+</div>
+)
 }

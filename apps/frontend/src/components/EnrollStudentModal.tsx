@@ -16,6 +16,14 @@ type Course = {
   day_of_week?: number | null
   start_time?: string | null
   end_time?: string | null
+  day_of_week_2?: number | null
+  start_time_2?: string | null
+  day_of_week_3?: number | null
+  start_time_3?: string | null
+  day_of_week_4?: number | null
+  start_time_4?: string | null
+  day_of_week_5?: number | null
+  start_time_5?: string | null
   teacher_name?: string | null
   price_monthly?: number | null
 }
@@ -27,7 +35,7 @@ type Props = {
   onSuccess: (courseId: number, enrollmentId: number) => void
 }
 
-const DAYS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
+const DAYS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
 
 export default function EnrollStudentModal({ studentId, studentName, onClose, onSuccess }: Props) {
   const [courses, setCourses] = useState<Course[]>([])
@@ -130,6 +138,14 @@ export default function EnrollStudentModal({ studentId, studentName, onClose, on
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {filteredCourses.map(c => {
                 const isEnrolled = enrolledCourseIds.includes(c.id)
+                const schedules = [
+                  { d: c.day_of_week, t: c.start_time },
+                  { d: c.day_of_week_2, t: c.start_time_2 },
+                  { d: c.day_of_week_3, t: c.start_time_3 },
+                  { d: c.day_of_week_4, t: c.start_time_4 },
+                  { d: c.day_of_week_5, t: c.start_time_5 },
+                ].filter(s => s.d !== null && s.d !== undefined)
+
                 return (
                   <button
                     key={c.id}
@@ -158,14 +174,16 @@ export default function EnrollStudentModal({ studentId, studentName, onClose, on
                       </div>
                     </div>
                     
-                    <div className="mt-4 pt-4 border-t border-gray-50 flex items-center gap-4 text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <HiOutlineCalendar size={14} className={isEnrolled ? 'text-gray-300' : 'text-fuchsia-400'} />
-                        <span className="text-[10px] font-black uppercase">{c.day_of_week ? DAYS[c.day_of_week % 7] : '-'}</span>
-                      </div>
-                      {c.start_time && (
-                        <span className="text-[10px] font-black">{c.start_time.slice(0, 5)}</span>
-                      )}
+                    <div className="mt-4 pt-4 border-t border-gray-50 flex flex-wrap gap-x-4 gap-y-2 text-gray-500">
+                      {schedules.map((s, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-lg">
+                          <HiOutlineCalendar size={12} className={isEnrolled ? 'text-gray-300' : 'text-fuchsia-400'} />
+                          <span className="text-[10px] font-black uppercase">{DAYS[s.d! % 7]}</span>
+                          {s.t && (
+                            <span className="text-[9px] font-bold text-gray-400">{s.t.slice(0, 5)}</span>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </button>
                 )

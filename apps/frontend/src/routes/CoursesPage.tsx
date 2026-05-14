@@ -426,7 +426,11 @@ export default function CoursesPage() {
                         </div>
                      </div>
 
-                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
+                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                        <div className="space-y-2">
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fecha Inicio</label>
+                           <input type="date" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.start_date || ''} onChange={(e)=>setForm({...form, start_date:e.target.value})} />
+                        </div>
                         <div className="space-y-2">
                            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Mensualidad ($)</label>
                            <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.price || ''} onChange={(e)=>setForm({...form, price:e.target.value})} />
@@ -435,7 +439,7 @@ export default function CoursesPage() {
                            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clase Suelta ($)</label>
                            <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.class_price || ''} onChange={(e)=>setForm({...form, class_price:e.target.value})} />
                         </div>
-                        <div className="space-y-2 col-span-2 md:col-span-1">
+                        <div className="space-y-2">
                            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Capacidad Máx.</label>
                            <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.max_capacity || ''} onChange={(e)=>setForm({...form, max_capacity:e.target.value})} />
                         </div>
@@ -459,7 +463,7 @@ export default function CoursesPage() {
                              try {
                                const fd = { ...form }
                                const clean = (v:any) => (v===""||v===undefined)?null:v
-                               const keys = ['start_time','end_time','start_time_2','end_time_2','start_time_3','end_time_3','start_time_4','end_time_4','start_time_5','end_time_5','price','class_price','max_capacity','teacher_id','room_id']
+                               const keys = ['start_time','end_time','start_time_2','end_time_2','start_time_3','end_time_3','start_time_4','end_time_4','start_time_5','end_time_5','price','class_price','max_capacity','teacher_id','room_id','start_date']
                                keys.forEach(k=> fd[k]=clean(fd[k]))
                                let r; if(editId) r=await api.put(`/api/pms/courses/${editId}`, fd); else r=await api.post('/api/pms/courses', fd)
                                if(imageFile){ const f=new FormData(); f.append('file', imageFile); await api.post(`/api/pms/courses/${r.data.id}/image`, f) }

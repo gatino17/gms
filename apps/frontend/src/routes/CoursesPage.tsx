@@ -343,7 +343,12 @@ export default function CoursesPage() {
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                               <div className="space-y-2">
                                  <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nivel</label>
-                                 <input className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none shadow-sm" value={form.level || ''} onChange={(e)=>setForm({...form, level:e.target.value})} placeholder="Intermedio" />
+                                 <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm" value={form.level || ''} onChange={(e)=>setForm({...form, level:e.target.value})}>
+                                    <option value="">Seleccionar nivel...</option>
+                                    <option value="Básico">Básico</option>
+                                    <option value="Intermedio">Intermedio</option>
+                                    <option value="Avanzado">Avanzado</option>
+                                 </select>
                               </div>
                               <div className="space-y-2">
                                  <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de Programa</label>
@@ -483,6 +488,10 @@ export default function CoursesPage() {
                         <button
                           disabled={saving}
                           onClick={async () => {
+                             if (!form.name?.trim()) {
+                                alert("El nombre del curso es obligatorio");
+                                return;
+                             }
                              setSaving(true)
                              try {
                                const fd = { ...form }

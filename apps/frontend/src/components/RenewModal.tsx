@@ -22,12 +22,13 @@ type CourseInfo = {
   id: number
   name: string
   teacher_name?: string | null
-  price_monthly?: number | null
-  price_single?: number | null
+  price?: number | null
+  class_price?: number | null
 }
 
 type DayCoding = 'ISO1' | 'MON0'
 
+const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 // ===================== Constantes / Utils =====================
 const CL_TZ = 'America/Santiago'
 
@@ -192,8 +193,8 @@ export default function RenewModal({
           id: courseInfo.id,
           name: courseInfo.name,
           teacher_name: courseInfo.teacher_name ?? null,
-          price_monthly: courseInfo.price_monthly ?? null,
-          price_single: courseInfo.price_single ?? null,
+          price: courseInfo.price ?? null,
+          class_price: courseInfo.class_price ?? null,
         })
 
         // Calcular fechas sugeridas
@@ -208,7 +209,7 @@ export default function RenewModal({
         
         setRenewStartDate(startDefault)
         setComputedEndDate(calculate4thOccurrence(startDefault))
-        setPayAmount(courseInfo.price_monthly ? String(courseInfo.price_monthly) : '')
+        setPayAmount(courseInfo.price ? String(courseInfo.price) : '')
         setPayReference('Renovación mensual (4 clases)')
 
         // Detectar clases fuera de plan
@@ -262,16 +263,16 @@ export default function RenewModal({
   useEffect(() => {
     if (renewMode === 'monthly' && renewStartDate) {
       setComputedEndDate(calculate4thOccurrence(renewStartDate))
-      if (course?.price_monthly && !payAmount) {
-        setPayAmount(String(course.price_monthly))
+      if (course?.price && !payAmount) {
+        setPayAmount(String(course.price))
       }
       if (!payReference) {
         setPayReference('Renovación mensual (4 clases)')
       }
     }
     if (renewMode === 'single_class') {
-      if (course?.price_single && !payAmount) {
-        setPayAmount(String(course.price_single))
+      if (course?.class_price && !payAmount) {
+        setPayAmount(String(course.class_price))
       }
       if (!payReference) {
         setPayReference('Clase suelta')
@@ -383,8 +384,13 @@ export default function RenewModal({
             <h2 className="text-2xl font-black tracking-tight">
                {(!enrollment?.end_date) ? 'Registrar Pago Inicial' : 'Renovar Curso'}
             </h2>
-            <p className="text-fuchsia-100 font-medium mt-1">
-              {studentName ? `${studentName} — ${course?.name || ''}` : 'Cargando...'}
+            <p className="text-fuchsia-100 font-bold uppercase tracking-widest text-[9px] mt-1">
+              {studentName ? studentName : 'Cargando...'}
+              {enrollment?.course && (
+                <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-lg border border-white/10">
+                   {enrollment.course.name} {enrollment.course.day_of_week !== null && ` — ${DAY_NAMES[enrollment.course.day_of_week!]}`} {enrollment.course.start_time && ` a las ${String(enrollment.course.start_time).slice(0,5)}hrs`}
+                </span>
+              )}
             </p>
           </div>
           <button 
@@ -546,7 +552,7 @@ export default function RenewModal({
                       </div>
                       <input
                         type="number"
-                        placeholder={renewMode === 'monthly' ? (course?.price_monthly ? `${course?.price_monthly}` : '25000') : (course?.price_single ? `${course?.price_single}` : '5000')}
+                        placeholder={renewMode === 'monthly' ? (course?.price ? `${course?.price}` : '25000') : (course?.class_price ? `${course?.class_price}` : '5000')}
                         value={payAmount}
                         onChange={e => setPayAmount(e.target.value)}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -562,6 +568,7 @@ export default function RenewModal({
                         <option value="debito">Débito</option>
                         <option value="credito">Crédito</option>
                         <option value="transferencia">Transferencia</option>
+                        <option value="convenio">Convenio</option>
                       </select>
                       <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-400">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>

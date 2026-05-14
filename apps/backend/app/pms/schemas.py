@@ -209,6 +209,10 @@ class CourseListItem(BaseModel):
     start_date: Optional[date] = None
     price: Optional[Decimal] = None
     class_price: Optional[Decimal] = None
+    teacher_id: Optional[int] = None
+    room_id: Optional[int] = None
+    max_capacity: Optional[int] = None
+    total_classes: Optional[int] = None
 
 class CourseListResponse(BaseModel):
     items: list[CourseListItem]

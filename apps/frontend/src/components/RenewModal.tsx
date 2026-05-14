@@ -13,7 +13,14 @@ type Enrollment = {
     level?: string | null
     day_of_week?: number | null
     start_time?: string | null
-    end_time?: string | null
+    day_of_week_2?: number | null
+    start_time_2?: string | null
+    day_of_week_3?: number | null
+    start_time_3?: string | null
+    day_of_week_4?: number | null
+    start_time_4?: string | null
+    day_of_week_5?: number | null
+    start_time_5?: string | null
     teacher_id?: number | null
   }
 }
@@ -384,14 +391,25 @@ export default function RenewModal({
             <h2 className="text-2xl font-black tracking-tight">
                {(!enrollment?.end_date) ? 'Registrar Pago Inicial' : 'Renovar Curso'}
             </h2>
-            <p className="text-fuchsia-100 font-bold uppercase tracking-widest text-[9px] mt-1">
-              {studentName ? studentName : 'Cargando...'}
-              {enrollment?.course && (
-                <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-lg border border-white/10">
-                   {enrollment.course.name} {enrollment.course.day_of_week !== null && ` — ${DAY_NAMES[enrollment.course.day_of_week!]}`} {enrollment.course.start_time && ` a las ${String(enrollment.course.start_time).slice(0,5)}hrs`}
-                </span>
-              )}
-            </p>
+            <div className="mt-1">
+              <span className="text-white font-black uppercase text-[10px] tracking-widest block mb-1">
+                {studentName ? studentName : 'Cargando...'} {enrollment?.course.name && ` — ${enrollment.course.name}`}
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-white/60 font-black uppercase text-[8px] tracking-widest">Horarios:</span>
+                {[
+                  { d: enrollment?.course.day_of_week, t: enrollment?.course.start_time },
+                  { d: enrollment?.course.day_of_week_2, t: enrollment?.course.start_time_2 },
+                  { d: enrollment?.course.day_of_week_3, t: enrollment?.course.start_time_3 },
+                  { d: enrollment?.course.day_of_week_4, t: enrollment?.course.start_time_4 },
+                  { d: enrollment?.course.day_of_week_5, t: enrollment?.course.start_time_5 }
+                ].filter(s => s.d !== null && s.d !== undefined).map((s, idx) => (
+                  <span key={idx} className="bg-white/10 px-2 py-0.5 rounded-lg border border-white/10 text-[9px] font-black text-white">
+                    {DAY_NAMES[s.d!]} {s.t && ` @ ${String(s.t).slice(0,5)}hrs`}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
           <button 
             onClick={onClose} 

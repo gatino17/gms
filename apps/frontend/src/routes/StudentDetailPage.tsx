@@ -50,6 +50,10 @@ type PortalData = {
       id:number; amount:number; payment_date?:string|null; 
       method:string; type:string; reference?:string|null; 
       enrollment_id?:number; course_id?:number;
+      course_name?: string | null;
+      teacher_name?: string | null;
+      period_start?: string | null;
+      period_end?: string | null;
       course?: { name?: string; teacher_name?: string; image_url?: string }
     }[]
   }

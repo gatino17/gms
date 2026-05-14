@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import { useTenant } from '../lib/tenant'
-import { 
-  HiOutlineChevronLeft, 
-  HiOutlineChevronRight, 
+import {
+  HiOutlineChevronLeft,
+  HiOutlineChevronRight,
   HiOutlineArrowLeft,
   HiOutlineCalendar,
   HiOutlineCurrencyDollar,
@@ -23,17 +23,19 @@ type Payment = {
   course_id?: number | null
   student_id?: number | null
   amount: number
-  method: 'cash'|'card'|'transfer'|'agreement'|string
-  type?: 'monthly'|'single_class'|'rental'|'agreement'|string
+  method: 'cash' | 'card' | 'transfer' | 'agreement' | string
+  type?: 'monthly' | 'single_class' | 'rental' | 'agreement' | string
   notes?: string | null
   payment_date: string
+  period_start?: string | null
+  period_end?: string | null
 }
 type CourseRef = {
-  id:number; name:string; teacher_name?: string | null
-  day_of_week?: number|null; start_time?: string|null; end_time?: string|null;
+  id: number; name: string; teacher_name?: string | null
+  day_of_week?: number | null; start_time?: string | null; end_time?: string | null;
 }
-type StudentRef = { id:number; name:string }
-type Enrollment = { id:number; student_id:number; course_id:number; start_date:string; end_date?:string|null; is_active:boolean }
+type StudentRef = { id: number; name: string }
+type Enrollment = { id: number; student_id: number; course_id: number; start_date: string; end_date?: string | null; is_active: boolean }
 
 const CL_TZ = 'America/Santiago'
 const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' })
@@ -62,7 +64,10 @@ function cycleFromMonth(yyyy_mm: string, anchorDay: number) {
 }
 
 const methodLabel = (m: string) => ({
-  cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', agreement: 'Convenio'
+  efectivo: 'Efectivo', cash: 'Efectivo',
+  debito: 'Débito', credito: 'Crédito', card: 'Tarjeta',
+  transferencia: 'Transferencia', transfer: 'Transferencia',
+  convenio: 'Convenio', agreement: 'Convenio'
 }[m] || m)
 
 export default function PaymentsTeachers() {
@@ -72,7 +77,7 @@ export default function PaymentsTeachers() {
   const [students, setStudents] = useState<Record<number, StudentRef>>({})
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [byTeacher, setByTeacher] = useState<any[]>([])
-  
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [teacher, setTeacher] = useState<string>('')
@@ -133,7 +138,7 @@ export default function PaymentsTeachers() {
       const c = p.course_id ? courses[p.course_id] : null
       const teacherName = c?.teacher_name || 'Sin profesor'
       const courseName = c?.name || '-'
-      const studentName = p.student_id ? (students[p.student_id]?.name || '-') : '-'
+      const studentName = p.student_name || (p.student_id ? (students[p.student_id]?.name || '-') : '-')
       return { ...p, teacherName, courseName, studentName }
     })
   }, [payments, courses, students])
@@ -162,7 +167,7 @@ export default function PaymentsTeachers() {
         <div className="space-y-1 text-center sm:text-left">
           <div className="flex items-center justify-center sm:justify-start gap-3 mb-2">
             <button onClick={() => window.history.back()} className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-gray-600">
-              <HiOutlineArrowLeft size={18} md:size={20} />
+              <HiOutlineArrowLeft size={20} />
             </button>
             <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Finanzas</span>
           </div>
@@ -175,15 +180,15 @@ export default function PaymentsTeachers() {
       {teacher && selectedAgg && (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 px-4">
           {[
-            { label: `Total`, value: selectedAgg.total, icon: HiOutlineCurrencyDollar, color: 'fuchsia' },
-            { label: 'Efectivo', value: selectedAgg.cash, icon: HiOutlineCash, color: 'emerald' },
-            { label: 'Tarjeta', value: selectedAgg.card, icon: HiOutlineCreditCard, color: 'sky' },
-            { label: 'Transf.', value: selectedAgg.transfer, icon: HiOutlineSwitchHorizontal, color: 'indigo' },
-            { label: 'Convenio', value: selectedAgg.agreement, icon: HiOutlineCheckCircle, color: 'amber' },
+            { label: `Total`, value: selectedAgg.total, icon: HiOutlineCurrencyDollar, classes: 'bg-fuchsia-50 text-fuchsia-600' },
+            { label: 'Efectivo', value: selectedAgg.cash, icon: HiOutlineCash, classes: 'bg-emerald-50 text-emerald-600' },
+            { label: 'Tarjeta', value: selectedAgg.card, icon: HiOutlineCreditCard, classes: 'bg-sky-50 text-sky-600' },
+            { label: 'Transf.', value: selectedAgg.transfer, icon: HiOutlineSwitchHorizontal, classes: 'bg-indigo-50 text-indigo-600' },
+            { label: 'Convenio', value: selectedAgg.agreement, icon: HiOutlineCheckCircle, classes: 'bg-amber-50 text-amber-600' },
           ].map((s, i) => (
             <div key={i} className={`bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm group hover:border-fuchsia-100 transition-all ${i === 0 ? 'col-span-2 lg:col-span-1' : ''}`}>
-              <div className={`p-2.5 w-9 h-9 md:w-10 md:h-10 rounded-xl bg-${s.color}-50 text-${s.color}-600 mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                <s.icon size={18} md:size={20} />
+              <div className={`p-2.5 w-9 h-9 md:w-10 md:h-10 rounded-xl ${s.classes} mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                <s.icon size={20} />
               </div>
               <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{s.label}</div>
               <div className="text-base md:text-xl font-black text-gray-900 truncate">{fmtCLP.format(Number(s.value || 0))}</div>
@@ -199,8 +204,8 @@ export default function PaymentsTeachers() {
             <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Rango</label>
             <div className="relative">
               <HiOutlineFilter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <select 
-                value={quickRange} 
+              <select
+                value={quickRange}
                 onChange={e => applyQuickRange(e.target.value)}
                 className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl md:rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none"
               >
@@ -236,8 +241,8 @@ export default function PaymentsTeachers() {
       <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden relative min-h-[400px]">
         {loading && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-4">
-             <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
-             <span className="font-bold text-fuchsia-600/60 uppercase tracking-widest text-xs">Sincronizando caja...</span>
+            <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
+            <span className="font-bold text-fuchsia-600/60 uppercase tracking-widest text-xs">Sincronizando caja...</span>
           </div>
         )}
 
@@ -248,25 +253,25 @@ export default function PaymentsTeachers() {
             {byTeacher.map((t, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-3xl border border-transparent hover:border-fuchsia-200 hover:bg-white transition-all group cursor-pointer" onClick={() => setTeacher(t.teacher_name || t.teacher)}>
                 <div className="flex items-center gap-4 mb-4">
-                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white flex items-center justify-center font-black text-xl shrink-0">
-                      {(t.teacher_name || t.teacher)?.[0] || 'P'}
-                   </div>
-                   <div className="min-w-0">
-                      <div className="text-lg font-black text-gray-900 truncate group-hover:text-fuchsia-600 transition-colors">{t.teacher_name || t.teacher}</div>
-                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Resumen</div>
-                   </div>
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white flex items-center justify-center font-black text-xl shrink-0">
+                    {(t.teacher_name || t.teacher)?.[0] || 'P'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-lg font-black text-gray-900 truncate group-hover:text-fuchsia-600 transition-colors">{t.teacher_name || t.teacher}</div>
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Resumen</div>
+                  </div>
                 </div>
                 <div className="space-y-3">
-                   <div className="flex items-center justify-between">
-                      <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Generado</span>
-                      <span className="text-lg font-black text-gray-900">{fmtCLP.format(Number(t.total || 0))}</span>
-                   </div>
-                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200/50">
-                      <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">💵</span> {fmtCLP.format(Number(t.cash || 0))}</div>
-                      <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">💳</span> {fmtCLP.format(Number(t.card || 0))}</div>
-                      <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">🔄</span> {fmtCLP.format(Number(t.transfer || 0))}</div>
-                      <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">🤝</span> {fmtCLP.format(Number(t.agreement || 0))}</div>
-                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Generado</span>
+                    <span className="text-lg font-black text-gray-900">{fmtCLP.format(Number(t.total || 0))}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200/50">
+                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">💵</span> {fmtCLP.format(Number(t.cash || 0))}</div>
+                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">💳</span> {fmtCLP.format(Number(t.card || 0))}</div>
+                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">🔄</span> {fmtCLP.format(Number(t.transfer || 0))}</div>
+                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">🤝</span> {fmtCLP.format(Number(t.agreement || 0))}</div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -279,6 +284,7 @@ export default function PaymentsTeachers() {
                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno / Curso</th>
                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Método</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Periodo</th>
                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Monto</th>
                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Notas</th>
                 </tr>
@@ -297,9 +303,18 @@ export default function PaymentsTeachers() {
                       <div className="text-xs font-bold text-gray-500 truncate">{r.courseName}</div>
                     </td>
                     <td className="block md:table-cell px-6 py-2 md:py-6">
-                      <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${r.method === 'cash' ? 'bg-emerald-50 text-emerald-600' : 'bg-sky-50 text-sky-600'}`}>
+                      <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${(r.method === 'efectivo' || r.method === 'cash') ? 'bg-emerald-50 text-emerald-600' :
+                        (r.method === 'debito' || r.method === 'credito' || r.method === 'card') ? 'bg-sky-50 text-sky-600' :
+                          (r.method === 'transferencia' || r.method === 'transfer') ? 'bg-indigo-50 text-indigo-600' :
+                            'bg-amber-50 text-amber-600'
+                        }`}>
                         {methodLabel(r.method)}
                       </span>
+                    </td>
+                    <td className="block md:table-cell px-6 py-2 md:py-6">
+                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {r.period_start && r.period_end ? `${toDDMMYYYY(r.period_start)} - ${toDDMMYYYY(r.period_end)}` : '---'}
+                      </div>
                     </td>
                     <td className="block md:table-cell px-6 py-2 md:py-6 text-left md:text-right">
                       <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Monto</div>
@@ -312,7 +327,7 @@ export default function PaymentsTeachers() {
                 ))}
               </tbody>
             </table>
-            
+
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="px-6 md:px-8 py-4 md:py-6 bg-gray-50/50 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -321,10 +336,10 @@ export default function PaymentsTeachers() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button disabled={safePage === 1} onClick={() => setPage(p => p - 1)} className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-30 hover:text-fuchsia-600 transition-all">
-                    <HiOutlineChevronLeft size={20} md:size={24} />
+                    <HiOutlineChevronLeft size={24} />
                   </button>
                   <button disabled={safePage === totalPages} onClick={() => setPage(p => p + 1)} className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 disabled:opacity-30 hover:text-fuchsia-600 transition-all">
-                    <HiOutlineChevronRight size={20} md:size={24} />
+                    <HiOutlineChevronRight size={24} />
                   </button>
                 </div>
               </div>

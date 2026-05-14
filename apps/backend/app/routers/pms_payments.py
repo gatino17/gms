@@ -42,10 +42,10 @@ async def payments_by_teacher(
             Course.teacher_id.label('teacher_id'),
             func.coalesce(Teacher.name, 'Sin profesor').label('teacher_name'),
             func.sum(Payment.amount).label('total'),
-            func.sum(case((Payment.method == 'cash', Payment.amount), else_=0)).label('cash'),
-            func.sum(case((Payment.method == 'card', Payment.amount), else_=0)).label('card'),
-            func.sum(case((Payment.method == 'transfer', Payment.amount), else_=0)).label('transfer'),
-            func.sum(case((Payment.method == 'agreement', Payment.amount), else_=0)).label('agreement'),
+            func.sum(case((Payment.method == 'efectivo', Payment.amount), else_=0)).label('cash'),
+            func.sum(case((or_(Payment.method == 'debito', Payment.method == 'credito', Payment.method == 'card'), Payment.amount), else_=0)).label('card'),
+            func.sum(case((or_(Payment.method == 'transferencia', Payment.method == 'transfer'), Payment.amount), else_=0)).label('transfer'),
+            func.sum(case((or_(Payment.method == 'convenio', Payment.method == 'agreement'), Payment.amount), else_=0)).label('agreement'),
         )
         .select_from(Payment)
         .join(Course, Payment.course_id == Course.id, isouter=True)
@@ -130,9 +130,22 @@ async def list_payments(
     if d_to:
         filters.append(Payment.payment_date <= d_to)
     if method:
-        filters.append(Payment.method == method)
+        if method == 'card':
+            filters.append(or_(Payment.method == 'card', Payment.method == 'debito', Payment.method == 'credito'))
+        elif method == 'transfer':
+            filters.append(or_(Payment.method == 'transfer', Payment.method == 'transferencia'))
+        elif method == 'cash':
+            filters.append(or_(Payment.method == 'cash', Payment.method == 'efectivo'))
+        elif method == 'agreement':
+            filters.append(or_(Payment.method == 'agreement', Payment.method == 'convenio'))
+        else:
+            filters.append(Payment.method == method)
+
     if type:
-        filters.append(Payment.type == type)
+        if type == 'agreement':
+            filters.append(or_(Payment.type == 'agreement', Payment.type == 'convenio'))
+        else:
+            filters.append(Payment.type == type)
     if q:
         like = f"%{q}%"
         stmt = stmt.join(Student, Payment.student_id == Student.id, isouter=True)
@@ -154,10 +167,10 @@ async def list_payments(
 
     stats_stmt = apply_filters(select(
         func.sum(Payment.amount).label('total_amount'),
-        func.sum(case((Payment.method == 'cash', Payment.amount), else_=0)).label('cash_amount'),
-        func.sum(case((Payment.method == 'card', Payment.amount), else_=0)).label('card_amount'),
-        func.sum(case((Payment.method == 'transfer', Payment.amount), else_=0)).label('transfer_amount'),
-        func.sum(case((Payment.method == 'agreement', Payment.amount), else_=0)).label('agreement_amount'),
+        func.sum(case((Payment.method == 'efectivo', Payment.amount), else_=0)).label('cash_amount'),
+        func.sum(case((or_(Payment.method == 'debito', Payment.method == 'credito', Payment.method == 'card'), Payment.amount), else_=0)).label('card_amount'),
+        func.sum(case((or_(Payment.method == 'transferencia', Payment.method == 'transfer'), Payment.amount), else_=0)).label('transfer_amount'),
+        func.sum(case((or_(Payment.method == 'convenio', Payment.method == 'agreement'), Payment.amount), else_=0)).label('agreement_amount'),
     ))
     
     stats_res = await db.execute(stats_stmt)
@@ -172,9 +185,22 @@ async def list_payments(
     }
 
     # List query
-    list_stmt = apply_filters(select(Payment)).order_by(Payment.payment_date.desc(), Payment.created_at.desc())
+    list_stmt = apply_filters(
+        select(Payment, Student.first_name, Student.last_name)
+        .join(Student, Payment.student_id == Student.id, isouter=True)
+    ).order_by(Payment.payment_date.desc(), Payment.created_at.desc())
+    
     res = await db.execute(list_stmt.offset(offset).limit(limit))
-    items = res.scalars().all()
+    rows = res.all()
+    
+    items = []
+    for r in rows:
+        p = r.Payment
+        # If the student name isn't stored in the payment record yet (old data),
+        # but the student still exists, use the joined data.
+        if not p.student_name and r.first_name:
+            p.student_name = f"{r.first_name} {r.last_name}".strip()
+        items.append(p)
     
     # Total count
     total_stmt = apply_filters(select(func.count()).select_from(Payment))
@@ -202,7 +228,14 @@ async def create_payment(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
-    obj = Payment(tenant_id=tenant_id, **payload.model_dump(exclude_unset=True))
+    data = payload.model_dump(exclude_unset=True)
+    if data.get('student_id') and not data.get('student_name'):
+        res = await db.execute(select(Student).where(Student.id == data['student_id'], Student.tenant_id == tenant_id))
+        s = res.scalar_one_or_none()
+        if s:
+            data['student_name'] = f"{s.first_name} {s.last_name}".strip()
+            
+    obj = Payment(tenant_id=tenant_id, **data)
     db.add(obj)
     await db.flush()
     await db.refresh(obj)

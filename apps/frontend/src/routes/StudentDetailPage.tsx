@@ -385,7 +385,8 @@ export default function StudentDetailPage() {
                        <thead>
                           <tr className="bg-gray-50/50 text-left border-b border-gray-100">
                              <th className="px-6 md:px-10 py-4 md:py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Concepto</th>
-                             <th className="px-4 py-4 md:py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Fecha</th>
+                             <th className="px-4 py-4 md:py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Periodo</th>
+                             <th className="px-4 py-4 md:py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Pago</th>
                              <th className="px-4 py-4 md:py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Medio</th>
                              <th className="px-6 md:px-10 py-4 md:py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Monto</th>
                           </tr>
@@ -394,11 +395,27 @@ export default function StudentDetailPage() {
                           {(payments.recent || []).map((p) => (
                              <tr key={p.id} className="hover:bg-fuchsia-50/10 transition-colors group">
                                 <td className="px-6 md:px-10 py-5 md:py-7">
-                                   <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors text-sm">{p.course?.name || 'Inscripción'}</div>
+                                   <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors text-sm">{p.course_name || 'Inscripción General'}</div>
                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="px-2 py-0.5 bg-gray-100 text-gray-400 text-[8px] font-black uppercase rounded-lg">{p.type === 'monthly' ? 'Mensual' : 'Clase'}</span>
+                                      <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-lg ${p.type === 'monthly' ? 'bg-fuchsia-50 text-fuchsia-600' : 'bg-gray-100 text-gray-400'}`}>{p.type === 'monthly' ? 'Mensualidad' : p.type === 'registration' ? 'Matrícula' : 'Pago'}</span>
+                                       {p.teacher_name && (
+                                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter shrink-0">
+                                             • Prof: {p.teacher_name}
+                                          </span>
+                                       )}
                                    </div>
                                 </td>
+                                 <td className="px-4 py-5 md:py-7 text-center">
+                                    {p.period_start && p.period_end ? (
+                                       <div className="flex flex-col items-center">
+                                          <span className="text-[10px] font-black text-gray-900 leading-none">{ymdToCL(p.period_start)}</span>
+                                          <span className="text-[8px] font-black text-gray-300 uppercase my-0.5">al</span>
+                                          <span className="text-[10px] font-black text-gray-900 leading-none">{ymdToCL(p.period_end)}</span>
+                                       </div>
+                                    ) : (
+                                       <span className="text-gray-300">---</span>
+                                    )}
+                                 </td>
                                 <td className="px-4 py-5 md:py-7 text-center font-bold text-xs text-gray-600">
                                    {ymdToCL(p.payment_date)}
                                 </td>

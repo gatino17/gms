@@ -218,6 +218,7 @@ class CourseListResponse(BaseModel):
 
 class PaymentBase(BaseModel):
     student_id: Optional[int] = None
+    student_name: Optional[str] = None
     course_id: Optional[int] = None
     amount: Decimal
     payment_date: Optional[date] = None
@@ -225,6 +226,8 @@ class PaymentBase(BaseModel):
     type: str
     reference: Optional[str] = None
     notes: Optional[str] = None
+    period_start: Optional[date] = None
+    period_end: Optional[date] = None
 
 
 class PaymentCreate(PaymentBase):

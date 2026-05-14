@@ -113,8 +113,6 @@ export default function PaymentsPage() {
   // Vista
   const [viewMode, setViewMode] = useState<ViewMode>('detalle')
   const [quickRange, setQuickRange] = useState('todo')
-  const [pickMonth, setPickMonth] = useState('')
-  const [cycleMonth, setCycleMonth] = useState('')
 
   // Modals
   const [editing, setEditing] = useState<Payment | null>(null)
@@ -194,22 +192,41 @@ export default function PaymentsPage() {
 
   const applyQuickRange = (val: string) => {
     setQuickRange(val)
+    const d = new Date()
     if (val === 'todo') {
       setDateFrom(''); setDateTo('')
     } else if (val === 'dia_hoy') {
-      setDateFrom(todayYMD); setDateTo(todayYMD)
+      const ymd = toYMDInTZ(d)
+      setDateFrom(ymd); setDateTo(ymd)
+    } else if (val === 'dia_ayer') {
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const ymd = toYMDInTZ(yesterday)
+      setDateFrom(ymd); setDateTo(ymd)
     } else if (val === 'mes_actual') {
-      const { start, end } = monthRangeFor(new Date())
+      const { start, end } = monthRangeFor(d)
+      setDateFrom(start); setDateTo(end)
+    } else if (val === 'mes_anterior') {
+      const prevMonth = new Date(d.getFullYear(), d.getMonth() - 1, 1)
+      const { start, end } = monthRangeFor(prevMonth)
       setDateFrom(start); setDateTo(end)
     }
   }
 
   const methodLabel = (m: string) => ({
-    cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', agreement: 'Convenio'
+    efectivo: 'Efectivo', cash: 'Efectivo',
+    debito: 'Débito', credito: 'Crédito', card: 'Tarjeta',
+    transferencia: 'Transferencia', transfer: 'Transferencia',
+    convenio: 'Convenio', agreement: 'Convenio'
   }[m] || m)
 
   const typeLabel = (t: string) => ({
-    monthly: 'Mensualidad', single_class: 'Clase suelta', rental: 'Arriendo', agreement: 'Convenio'
+    monthly: 'Mensualidad',
+    single_class: 'Clase suelta',
+    rental: 'Arriendo',
+    registration: 'Matrícula',
+    agreement: 'Convenio',
+    convenio: 'Convenio'
   }[t] || t)
 
   const findPeriod = (p: Payment) => {
@@ -251,8 +268,16 @@ export default function PaymentsPage() {
     data.forEach(p => {
       const d = p.payment_date
       if (!map[d]) map[d] = { date: d, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
-      map[d][p.method] = (map[d][p.method] || 0) + p.amount
-      map[d].total += p.amount
+      
+      const m = p.method
+      const amt = Number(p.amount || 0)
+      
+      if (m === 'efectivo' || m === 'cash') map[d].cash += amt
+      else if (m === 'debito' || m === 'credito' || m === 'card') map[d].card += amt
+      else if (m === 'transferencia' || m === 'transfer') map[d].transfer += amt
+      else map[d].agreement += amt
+      
+      map[d].total += amt
     })
     return Object.values(map).sort((a, b) => b.date.localeCompare(a.date))
   }, [data])
@@ -262,7 +287,13 @@ export default function PaymentsPage() {
     data.forEach(p => {
       const name = p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || 'Sin asignar'
       if (!map[name]) map[name] = { name, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
-      map[name][p.method] = (map[name][p.method] || 0) + p.amount
+      
+      const m = p.method
+      if (m === 'efectivo' || m === 'cash') map[name].cash += p.amount
+      else if (m === 'debito' || m === 'credito' || m === 'card') map[name].card += p.amount
+      else if (m === 'transferencia' || m === 'transfer') map[name].transfer += p.amount
+      else map[name].agreement += p.amount
+      
       map[name].total += p.amount
     })
     return Object.values(map).sort((a, b) => b.total - a.total)
@@ -299,14 +330,14 @@ export default function PaymentsPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 px-4">
         {[
-          { label: 'Total', value: stats.total_amount, icon: HiOutlineCurrencyDollar, color: 'fuchsia' },
-          { label: 'Efectivo', value: stats.cash_amount, icon: HiOutlineCash, color: 'emerald' },
-          { label: 'Tarjeta', value: stats.card_amount, icon: HiOutlineCreditCard, color: 'sky' },
-          { label: 'Transf.', value: stats.transfer_amount, icon: HiOutlineSwitchHorizontal, color: 'indigo' },
-          { label: 'Convenio', value: stats.agreement_amount, icon: HiOutlineCheckCircle, color: 'amber' },
+          { label: 'Total', value: stats.total_amount, icon: HiOutlineCurrencyDollar, classes: 'bg-fuchsia-50 text-fuchsia-600' },
+          { label: 'Efectivo', value: stats.cash_amount, icon: HiOutlineCash, classes: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Tarjeta', value: stats.card_amount, icon: HiOutlineCreditCard, classes: 'bg-sky-50 text-sky-600' },
+          { label: 'Transf.', value: stats.transfer_amount, icon: HiOutlineSwitchHorizontal, classes: 'bg-indigo-50 text-indigo-600' },
+          { label: 'Convenio', value: stats.agreement_amount, icon: HiOutlineCheckCircle, classes: 'bg-amber-50 text-amber-600' },
         ].map((s, i) => (
           <div key={i} className={`bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm group hover:border-fuchsia-100 transition-all ${i === 0 ? 'col-span-2 lg:col-span-1' : ''}`}>
-            <div className={`p-2.5 w-9 h-9 md:w-10 md:h-10 rounded-xl bg-${s.color}-50 text-${s.color}-600 mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+            <div className={`p-2.5 w-9 h-9 md:w-10 md:h-10 rounded-xl ${s.classes} mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
               <s.icon size={20} />
             </div>
             <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
@@ -330,8 +361,9 @@ export default function PaymentsPage() {
               >
                 <option value="todo">Ver Todo</option>
                 <option value="dia_hoy">Hoy</option>
+                <option value="dia_ayer">Ayer</option>
                 <option value="mes_actual">Mes Actual</option>
-                <option value="mes_elegir">Elegir Mes</option>
+                <option value="mes_anterior">Mes Anterior</option>
                 <option value="personalizado">Personalizado</option>
               </select>
             </div>
@@ -407,7 +439,7 @@ export default function PaymentsPage() {
                <option value="">Todos los Tipos</option>
                <option value="monthly">Mensualidad</option>
                <option value="single_class">Clase Suelta</option>
-               <option value="rental">Arriendo</option>
+               <option value="registration">Matrícula</option>
                <option value="agreement">Convenio</option>
              </select>
           </div>
@@ -453,7 +485,12 @@ export default function PaymentsPage() {
                     </td>
                     <td className="block md:table-cell px-6 py-2 md:py-6">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${p.method === 'cash' ? 'bg-emerald-50 text-emerald-600' : p.method === 'card' ? 'bg-sky-50 text-sky-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${
+                          (p.method === 'efectivo' || p.method === 'cash') ? 'bg-emerald-50 text-emerald-600' : 
+                          (p.method === 'debito' || p.method === 'credito' || p.method === 'card') ? 'bg-sky-50 text-sky-600' : 
+                          (p.method === 'transferencia' || p.method === 'transfer') ? 'bg-indigo-50 text-indigo-600' : 
+                          'bg-amber-50 text-amber-600'
+                        }`}>
                           {methodLabel(p.method)}
                         </span>
                         <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{typeLabel(p.type)}</span>
@@ -529,11 +566,12 @@ export default function PaymentsPage() {
              <table className="w-full">
                <thead className="hidden md:table-header-group">
                  <tr className="bg-gray-50/50 text-left border-b border-gray-100">
-                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
-                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Efectivo</th>
-                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Tarjeta</th>
-                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Transf.</th>
-                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Día</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
+                    <th className="px-4 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Efectivo</th>
+                    <th className="px-4 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Tarjeta</th>
+                    <th className="px-4 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Transf.</th>
+                    <th className="px-4 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Convenio</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Día</th>
                  </tr>
                </thead>
                <tbody className="divide-y divide-gray-50 block md:table-row-group">
@@ -551,6 +589,10 @@ export default function PaymentsPage() {
                      <td className="block md:table-cell px-6 py-1 md:py-6 text-left md:text-right font-bold text-indigo-600">
                         <span className="md:hidden text-[8px] font-black text-gray-400 uppercase mr-2">Trans:</span>
                         {fmtCLP.format(r.transfer)}
+                     </td>
+                     <td className="block md:table-cell px-6 py-1 md:py-6 text-left md:text-right font-bold text-amber-600">
+                        <span className="md:hidden text-[8px] font-black text-gray-400 uppercase mr-2">Conv:</span>
+                        {fmtCLP.format(r.agreement)}
                      </td>
                      <td className="block md:table-cell px-6 py-3 md:py-6 text-left md:text-right font-black text-gray-900 text-lg">{fmtCLP.format(r.total)}</td>
                    </tr>

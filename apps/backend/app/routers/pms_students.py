@@ -289,6 +289,8 @@ async def student_portal_summary(
             "course_id": p.course_id,
             "course_name": getattr(c, "name", None),
             "teacher_name": getattr(t, "name", None),
+            "period_start": p.period_start.isoformat() if p.period_start else None,
+            "period_end": p.period_end.isoformat() if p.period_end else None,
         })
 
     cutoff = date.today() - timedelta(days=90)

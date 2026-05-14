@@ -181,6 +181,7 @@ class Payment(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="SET NULL"), nullable=True, index=True)
+    student_name: Mapped[Optional[str]] = mapped_column(String(160)) # Denormalized name for persistence
     course_id: Mapped[Optional[int]] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"), index=True)
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     payment_date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False, index=True)
@@ -188,6 +189,8 @@ class Payment(Base):
     type: Mapped[str] = mapped_column(String(30))    # monthly, single_class, rental
     reference: Mapped[Optional[str]] = mapped_column(String(120))
     notes: Mapped[Optional[str]] = mapped_column(Text())
+    period_start: Mapped[Optional[date]] = mapped_column(Date)
+    period_end: Mapped[Optional[date]] = mapped_column(Date)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

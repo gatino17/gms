@@ -328,6 +328,8 @@ export default function RenewModal({
           course_id: Number(courseId),
           enrollment_id: Number(enrollmentId),
           reference: payReference || 'Renovación mensual (4 clases)',
+          period_start: finalStartDate,
+          period_end: finalEndDate,
         })
       } else {
         if (!singleDate) throw new Error('Seleccione fecha de clase')

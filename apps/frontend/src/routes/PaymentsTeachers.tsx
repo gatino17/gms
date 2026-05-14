@@ -27,6 +27,7 @@ type Payment = {
   type?: 'monthly' | 'single_class' | 'rental' | 'agreement' | string
   notes?: string | null
   payment_date: string
+  student_name?: string | null
   period_start?: string | null
   period_end?: string | null
 }

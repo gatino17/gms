@@ -13,7 +13,8 @@ import {
   HiOutlineViewList,
   HiOutlineChartBar,
   HiOutlineExclamationCircle,
-  HiOutlinePlus
+  HiOutlinePlus,
+  HiOutlineCheckCircle
 } from 'react-icons/hi'
 import { useTenant } from '../lib/tenant'
 import RenewModal from '../components/RenewModal'
@@ -116,6 +117,14 @@ export default function CourseStatusPage() {
 
   const handleEnroll = async (studentId: number) => {
     if (!enrollModalCourseId) return
+    
+    // Check if already enrolled in this course
+    const courseRow = data.find(r => r.course.id === enrollModalCourseId)
+    if (courseRow?.students.some(s => s.id === studentId)) {
+       alert("Este alumno ya se encuentra inscrito en este curso.")
+       return
+    }
+
     setIsEnrolling(true)
     try {
       const { data } = await api.post('/api/pms/enrollments/', {
@@ -559,36 +568,42 @@ export default function CourseStatusPage() {
                           </button>
                        </div>
                     </div>
-                 ) : (
+                  ) : (
                     <div className="space-y-2">
-                       {allStudents
+                      {allStudents
                           .filter(s => {
                              const q = enrollSearchQ.toLowerCase()
                              return !q || (s.first_name + ' ' + s.last_name).toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q)
                           })
                           .slice(0, 50)
-                          .map(s => (
-                             <button 
-                                key={s.id}
-                                disabled={isEnrolling}
-                                onClick={() => handleEnroll(s.id)}
-                                className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-fuchsia-50 group transition-all text-left border border-transparent hover:border-fuchsia-100"
-                             >
-                                <div className="flex items-center gap-4">
-                                   <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs overflow-hidden shrink-0 border border-gray-50">
-                                      {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
+                          .map(s => {
+                             const isAlreadyIn = data.find(r => r.course.id === enrollModalCourseId)?.students.some(st => st.id === s.id)
+                             return (
+                                <button 
+                                   key={s.id}
+                                   disabled={isEnrolling || isAlreadyIn}
+                                   onClick={() => handleEnroll(s.id)}
+                                   className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all text-left border border-transparent ${isAlreadyIn ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-fuchsia-50 hover:border-fuchsia-100 group'}`}
+                                >
+                                   <div className="flex items-center gap-4">
+                                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs overflow-hidden shrink-0 border border-gray-50">
+                                         {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
+                                      </div>
+                                      <div>
+                                         <div className="text-sm font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors">
+                                            {s.first_name} {s.last_name}
+                                            {isAlreadyIn && <span className="ml-2 text-[8px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">Ya inscrito</span>}
+                                         </div>
+                                         <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.email || 'Sin correo'}</div>
+                                      </div>
                                    </div>
-                                   <div>
-                                      <div className="text-sm font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors">{s.first_name} {s.last_name}</div>
-                                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.email || 'Sin correo'}</div>
+                                   <div className={`p-2 rounded-lg transition-all ${isAlreadyIn ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-50 text-gray-400 group-hover:bg-fuchsia-600 group-hover:text-white'}`}>
+                                      {isAlreadyIn ? <HiOutlineCheckCircle size={16} /> : <HiOutlinePlus size={16} />}
                                    </div>
-                                </div>
-                                <div className="p-2 rounded-lg bg-gray-50 text-gray-400 group-hover:bg-fuchsia-600 group-hover:text-white transition-all">
-                                   <HiOutlinePlus size={16} />
-                                </div>
-                             </button>
-                          ))
-                       }
+                                </button>
+                             )
+                          })
+                        }
                        
                        <div className="pt-4 border-t border-gray-50">
                           <button 

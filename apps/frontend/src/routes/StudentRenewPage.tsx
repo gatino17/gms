@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
+import { 
+  HiOutlineArrowLeft, 
+  HiOutlineCalendar, 
+  HiOutlineCheckCircle 
+} from 'react-icons/hi'
 
 // ===================== Tipos =====================
 type Enrollment = {
@@ -372,7 +377,7 @@ export default function StudentRenewPage() {
           <div className="space-y-1 text-center sm:text-left">
             <div className="flex items-center justify-center sm:justify-start gap-3 mb-2">
                <button onClick={() => navigate(`/students/${studentId}`)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400">
-                  <HiOutlineArrowLeft size={18} md:size={20} />
+                  <HiOutlineArrowLeft size={20} />
                </button>
                <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Gestión Académica</span>
             </div>

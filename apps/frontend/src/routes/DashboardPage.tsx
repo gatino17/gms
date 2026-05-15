@@ -257,6 +257,20 @@ export default function DashboardPage() {
                             <HiUserGroup size={12} className="text-fuchsia-400" />
                             <span className="truncate">{c.teacher_name || 'Sin profesor'}</span>
                           </div>
+                          <div className="flex items-center gap-3 mt-1 pt-1 border-t border-gray-100/50">
+                            <div className="flex items-center gap-1">
+                               <span className="text-[10px] font-black text-gray-900">{c.total_students || 0}</span>
+                               <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Tot</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                               <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />
+                               <span className="text-[10px] font-black text-pink-600">{c.female_students || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                               <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                               <span className="text-[10px] font-black text-blue-600">{c.male_students || 0}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, case
 from datetime import date, timedelta
 from typing import Any
 
@@ -20,6 +20,20 @@ async def get_summary(
     month_start = today.replace(day=1)
     soon_end_date = today + timedelta(days=7)
     dow = today.weekday()
+    
+    # Subquery for student counts per course
+    counts_sub = (
+        select(
+            Enrollment.course_id,
+            func.count(Student.id).label("total"),
+            func.sum(case((Student.gender == 'Femenino', 1), else_=0)).label("female"),
+            func.sum(case((Student.gender == 'Masculino', 1), else_=0)).label("male")
+        )
+        .join(Student, and_(Enrollment.student_id == Student.id, Student.tenant_id == tenant_id))
+        .where(Enrollment.tenant_id == tenant_id, Enrollment.is_active == True)
+        .group_by(Enrollment.course_id)
+        .alias("course_counts")
+    )
     
     # Subquery for Birthdays (Students + Teachers)
     birthday_sub = select((Student.first_name + ' ' + Student.last_name).label("name")).where(
@@ -49,8 +63,11 @@ async def get_summary(
         # Classes Today (JSON array of objects)
         select(func.coalesce(func.json_agg(func.json_build_object(
             'id', Course.id, 'name', Course.name, 'start_time', Course.start_time, 'end_time', Course.end_time, 
-            'level', Course.level, 'image_url', Course.image_url, 'teacher_name', Teacher.name
-        )), func.json_build_array())).select_from(Course).outerjoin(Teacher, Teacher.id == Course.teacher_id).where(
+            'level', Course.level, 'image_url', Course.image_url, 'teacher_name', Teacher.name,
+            'total_students', func.coalesce(counts_sub.c.total, 0),
+            'female_students', func.coalesce(counts_sub.c.female, 0),
+            'male_students', func.coalesce(counts_sub.c.male, 0)
+        )), func.json_build_array())).select_from(Course).outerjoin(Teacher, Teacher.id == Course.teacher_id).outerjoin(counts_sub, counts_sub.c.course_id == Course.id).where(
             Course.tenant_id == tenant_id, Course.is_active == True,
             or_(Course.day_of_week == dow, Course.day_of_week_2 == dow, Course.day_of_week_3 == dow, Course.day_of_week_4 == dow, Course.day_of_week_5 == dow)
         ).label("classes_today")

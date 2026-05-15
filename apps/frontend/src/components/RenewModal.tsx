@@ -270,22 +270,22 @@ export default function RenewModal({
   useEffect(() => {
     if (renewMode === 'monthly' && renewStartDate) {
       setComputedEndDate(calculate4thOccurrence(renewStartDate))
-      if (course?.price && !payAmount) {
+      if (course?.price && (!payAmount || payAmount === String(course.class_price))) {
         setPayAmount(String(course.price))
       }
-      if (!payReference) {
+      if (!payReference || payReference === 'Clase suelta') {
         setPayReference('Renovación mensual (4 clases)')
       }
     }
     if (renewMode === 'single_class') {
-      if (course?.class_price && !payAmount) {
+      if (course?.class_price && (!payAmount || payAmount === String(course.price))) {
         setPayAmount(String(course.class_price))
       }
-      if (!payReference) {
+      if (!payReference || payReference === 'Renovación mensual (4 clases)') {
         setPayReference('Clase suelta')
       }
     }
-  }, [renewMode, renewStartDate, course, payAmount, payReference])
+  }, [renewMode, renewStartDate, course])
 
   const handleSubmit = async () => {
     try {

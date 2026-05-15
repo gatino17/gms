@@ -60,7 +60,7 @@ type PortalData = {
   }
 }
 
-type CalDay = { date:string; expected:boolean; attended:boolean; is_recovery?: boolean; expected_course_ids?: number[]; attended_course_ids?: number[] }
+type CalDay = { date:string; expected:boolean; attended:boolean; is_recovery?: boolean; is_extra?: boolean; expected_course_ids?: number[]; attended_course_ids?: number[] }
 
 const CL_TZ = 'America/Santiago'
 const DAY_NAMES_MON_FIRST = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'] as const
@@ -312,6 +312,13 @@ export default function StudentDetailPage() {
                              <div className="h-3 md:h-4 bg-gray-100 rounded-full overflow-hidden p-0.5 md:p-1">
                                 <div className={`h-full transition-all duration-1000 rounded-full ${progress >= 100 ? 'bg-emerald-500 shadow-lg shadow-emerald-200' : 'bg-gradient-to-r from-fuchsia-500 to-purple-600'}`} style={{ width: `${progress}%` }} />
                              </div>
+                             {!!stats.extraOutside && stats.extraOutside > 0 && (
+                                <div className="mt-2 flex justify-start">
+                                   <span className="px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md cursor-help transition-colors hover:bg-amber-100" title="Clases sueltas o asistencias registradas fuera del plan">
+                                      +{stats.extraOutside} Clase{stats.extraOutside > 1 ? 's' : ''} Suelta{stats.extraOutside > 1 ? 's' : ''}
+                                   </span>
+                                </div>
+                             )}
                           </div>
 
                           <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -357,7 +364,7 @@ export default function StudentDetailPage() {
                              key={i} 
                              onClick={() => handleDayClick(d)}
                              className={`aspect-square rounded-lg md:rounded-2xl border-2 flex flex-col items-center justify-center transition-all duration-300 hover:scale-110 cursor-pointer relative group ${
-                                d.attended ? (d.is_recovery ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-100' : 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-100') : 
+                                d.attended ? (d.is_extra ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-100' : d.is_recovery ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-100' : 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-100') : 
                                 d.expected ? 'bg-rose-50 border-rose-100 text-rose-400 hover:bg-rose-100' : 
                                 'bg-white border-gray-50 text-gray-300 hover:border-fuchsia-100'
                              } ${isToday ? 'ring-2 md:ring-4 ring-fuchsia-100 border-fuchsia-500 !text-fuchsia-600' : ''}`}
@@ -373,6 +380,7 @@ export default function StudentDetailPage() {
               
               <div className="flex flex-wrap items-center gap-6 pt-4 border-t border-gray-50">
                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-lg bg-emerald-500 shadow-md" /><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Asistido</span></div>
+                 <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-lg bg-amber-500 shadow-md" /><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Extra / Suelta</span></div>
                   <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-lg bg-blue-500 shadow-md" /><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recuperación</span></div>
                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-lg bg-rose-50 border border-rose-100" /><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ausencia</span></div>
                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-lg bg-white border border-gray-50" /><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sin Sesión</span></div>

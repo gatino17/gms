@@ -480,7 +480,7 @@ async def attendance_calendar(
                 cur += timedelta(days=7)
 
     ares = await db.execute(
-        select(Attendance.course_id, Attendance.attended_at, Attendance.is_recovery)
+        select(Attendance.course_id, Attendance.attended_at, Attendance.is_recovery, Attendance.notes)
         .where(
             Attendance.tenant_id == tenant_id,
             Attendance.student_id == student_id,
@@ -489,10 +489,10 @@ async def attendance_calendar(
         )
     )
     attended_map: dict[date, list[dict]] = {}
-    for cid, at, rec in ares.all():
+    for cid, at, rec, notes in ares.all():
         dt = at.date()
         if dt not in attended_map: attended_map[dt] = []
-        attended_map[dt].append({"course_id": cid, "is_recovery": bool(rec)})
+        attended_map[dt].append({"course_id": cid, "is_recovery": bool(rec), "is_extra": notes == 'clase_suelta'})
 
     days = []
     cur = first_day
@@ -501,12 +501,14 @@ async def attendance_calendar(
         att_info = attended_map.get(cur, [])
         att_ids = [i["course_id"] for i in att_info]
         has_recovery = any(i["is_recovery"] for i in att_info)
+        has_extra = any(i.get("is_extra") for i in att_info)
         
         days.append({
             "date": cur.isoformat(),
             "expected": len(exp_ids) > 0,
             "attended": len(att_ids) > 0,
             "is_recovery": has_recovery,
+            "is_extra": has_extra,
             "expected_course_ids": exp_ids,
             "attended_course_ids": att_ids,
         })
@@ -579,7 +581,8 @@ async def get_student_full_stats(
                 Attendance.student_id == student_id,
                 Attendance.course_id == course_id,
                 Attendance.attended_at >= start,
-                Attendance.attended_at <= future_horizon
+                Attendance.attended_at <= future_horizon,
+                or_(Attendance.notes == None, Attendance.notes != 'clase_suelta')
             )
         )
         attended_count = ares.scalar() or 0
@@ -593,7 +596,10 @@ async def get_student_full_stats(
                     Attendance.tenant_id == tenant_id,
                     Attendance.student_id == student_id,
                     Attendance.course_id == course_id,
-                    Attendance.attended_at > end,
+                    or_(
+                        Attendance.attended_at > end,
+                        Attendance.notes == 'clase_suelta'
+                    ),
                     Attendance.attended_at <= future_horizon
                 )
             )

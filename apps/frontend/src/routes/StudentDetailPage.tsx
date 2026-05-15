@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import RenewModal from '../components/RenewModal'
+import EditEnrollmentModal from '../components/EditEnrollmentModal'
 import { 
   HiOutlineChevronLeft, 
   HiOutlineMail, 
@@ -95,6 +96,7 @@ export default function StudentDetailPage() {
   const [showEdit, setShowEdit] = useState(false)
   const [editMode, setEditMode] = useState<'edit' | 'renew' | 'profile'>('edit')
   const [renewModalData, setRenewModalData] = useState<{ studentId: number; courseId: number; enrollmentId: number } | null>(null)
+  const [editEnrollmentData, setEditEnrollmentData] = useState<any>(null)
 
   const todayYMD = useMemo(() => toYMDInTZ(new Date(), CL_TZ), [])
 
@@ -316,7 +318,7 @@ export default function StudentDetailPage() {
                              <button onClick={() => setRenewModalData({ studentId: student.id, courseId: e.course.id, enrollmentId: e.id })} className="flex-1 py-3.5 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-xl md:rounded-2xl hover:bg-fuchsia-600 hover:scale-[1.02] transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2">
                                 <HiOutlineRefresh size={18} /> Renovar Plan
                              </button>
-                             <button onClick={() => { setEditMode('edit'); setShowEdit(true) }} className="p-3.5 bg-gray-50 text-gray-400 rounded-xl md:rounded-2xl hover:text-fuchsia-600 hover:bg-white hover:shadow-lg transition-all flex items-center justify-center">
+                             <button onClick={() => setEditEnrollmentData(e)} className="p-3.5 bg-gray-50 text-gray-400 rounded-xl md:rounded-2xl hover:text-fuchsia-600 hover:bg-white hover:shadow-lg transition-all flex items-center justify-center">
                                 <HiOutlinePencil size={20} />
                              </button>
                           </div>
@@ -456,6 +458,18 @@ export default function StudentDetailPage() {
           studentId={renewModalData.studentId}
           courseId={renewModalData.courseId}
           enrollmentId={renewModalData.enrollmentId}
+      )}
+
+      {/* Modal de Edición de Inscripción */}
+      {editEnrollmentData && (
+        <EditEnrollmentModal
+          isOpen={true}
+          onClose={() => setEditEnrollmentData(null)}
+          onSuccess={() => {
+            setEditEnrollmentData(null)
+            loadData() // Recargar para mostrar los cambios
+          }}
+          enrollment={editEnrollmentData}
         />
       )}
     </div>

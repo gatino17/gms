@@ -289,12 +289,13 @@ export default function PaymentsPage() {
       if (!map[name]) map[name] = { name, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
       
       const m = p.method
-      if (m === 'efectivo' || m === 'cash') map[name].cash += p.amount
-      else if (m === 'debito' || m === 'credito' || m === 'card') map[name].card += p.amount
-      else if (m === 'transferencia' || m === 'transfer') map[name].transfer += p.amount
-      else map[name].agreement += p.amount
+      const amt = Number(p.amount || 0)
+      if (m === 'efectivo' || m === 'cash') map[name].cash += amt
+      else if (m === 'debito' || m === 'credito' || m === 'card') map[name].card += amt
+      else if (m === 'transferencia' || m === 'transfer') map[name].transfer += amt
+      else map[name].agreement += amt
       
-      map[name].total += p.amount
+      map[name].total += amt
     })
     return Object.values(map).sort((a, b) => b.total - a.total)
   }, [data, courses])

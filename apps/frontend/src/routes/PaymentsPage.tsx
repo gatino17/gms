@@ -134,8 +134,8 @@ export default function PaymentsPage() {
 
       const [pres, cres, sres, eres] = await Promise.all([
         api.get('/api/pms/payments', { params }),
-        api.get('/api/pms/courses'),
-        api.get('/api/pms/students'),
+        api.get('/api/pms/courses', { params: { limit: 1000 } }),
+        api.get('/api/pms/students', { params: { limit: 1000 } }),
         api.get('/api/pms/enrollments')
       ])
 

@@ -100,8 +100,8 @@ export default function PaymentsTeachers() {
       const payParams: any = { limit: 1000, offset: 0, date_from: dateFrom || undefined, date_to: dateTo || undefined }
       const [pres, cres, sres, eres, tres] = await Promise.all([
         api.get('/api/pms/payments', { params: payParams }),
-        api.get('/api/pms/courses'),
-        api.get('/api/pms/students'),
+        api.get('/api/pms/courses', { params: { limit: 1000 } }),
+        api.get('/api/pms/students', { params: { limit: 1000 } }),
         api.get('/api/pms/enrollments'),
         api.get('/api/pms/payments/by_teacher', { params: payParams }),
       ])

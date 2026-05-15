@@ -47,10 +47,10 @@ async def get_summary(
         select(func.coalesce(func.json_agg(birthday_sub.c.name), func.json_build_array())).select_from(birthday_sub).label("birthdays"),
         
         # Classes Today (JSON array of objects)
-        # Using a subquery with json_agg
         select(func.coalesce(func.json_agg(func.json_build_object(
-            'id', Course.id, 'name', Course.name, 'start_time', Course.start_time, 'end_time', Course.end_time, 'level', Course.level, 'image_url', Course.image_url
-        )), func.json_build_array())).where(
+            'id', Course.id, 'name', Course.name, 'start_time', Course.start_time, 'end_time', Course.end_time, 
+            'level', Course.level, 'image_url', Course.image_url, 'teacher_name', Teacher.name
+        )), func.json_build_array())).select_from(Course).outerjoin(Teacher, Teacher.id == Course.teacher_id).where(
             Course.tenant_id == tenant_id, Course.is_active == True,
             or_(Course.day_of_week == dow, Course.day_of_week_2 == dow, Course.day_of_week_3 == dow, Course.day_of_week_4 == dow, Course.day_of_week_5 == dow)
         ).label("classes_today")

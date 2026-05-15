@@ -134,7 +134,7 @@ export default function PaymentsPage() {
 
       const [pres, cres, sres, eres] = await Promise.all([
         api.get('/api/pms/payments', { params }),
-        api.get('/api/pms/courses', { params: { limit: 1000 } }),
+        api.get('/api/pms/courses', { params: { limit: 500 } }),
         api.get('/api/pms/students', { params: { limit: 1000 } }),
         api.get('/api/pms/enrollments')
       ])
@@ -165,8 +165,8 @@ export default function PaymentsPage() {
 
       setEnrollments(eres.data || [])
     } catch (err: any) {
-      console.error(err)
-      setError(err.response?.data?.detail || err.message || 'Error al cargar datos de pagos')
+      const detail = err.response?.data?.detail
+      setError(typeof detail === 'string' ? detail : (typeof detail === 'object' ? JSON.stringify(detail) : err.message || 'Error al cargar datos de pagos'))
     } finally {
       setLoading(false)
     }

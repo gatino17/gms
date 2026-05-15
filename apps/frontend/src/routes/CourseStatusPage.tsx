@@ -36,6 +36,7 @@ type CourseRow = {
     payment_status?: 'activo' | 'pendiente';
     attendance_count?: number;
     expected_count?: number;
+    extra_count?: number;
     birthday_today?: boolean;
   }[]
 }
@@ -369,9 +370,16 @@ export default function CourseStatusPage() {
                                                         <span className="text-gray-900">{s.attendance_count}/{s.expected_count}</span>
                                                         <span className={progress >= 80 ? 'text-emerald-600' : 'text-fuchsia-600'}>{Math.round(progress)}%</span>
                                                      </div>
-                                                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner">
+                                                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner relative">
                                                         <div className={`h-full transition-all duration-1000 ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-fuchsia-500' : 'bg-rose-400'}`} style={{ width: `${progress}%` }} />
                                                      </div>
+                                                     {!!s.extra_count && s.extra_count > 0 && (
+                                                        <div className="mt-2 flex justify-center">
+                                                           <span className="px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md cursor-help transition-colors hover:bg-amber-100" title="Asistencia registrada fuera de las fechas de su plan original (ej. Clase suelta)">
+                                                              +{s.extra_count} Extra{s.extra_count > 1 ? 's' : ''}
+                                                           </span>
+                                                        </div>
+                                                     )}
                                                   </div>
                                                </td>
                                                <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6 text-left md:text-center">

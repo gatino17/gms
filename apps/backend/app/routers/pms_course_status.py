@@ -46,6 +46,27 @@ async def course_status(
         .subquery()
     )
 
+    # Subquery for extra attendances per (student, course) OUTSIDE THEIR enrollment dates
+    extra_subquery = (
+        select(
+            Attendance.student_id, 
+            Attendance.course_id, 
+            func.count(Attendance.id).label("count")
+        )
+        .join(Enrollment, and_(
+            Enrollment.student_id == Attendance.student_id,
+            Enrollment.course_id == Attendance.course_id,
+            Enrollment.tenant_id == Attendance.tenant_id
+        ))
+        .where(
+            Attendance.tenant_id == tenant_id,
+            Enrollment.end_date != None,
+            Attendance.attended_at > Enrollment.end_date
+        )
+        .group_by(Attendance.student_id, Attendance.course_id)
+        .subquery()
+    )
+
     stmt = (
         select(
             Course,
@@ -54,12 +75,14 @@ async def course_status(
             Enrollment.id.label("enr_id"),
             Enrollment.start_date.label("enr_start"),
             Enrollment.end_date.label("enr_end"),
-            func.coalesce(att_subquery.c.count, 0).label("att_count")
+            func.coalesce(att_subquery.c.count, 0).label("att_count"),
+            func.coalesce(extra_subquery.c.count, 0).label("extra_count")
         )
         .join(Enrollment, and_(Enrollment.course_id == Course.id, Enrollment.tenant_id == Course.tenant_id), isouter=True)
         .join(Student, and_(Student.id == Enrollment.student_id, Student.tenant_id == Course.tenant_id), isouter=True)
         .join(Teacher, and_(Teacher.id == Course.teacher_id, Teacher.tenant_id == Course.tenant_id), isouter=True)
         .join(att_subquery, and_(att_subquery.c.student_id == Student.id, att_subquery.c.course_id == Course.id), isouter=True)
+        .join(extra_subquery, and_(extra_subquery.c.student_id == Student.id, extra_subquery.c.course_id == Course.id), isouter=True)
         .where(Course.tenant_id == tenant_id)
     )
 
@@ -94,7 +117,7 @@ async def course_status(
                 count += 1
         return count
 
-    for course_obj, t_name, student_obj, enr_id, enr_start, enr_end, att_count in rows:
+    for course_obj, t_name, student_obj, enr_id, enr_start, enr_end, att_count, extra_count in rows:
         cid = course_obj.id
         if cid not in grouped:
             grouped[cid] = {
@@ -135,6 +158,7 @@ async def course_status(
                 "payment_status": "activo" if (enr_end and enr_end >= today) else "pendiente",
                 "attendance_count": int(att_count or 0),
                 "expected_count": expected,
+                "extra_count": int(extra_count or 0),
                 "birthday_today": bool(student_obj.birthdate and student_obj.birthdate.month == today.month and student_obj.birthdate.day == today.day),
             }
             grouped[cid]["students"].append(student_data)

@@ -458,6 +458,7 @@ export default function StudentDetailPage() {
           studentId={renewModalData.studentId}
           courseId={renewModalData.courseId}
           enrollmentId={renewModalData.enrollmentId}
+        />
       )}
 
       {/* Modal de Edición de Inscripción */}

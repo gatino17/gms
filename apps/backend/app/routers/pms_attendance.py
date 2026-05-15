@@ -64,6 +64,7 @@ async def mark_attendance(
         return {"status": "already_marked"}
 
     is_recovery = bool(payload.get("is_recovery", False))
+    notes = payload.get("notes")
     att = Attendance(
         tenant_id=tenant_id,
         student_id=student_id,
@@ -71,6 +72,7 @@ async def mark_attendance(
         attended_at=attended_at,
         marked_by="web",
         is_recovery=is_recovery,
+        notes=notes,
     )
     db.add(att)
     await db.commit()

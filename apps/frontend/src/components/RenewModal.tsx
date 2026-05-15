@@ -357,7 +357,8 @@ export default function RenewModal({
           await api.post('/api/pms/attendance', {
             student_id: Number(studentId),
             course_id: Number(courseId),
-            date: singleDate
+            date: singleDate,
+            notes: 'clase_suelta'
           })
         }
       }

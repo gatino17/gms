@@ -75,10 +75,10 @@ export default function EditEnrollmentModal({ isOpen, onClose, onSuccess, enroll
         <div className="flex min-h-full items-center justify-center p-4 sm:p-8">
           <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-gray-100">
             {/* Header */}
-            <div className="px-6 py-5 md:px-8 md:py-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white flex items-center justify-between shrink-0">
+            <div className="px-6 py-5 md:px-8 md:py-6 bg-gradient-to-br from-fuchsia-600 to-purple-700 text-white flex items-center justify-between shrink-0">
                <div>
                   <h2 className="text-xl font-black tracking-tight">Editar Inscripción</h2>
-                  <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">{enrollment.course.name}</p>
+                  <p className="text-white/70 text-xs font-bold uppercase tracking-widest mt-1">{enrollment.course.name}</p>
                </div>
                <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-2xl transition-colors">
                   <HiOutlineX size={24} />

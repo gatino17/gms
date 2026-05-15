@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
-import { FaBirthdayCake } from 'react-icons/fa'
+import { FaBirthdayCake, FaVenus, FaMars } from 'react-icons/fa'
 import {
   HiExclamationCircle,
   HiCalendar,
@@ -263,11 +263,11 @@ export default function DashboardPage() {
                                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Tot</span>
                             </div>
                             <div className="flex items-center gap-1">
-                               <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />
+                               <FaVenus className="text-pink-400" size={10} />
                                <span className="text-[10px] font-black text-pink-600">{c.female_students || 0}</span>
                             </div>
                             <div className="flex items-center gap-1">
-                               <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                               <FaMars className="text-blue-400" size={10} />
                                <span className="text-[10px] font-black text-blue-600">{c.male_students || 0}</span>
                             </div>
                           </div>

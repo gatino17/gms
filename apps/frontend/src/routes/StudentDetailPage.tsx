@@ -403,7 +403,7 @@ export default function StudentDetailPage() {
                                 <td className="px-6 md:px-10 py-5 md:py-7">
                                    <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors text-sm">{p.course_name || 'Inscripción General'}</div>
                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-lg ${p.type === 'monthly' ? 'bg-fuchsia-50 text-fuchsia-600' : 'bg-gray-100 text-gray-400'}`}>{p.type === 'monthly' ? 'Mensualidad' : p.type === 'registration' ? 'Matrícula' : 'Pago'}</span>
+                                      <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-lg ${p.type === 'monthly' ? 'bg-fuchsia-50 text-fuchsia-600' : p.type === 'single_class' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'}`}>{p.type === 'monthly' ? 'Mensualidad' : p.type === 'single_class' ? 'Clase Suelta' : p.type === 'registration' ? 'Matrícula' : 'Pago'}</span>
                                        {p.teacher_name && (
                                           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter shrink-0">
                                              • Prof: {p.teacher_name}
@@ -412,7 +412,12 @@ export default function StudentDetailPage() {
                                    </div>
                                 </td>
                                  <td className="px-4 py-5 md:py-7 text-center">
-                                    {p.period_start && p.period_end ? (
+                                    {p.type === 'single_class' ? (
+                                       <div className="flex flex-col items-center">
+                                          <span className="text-[10px] font-black text-gray-900 leading-none">{ymdToCL(p.payment_date)}</span>
+                                          <span className="text-[8px] font-black text-amber-500 uppercase mt-1">Día Extra</span>
+                                       </div>
+                                    ) : p.period_start && p.period_end ? (
                                        <div className="flex flex-col items-center">
                                           <span className="text-[10px] font-black text-gray-900 leading-none">{ymdToCL(p.period_start)}</span>
                                           <span className="text-[8px] font-black text-gray-300 uppercase my-0.5">al</span>

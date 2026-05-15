@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, timedelta
-from sqlalchemy import select, func, case
+from sqlalchemy import select, func, case, or_
 from sqlalchemy.orm import selectinload
 import secrets
 from datetime import datetime

@@ -165,7 +165,6 @@ async def update_current_tenant(
         setattr(tenant, field, value)
 
     await db.commit()
-    await db.commit()
     await db.refresh(tenant)
     return tenant
 

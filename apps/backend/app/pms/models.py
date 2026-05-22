@@ -48,6 +48,7 @@ class Tenant(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(40))
     whatsapp_message: Mapped[Optional[str]] = mapped_column(Text())
     logo_url: Mapped[Optional[str]] = mapped_column(String(255))
+    attendance_pin: Mapped[Optional[str]] = mapped_column(String(4))
     currency: Mapped[Optional[str]] = mapped_column(String(10), default="CLP")
     instagram_url: Mapped[Optional[str]] = mapped_column(String(255))
     tiktok_url: Mapped[Optional[str]] = mapped_column(String(255))

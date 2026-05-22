@@ -17,6 +17,10 @@ from app.pms.deps import (
 from app.pms.schemas import TenantOut, TenantCreate, TenantUpdate, TenantSelfUpdate
 from app.core import security
 from app.pms import models
+from pydantic import BaseModel
+
+class VerifyUnlockPayload(BaseModel):
+    code: str
 
 
 router = APIRouter(prefix="/api/pms/tenants", tags=["pms-tenants"])
@@ -161,8 +165,29 @@ async def update_current_tenant(
         setattr(tenant, field, value)
 
     await db.commit()
+    await db.commit()
     await db.refresh(tenant)
     return tenant
+
+
+@router.post("/verify_unlock")
+async def verify_unlock(
+    payload: VerifyUnlockPayload,
+    tenant_id: int = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    tenant = await db.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+    
+    if tenant.attendance_pin and payload.code == tenant.attendance_pin:
+        return {"success": True}
+        
+    if security.verify_password(payload.code, current_user.hashed_password):
+        return {"success": True}
+        
+    raise HTTPException(status_code=400, detail="Código o contraseña incorrectos")
 
 
 @router.put("/{tenant_id}", response_model=TenantOut)

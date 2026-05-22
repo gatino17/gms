@@ -248,6 +248,15 @@ export default function AppLayout() {
                 </div>
               </div>
             )}
+            
+            <Link
+              to="/asistencia"
+              target="_blank"
+              title="Abrir Modo Asistencia (Kiosko)"
+              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 hover:text-cyan-800 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 border border-cyan-100/50"
+            >
+              Modo Asistencia
+            </Link>
 
             <div className="h-8 w-px bg-slate-200 hidden sm:block" />
 

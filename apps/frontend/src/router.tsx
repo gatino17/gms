@@ -18,6 +18,7 @@ import AnnouncementsPage from './routes/AnnouncementsPage'
 import { PrivateRoute } from './components/PrivateRoute'
 import { RequireSuperuser } from './components/RequireSuperuser'
 import { LoginPage } from './routes/LoginPage'
+import AttendanceKioskPage from './routes/AttendanceKioskPage'
 
 export const router = createBrowserRouter([
   {
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
           { path: 'announcements', element: <AnnouncementsPage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
+      },
+      {
+        path: '/asistencia',
+        element: <AttendanceKioskPage />,
       },
     ],
   },

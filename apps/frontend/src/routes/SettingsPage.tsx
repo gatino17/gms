@@ -30,6 +30,7 @@ type TenantSettings = {
   tiktok_url?: string | null
   facebook_url?: string | null
   website_url?: string | null
+  attendance_pin?: string | null
 }
 
 type RoomItem = {
@@ -57,6 +58,7 @@ export default function SettingsPage() {
     tiktok_url: '',
     facebook_url: '',
     website_url: '',
+    attendance_pin: '',
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -204,6 +206,15 @@ export default function SettingsPage() {
       website_url: settings.website_url,
     })
     alert('Redes sociales actualizadas correctamente.')
+  }
+
+  const handleSavePin = async () => {
+    if (settings.attendance_pin && settings.attendance_pin.length !== 4) {
+      alert('El PIN debe tener exactamente 4 dígitos.')
+      return
+    }
+    await saveGlobalSettings({ attendance_pin: settings.attendance_pin })
+    alert('PIN de asistencia actualizado correctamente.')
   }
 
   if (loading) {
@@ -448,6 +459,54 @@ export default function SettingsPage() {
            </div>
         </div>
       </div>
+
+      {/* Attendance Mode Section */}
+      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
+             <HiOutlineUserGroup className="text-2xl" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Modo Asistencia (Kiosko)</h2>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Auto-registro de alumnos</p>
+          </div>
+        </div>
+
+        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-6">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+              <div className="space-y-3">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">PIN de Seguridad (4 dígitos)</label>
+                 <input 
+                    type="password"
+                    maxLength={4}
+                    className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-cyan-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm text-center text-2xl tracking-[0.5em]"
+                    placeholder="1234"
+                    value={settings.attendance_pin || ''}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 4)
+                      setSettings(s => ({ ...s, attendance_pin: val }))
+                    }}
+                 />
+              </div>
+              <div className="flex justify-start pb-1">
+                <button
+                  onClick={handleSavePin}
+                  disabled={isSavingMsg}
+                  className="px-8 py-4 bg-cyan-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-cyan-100 hover:bg-cyan-700 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  Guardar PIN
+                </button>
+              </div>
+           </div>
+           
+           <div className="px-4 py-3 bg-white rounded-xl border border-gray-100 shadow-sm mt-4">
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
+                💡 Este PIN se utilizará para salir de la pantalla de auto-asistencia y evitar que los alumnos ingresen a tu panel de administración. Si olvidas el PIN, puedes usar tu contraseña de administrador como respaldo.
+              </p>
+           </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">

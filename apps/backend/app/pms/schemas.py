@@ -21,6 +21,7 @@ class TenantOut(BaseModel):
     currency: Optional[str] = "CLP"
     instagram_url: Optional[str] = None
     tiktok_url: Optional[str] = None
+    attendance_pin: Optional[str] = None
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
     created_at: datetime
@@ -63,6 +64,7 @@ class TenantUpdate(BaseModel):
     currency: Optional[str] = None
     instagram_url: Optional[str] = None
     tiktok_url: Optional[str] = None
+    attendance_pin: Optional[str] = Field(default=None, max_length=4)
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
     is_superuser: Optional[bool] = None
@@ -79,6 +81,7 @@ class TenantSelfUpdate(BaseModel):
     currency: Optional[str] = None
     instagram_url: Optional[str] = None
     tiktok_url: Optional[str] = None
+    attendance_pin: Optional[str] = Field(default=None, max_length=4)
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
 

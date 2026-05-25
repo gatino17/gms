@@ -23,8 +23,11 @@ async def list_courses(
     offset: int = Query(default=0, ge=0),
 ):
     enrollment_sq = (
-        select(Enrollment.course_id, func.count(Enrollment.id).label("student_count"))
-        .where(Enrollment.tenant_id == tenant_id, Enrollment.is_active == True)
+        select(
+            Enrollment.course_id,
+            func.count(func.distinct(Enrollment.student_id)).label("student_count")
+        )
+        .where(Enrollment.tenant_id == tenant_id)
         .group_by(Enrollment.course_id)
         .subquery()
     )

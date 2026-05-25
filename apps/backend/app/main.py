@@ -23,19 +23,32 @@ app = FastAPI(title=settings.api_title)
 # CORS configuration
 cors_origins_raw = settings.cors_origins.split(',')
 origins = [o.strip() for o in cors_origins_raw if o.strip()]
+local_dev_origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+]
 
 # If origins is '*' or empty, provide defaults including the production IP
 if not origins or "*" in origins:
     origins = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
         "http://206.189.191.143",
         "http://206.189.191.143:8000",
     ]
 
+# Always allow common local dev origins in addition to configured origins.
+for dev_origin in local_dev_origins:
+    if dev_origin not in origins:
+        origins.append(dev_origin)
+
+# Support local dev ports beyond the explicit list.
+allow_origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

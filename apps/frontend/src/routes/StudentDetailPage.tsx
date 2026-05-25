@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import RenewModal from '../components/RenewModal'
@@ -92,6 +93,8 @@ export default function StudentDetailPage() {
   const [calYear, setCalYear] = useState(today.getFullYear())
   const [calMonth, setCalMonth] = useState(today.getMonth() + 1)
   const [calLoading, setCalLoading] = useState(false)
+  const [deleteAttendanceModal, setDeleteAttendanceModal] = useState<{ date: string; courseIds: number[] } | null>(null)
+  const [deletingAttendance, setDeletingAttendance] = useState(false)
 
   const [showEdit, setShowEdit] = useState(false)
   const [editMode, setEditMode] = useState<'edit' | 'renew' | 'profile'>('edit')
@@ -100,9 +103,9 @@ export default function StudentDetailPage() {
 
   const todayYMD = useMemo(() => toYMDInTZ(new Date(), CL_TZ), [])
 
-  const loadData = async () => {
+  const loadData = async (showLoader = true) => {
     if(!id) return
-    setLoading(true)
+    if (showLoader) setLoading(true)
     try {
       const [pRes, sRes] = await Promise.all([
         api.get(`/api/pms/students/${id}/portal`),
@@ -110,7 +113,7 @@ export default function StudentDetailPage() {
       ])
       setData(pRes.data)
       setCourseStats(sRes.data || {})
-    } finally { setLoading(false) }
+    } finally { if (showLoader) setLoading(false) }
   }
 
   const loadCalendar = async () => {
@@ -125,26 +128,57 @@ export default function StudentDetailPage() {
   useEffect(() => { loadData() }, [id, tenantId])
   useEffect(() => { loadCalendar() }, [id, calYear, calMonth, tenantId])
 
+  useEffect(() => {
+    if (!id || !tenantId) return
+    const silentRefresh = () => {
+      loadCalendar()
+      loadData(false)
+    }
+    const intervalId = setInterval(silentRefresh, 10000)
+    const onFocus = () => silentRefresh()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') silentRefresh()
+    }
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(intervalId)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [id, tenantId, calYear, calMonth])
+
   const handleDayClick = async (day: CalDay) => {
     if (!day.attended || !day.attended_course_ids || day.attended_course_ids.length === 0) return
+    setDeleteAttendanceModal({ date: day.date, courseIds: day.attended_course_ids })
+  }
 
-    const confirmDelete = window.confirm(`¿Seguro que deseas ELIMINAR la asistencia del día ${ymdToCL(day.date)}?`)
-    if (!confirmDelete) return
+  const getCourseNameById = (courseId: number) => {
+    const enrollment = data?.enrollments.find((e) => e.course.id === courseId)
+    return enrollment?.course?.name || `Curso #${courseId}`
+  }
 
+  const deleteAttendanceForCourses = async (courseIds: number[], attendedDate: string) => {
+    if (!id || courseIds.length === 0) return
+    setDeletingAttendance(true)
     try {
-      for (const courseId of day.attended_course_ids) {
+      for (const courseId of courseIds) {
         await api.delete('/api/pms/attendance', {
           params: {
             student_id: id,
             course_id: courseId,
-            attended_date: day.date
+            attended_date: attendedDate
           }
         })
       }
       await loadCalendar()
-      await loadData()
+      await loadData(false)
+      setDeleteAttendanceModal(null)
     } catch (e: any) {
       alert('Error al eliminar: ' + (e.response?.data?.detail || e.message))
+    } finally {
+      setDeletingAttendance(false)
     }
   }
 
@@ -486,6 +520,58 @@ export default function StudentDetailPage() {
           enrollment={editEnrollmentData}
         />
       )}
+
+      {deleteAttendanceModal && createPortal(
+        <div className="fixed left-0 top-0 z-[999] h-screen w-screen bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-white border border-gray-200 rounded-3xl shadow-2xl p-6 md:p-8 space-y-5">
+            <div>
+              <h3 className="text-lg md:text-xl font-black text-gray-900">Eliminar asistencia por curso</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Día {ymdToCL(deleteAttendanceModal.date)}. Selecciona exactamente qué asistencia deseas eliminar.
+              </p>
+            </div>
+
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {deleteAttendanceModal.courseIds.map((courseId) => (
+                <button
+                  key={courseId}
+                  onClick={() => deleteAttendanceForCourses([courseId], deleteAttendanceModal.date)}
+                  disabled={deletingAttendance}
+                  className="w-full text-left p-4 rounded-2xl border border-gray-200 hover:border-rose-300 hover:bg-rose-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-black text-gray-900">{getCourseNameById(courseId)}</div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mt-1">Eliminar solo este curso</div>
+                    </div>
+                    <HiOutlineTrash className="text-rose-500 shrink-0" size={20} />
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-1">
+              {deleteAttendanceModal.courseIds.length > 1 && (
+                <button
+                  onClick={() => deleteAttendanceForCourses(deleteAttendanceModal.courseIds, deleteAttendanceModal.date)}
+                  disabled={deletingAttendance}
+                  className="flex-1 py-3 rounded-2xl bg-rose-600 text-white font-black text-xs uppercase tracking-widest hover:bg-rose-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Eliminar todos los cursos del día
+                </button>
+              )}
+              <button
+                onClick={() => setDeleteAttendanceModal(null)}
+                disabled={deletingAttendance}
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
     </div>
   )
 }
+

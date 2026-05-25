@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, func
 from datetime import date, timedelta
-from datetime import date
 
 from app.pms.models import Course, Enrollment, Student, Teacher, Attendance, Payment
 from app.pms.deps import get_tenant_id, get_db_session
@@ -99,7 +98,15 @@ async def course_status(
     if student_q:
         stmt = stmt.where(or_(Student.first_name.ilike(f"%{student_q}%"), Student.last_name.ilike(f"%{student_q}%")))
     if day_of_week is not None:
-        stmt = stmt.where(Course.day_of_week == day_of_week)
+        stmt = stmt.where(
+            or_(
+                Course.day_of_week == day_of_week,
+                Course.day_of_week_2 == day_of_week,
+                Course.day_of_week_3 == day_of_week,
+                Course.day_of_week_4 == day_of_week,
+                Course.day_of_week_5 == day_of_week,
+            )
+        )
     if teacher_q:
         stmt = stmt.where(Teacher.name.ilike(f"%{teacher_q}%"))
 

@@ -467,7 +467,7 @@ export default function SettingsPage() {
              <HiOutlineUserGroup className="text-2xl" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Modo Asistencia (Kiosko)</h2>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Modo Asistencia</h2>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Auto-registro de alumnos</p>
           </div>
         </div>

@@ -56,8 +56,8 @@ export default function CourseStatusPage() {
   const [tenantInfo, setTenantInfo] = useState<any>(null)
   const [renewModalData, setRenewModalData] = useState<{ studentId: number; courseId: number; enrollmentId: number } | null>(null)
   
-  // View state: 'detailed' | 'pending' | 'summary'
-  const [viewMode, setViewMode] = useState<'detailed' | 'pending' | 'summary'>('detailed')
+  // View state: 'detailed' | 'pending' | 'summary' | 'gender'
+  const [viewMode, setViewMode] = useState<'detailed' | 'pending' | 'summary' | 'gender'>('detailed')
   
   // Filters
   const [courseQ, setCourseQ] = useState('')
@@ -268,6 +268,7 @@ export default function CourseStatusPage() {
                <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
                  <button onClick={() => setViewMode('detailed')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='detailed' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Todos</button>
                  <button onClick={() => setViewMode('pending')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='pending' ? 'bg-white shadow-sm text-rose-600' : 'text-rose-400/60 hover:text-rose-600'}`}>Pendientes</button>
+                 <button onClick={() => setViewMode('gender')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='gender' ? 'bg-white shadow-sm text-sky-600' : 'text-gray-400 hover:text-gray-600'}`}>Por género</button>
                  <button onClick={() => setViewMode('summary')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='summary' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>Resumen</button>
                </div>
            </div>
@@ -336,14 +337,18 @@ export default function CourseStatusPage() {
                                       return (
                                         <div className="flex flex-wrap items-center gap-2 mt-2">
                                           <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-[9px] font-black uppercase tracking-widest text-gray-700">{counts.total} Alumnos</span>
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-pink-50 text-[9px] font-black uppercase tracking-widest text-pink-700">
-                                            <IoFemale size={12} />
-                                            {counts.female}
-                                          </span>
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-[9px] font-black uppercase tracking-widest text-sky-700">
-                                            <IoMale size={12} />
-                                            {counts.male}
-                                          </span>
+                                          {counts.female > 0 && (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-pink-50 text-[9px] font-black uppercase tracking-widest text-pink-700">
+                                              <IoFemale size={12} />
+                                              {counts.female}
+                                            </span>
+                                          )}
+                                          {counts.male > 0 && (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-[9px] font-black uppercase tracking-widest text-sky-700">
+                                              <IoMale size={12} />
+                                              {counts.male}
+                                            </span>
+                                          )}
                                         </div>
                                       )
                                    })()}
@@ -357,7 +362,7 @@ export default function CourseStatusPage() {
                                    <HiOutlinePlus size={14} />
                                    Inscribir
                                 </button>
-                                {viewMode !== 'summary' && (
+                                {(viewMode === 'detailed' || viewMode === 'pending' || viewMode === 'gender') && (
                                    <button onClick={() => navigate(`/courses/${row.course.id}`)} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-fuchsia-600 hover:shadow-lg transition-all group/btn">
                                       <HiOutlineChevronRight size={24} className="group-hover/btn:translate-x-0.5 transition-transform" />
                                    </button>
@@ -366,7 +371,7 @@ export default function CourseStatusPage() {
                           </div>
 
                           {/* Detailed/Compact Table */}
-                          {viewMode !== 'summary' && (
+                          {(viewMode === 'detailed' || viewMode === 'pending') && (
                              <div className="overflow-x-auto no-scrollbar">
                                 <table className="w-full">
                                    <thead className="hidden md:table-header-group">
@@ -461,6 +466,156 @@ export default function CourseStatusPage() {
                                       })}
                                    </tbody>
                                 </table>
+                             </div>
+                          )}
+
+                          {viewMode === 'gender' && (
+                             <div className="p-6 md:p-8">
+                                {(() => {
+                                   const maleStudents = row.students.filter((s) => {
+                                     const g = normalizeGender(s.gender)
+                                     return (g.startsWith('m') && !g.startsWith('muj')) || g === 'male' || g === 'masculino' || g === 'hombre'
+                                   })
+                                   const femaleStudents = row.students.filter((s) => {
+                                     const g = normalizeGender(s.gender)
+                                     return g.startsWith('f') || g.startsWith('muj') || g === 'female' || g === 'femenino' || g === 'mujer'
+                                   })
+                                   return (
+                                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                       {maleStudents.length > 0 && (
+                                       <div className="rounded-2xl border border-sky-100 bg-sky-50/40 p-4">
+                                         <div className="flex items-center justify-between mb-3">
+                                           <div className="inline-flex items-center gap-2 text-sky-700 font-black text-[11px] uppercase tracking-widest">
+                                             <IoMale size={14} />
+                                             Hombres
+                                           </div>
+                                           <span className="px-2.5 py-1 rounded-lg bg-sky-100 text-sky-700 text-[10px] font-black">{maleStudents.length}</span>
+                                         </div>
+                                         <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                                           {maleStudents.length === 0 ? (
+                                             <div className="text-[11px] text-sky-700/70 font-bold">Sin alumnos</div>
+                                           ) : maleStudents.map((s) => (
+                                             <div key={`m-${s.id}`} className="bg-white border border-sky-100 rounded-xl p-3">
+                                               <div className="flex items-center gap-3">
+                                                 <div className="w-10 h-10 rounded-xl bg-sky-50 overflow-hidden flex items-center justify-center text-sky-600 font-black shrink-0 border border-sky-100">
+                                                   {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
+                                                 </div>
+                                               <div className="min-w-0 flex-1">
+                                                   <div className="flex items-center gap-2 w-full">
+                                                     <div className="font-black text-sm text-gray-800 truncate">{s.first_name} {s.last_name}</div>
+                                                     <span className="text-[11px] font-black text-gray-600 uppercase shrink-0">{s.attendance_count || 0}/{s.expected_count || 0} asist.</span>
+                                                     {(() => {
+                                                       const progress = s.expected_count && s.expected_count > 0 ? Math.min(100, ((s.attendance_count || 0) / s.expected_count) * 100) : 0
+                                                       return (
+                                                         <div className="flex items-center gap-1.5 shrink-0">
+                                                           <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                             <div className={`h-full transition-all duration-700 ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-fuchsia-500' : 'bg-rose-400'}`} style={{ width: `${progress}%` }} />
+                                                           </div>
+                                                           <span className="text-[10px] font-black text-gray-600">{Math.round(progress)}%</span>
+                                                         </div>
+                                                       )
+                                                     })()}
+                                                     <div className="ml-auto flex items-center gap-2">
+                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${s.payment_status === 'activo' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
+                                                       <div className={`w-1.5 h-1.5 rounded-full ${s.payment_status === 'activo' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                                       {s.payment_status === 'activo' ? 'Pagado' : 'Pendiente'}
+                                                     </span>
+                                                     {(() => {
+                                                       const customPart = tenantInfo?.whatsapp_message || `Te saludamos de ${tenantInfo?.name || 'la academia'}.`
+                                                       const msg = `Hola ${s.first_name}, ${customPart} Esperamos que estés disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente para el curso ${row.course.name}. Nos vemos pronto.`
+                                                       const cleanPhone = s.phone?.replace(/\D/g, '') || ''
+                                                       return (
+                                                         <a
+                                                           href={cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : '#'}
+                                                           onClick={e => !cleanPhone && e.preventDefault()}
+                                                           target={cleanPhone ? "_blank" : undefined}
+                                                           rel={cleanPhone ? "noopener noreferrer" : undefined}
+                                                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all shrink-0 ${cleanPhone ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white' : 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50'}`}
+                                                           title={cleanPhone ? "Enviar WhatsApp" : "Sin número de teléfono"}
+                                                         >
+                                                           <HiOutlinePhone size={14} />
+                                                         </a>
+                                                       )
+                                                     })()}
+                                                     </div>
+                                                   </div>
+                                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
+                                                 </div>
+                                               </div>
+                                             </div>
+                                           ))}
+                                         </div>
+                                       </div>
+                                       )}
+
+                                       {femaleStudents.length > 0 && (
+                                       <div className="rounded-2xl border border-pink-100 bg-pink-50/40 p-4">
+                                         <div className="flex items-center justify-between mb-3">
+                                           <div className="inline-flex items-center gap-2 text-pink-700 font-black text-[11px] uppercase tracking-widest">
+                                             <IoFemale size={14} />
+                                             Mujeres
+                                           </div>
+                                           <span className="px-2.5 py-1 rounded-lg bg-pink-100 text-pink-700 text-[10px] font-black">{femaleStudents.length}</span>
+                                         </div>
+                                         <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                                           {femaleStudents.length === 0 ? (
+                                             <div className="text-[11px] text-pink-700/70 font-bold">Sin alumnas</div>
+                                           ) : femaleStudents.map((s) => (
+                                             <div key={`f-${s.id}`} className="bg-white border border-pink-100 rounded-xl p-3">
+                                               <div className="flex items-center gap-3">
+                                                 <div className="w-10 h-10 rounded-xl bg-pink-50 overflow-hidden flex items-center justify-center text-pink-600 font-black shrink-0 border border-pink-100">
+                                                   {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
+                                                 </div>
+                                               <div className="min-w-0 flex-1">
+                                                   <div className="flex items-center gap-2 w-full">
+                                                     <div className="font-black text-sm text-gray-800 truncate">{s.first_name} {s.last_name}</div>
+                                                     <span className="text-[11px] font-black text-gray-600 uppercase shrink-0">{s.attendance_count || 0}/{s.expected_count || 0} asist.</span>
+                                                     {(() => {
+                                                       const progress = s.expected_count && s.expected_count > 0 ? Math.min(100, ((s.attendance_count || 0) / s.expected_count) * 100) : 0
+                                                       return (
+                                                         <div className="flex items-center gap-1.5 shrink-0">
+                                                           <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                             <div className={`h-full transition-all duration-700 ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-fuchsia-500' : 'bg-rose-400'}`} style={{ width: `${progress}%` }} />
+                                                           </div>
+                                                           <span className="text-[10px] font-black text-gray-600">{Math.round(progress)}%</span>
+                                                         </div>
+                                                       )
+                                                     })()}
+                                                     <div className="ml-auto flex items-center gap-2">
+                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${s.payment_status === 'activo' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
+                                                       <div className={`w-1.5 h-1.5 rounded-full ${s.payment_status === 'activo' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                                       {s.payment_status === 'activo' ? 'Pagado' : 'Pendiente'}
+                                                     </span>
+                                                     {(() => {
+                                                       const customPart = tenantInfo?.whatsapp_message || `Te saludamos de ${tenantInfo?.name || 'la academia'}.`
+                                                       const msg = `Hola ${s.first_name}, ${customPart} Esperamos que estés disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente para el curso ${row.course.name}. Nos vemos pronto.`
+                                                       const cleanPhone = s.phone?.replace(/\D/g, '') || ''
+                                                       return (
+                                                         <a
+                                                           href={cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : '#'}
+                                                           onClick={e => !cleanPhone && e.preventDefault()}
+                                                           target={cleanPhone ? "_blank" : undefined}
+                                                           rel={cleanPhone ? "noopener noreferrer" : undefined}
+                                                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all shrink-0 ${cleanPhone ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white' : 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50'}`}
+                                                           title={cleanPhone ? "Enviar WhatsApp" : "Sin número de teléfono"}
+                                                         >
+                                                           <HiOutlinePhone size={14} />
+                                                         </a>
+                                                       )
+                                                     })()}
+                                                     </div>
+                                                   </div>
+                                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
+                                                 </div>
+                                               </div>
+                                             </div>
+                                           ))}
+                                         </div>
+                                       </div>
+                                       )}
+                                     </div>
+                                   )
+                                })()}
                              </div>
                           )}
 

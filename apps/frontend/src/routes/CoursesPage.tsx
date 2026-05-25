@@ -101,9 +101,14 @@ export default function CoursesPage() {
   const [rooms, setRooms] = useState<any[]>([])
   
   const [saving, setSaving] = useState(false)
+  const [nameRequiredError, setNameRequiredError] = useState(false)
+  const [formRequiredError, setFormRequiredError] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({})
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const hasErr = (k: string) => Boolean(fieldErrors[k])
+  const clearErr = (k: string) => setFieldErrors((prev) => ({ ...prev, [k]: false }))
 
   const load = async () => {
     setLoading(true)
@@ -159,6 +164,9 @@ export default function CoursesPage() {
       setEditId(null)
       setForm({ is_active: true, course_type: 'regular', classes_per_week: 1 })
       setVisibleSlots(1)
+      setNameRequiredError(false)
+      setFormRequiredError(false)
+      setFieldErrors({})
     } else {
       const f = (t: any) => t ? String(t).slice(0, 5) : ''
       setEditId(course.id)
@@ -176,6 +184,9 @@ export default function CoursesPage() {
                      course.day_of_week_3 != null ? 3 : 
                      course.day_of_week_2 != null ? 2 : 1)
       setVisibleSlots(slots)
+      setNameRequiredError(false)
+      setFormRequiredError(false)
+      setFieldErrors({})
     }
     setShowForm(true)
   }
@@ -338,12 +349,30 @@ export default function CoursesPage() {
                         <div className="md:col-span-8 space-y-6 md:space-y-8">
                            <div className="space-y-2">
                               <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del Curso</label>
-                              <input className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none shadow-sm" value={form.name || ''} onChange={(e)=>setForm({...form, name:e.target.value})} placeholder="Ej: Salsa Cubana" />
+                              <input
+                                className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none shadow-sm ${
+                                  nameRequiredError
+                                    ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50'
+                                    : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'
+                                }`}
+                                value={form.name || ''}
+                                onChange={(e) => {
+                                  setForm({ ...form, name: e.target.value })
+                                  if (e.target.value.trim()) {
+                                    setNameRequiredError(false)
+                                    setFormRequiredError(false)
+                                  }
+                                }}
+                                placeholder="Ej: Salsa Cubana"
+                              />
+                              {nameRequiredError && (
+                                <p className="text-rose-600 text-xs font-black px-2">te falta rellenar un campo</p>
+                              )}
                            </div>
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                               <div className="space-y-2">
                                  <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nivel</label>
-                                 <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm" value={form.level || ''} onChange={(e)=>setForm({...form, level:e.target.value})}>
+                                 <select className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm ${hasErr('level') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.level || ''} onChange={(e)=>{setForm({...form, level:e.target.value}); if(e.target.value) clearErr('level')}}>
                                     <option value="">Seleccionar nivel...</option>
                                     <option value="Básico">Básico</option>
                                     <option value="Intermedio">Intermedio</option>
@@ -352,7 +381,7 @@ export default function CoursesPage() {
                               </div>
                               <div className="space-y-2">
                                  <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de Programa</label>
-                                 <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm" value={form.course_type || 'regular'} onChange={(e)=>setForm({...form, course_type:e.target.value})}>
+                                 <select className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm ${hasErr('course_type') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.course_type || 'regular'} onChange={(e)=>{setForm({...form, course_type:e.target.value}); if(e.target.value) clearErr('course_type')}}>
                                     <option value="regular">Regular</option>
                                     <option value="choreography">Coreografía</option>
                                  </select>
@@ -360,12 +389,13 @@ export default function CoursesPage() {
                               <div className="space-y-2">
                                  <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clases por Semana</label>
                                  <select 
-                                    className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm" 
+                                    className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm ${hasErr('classes_per_week') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} 
                                     value={form.classes_per_week || 1} 
                                     onChange={(e)=>{
                                        const v = Number(e.target.value)
                                        setForm({...form, classes_per_week: v})
                                        setVisibleSlots(v)
+                                       clearErr('classes_per_week')
                                     }}
                                  >
                                     {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} clase{n>1?'s':''} / sem</option>)}
@@ -376,9 +406,9 @@ export default function CoursesPage() {
                                     <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Total Clases del Proyecto</label>
                                     <input 
                                        type="number" 
-                                       className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none shadow-sm" 
+                                       className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none shadow-sm ${hasErr('total_classes') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} 
                                        value={form.total_classes || ''} 
-                                       onChange={(e)=>setForm({...form, total_classes: e.target.value==='' ? null : Number(e.target.value)})} 
+                                       onChange={(e)=>{setForm({...form, total_classes: e.target.value==='' ? null : Number(e.target.value)}); if(e.target.value) clearErr('total_classes')}} 
                                        placeholder="Ej: 8" 
                                     />
                                  </div>
@@ -421,16 +451,16 @@ export default function CoursesPage() {
                               return (
                                  <div key={num} className="grid grid-cols-12 gap-2 md:gap-4 pb-3 md:pb-4 border-b border-gray-50 last:border-0 last:pb-0 items-end">
                                     <div className="col-span-5 md:col-span-4">
-                                       <select className="w-full bg-gray-50 border-none px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-fuchsia-100 appearance-none" value={form[dowK] ?? ''} onChange={(e)=>setForm({...form, [dowK]: e.target.value==='' ? null : Number(e.target.value)})}>
+                                       <select className={`w-full bg-gray-50 border px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white appearance-none ${hasErr(dowK) ? 'border-rose-300 focus:ring-2 focus:ring-rose-100' : 'border-transparent focus:ring-2 focus:ring-fuchsia-100'}`} value={form[dowK] ?? ''} onChange={(e)=>{setForm({...form, [dowK]: e.target.value==='' ? null : Number(e.target.value)}); if(e.target.value!=='') clearErr(dowK)}}>
                                           <option value="">(No asig.)</option>
                                           {DAY_NAMES.map((n,i)=><option key={i} value={i}>{n.slice(0,3)}</option>)}
                                        </select>
                                     </div>
                                     <div className="col-span-3 md:col-span-4">
-                                       <input type="time" className="w-full bg-gray-50 border-none px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-fuchsia-100" value={form[stK] || ''} onChange={(e)=>setForm({...form, [stK]:e.target.value})} />
+                                       <input type="time" className={`w-full bg-gray-50 border px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white ${hasErr(stK) ? 'border-rose-300 focus:ring-2 focus:ring-rose-100' : 'border-transparent focus:ring-2 focus:ring-fuchsia-100'}`} value={form[stK] || ''} onChange={(e)=>{setForm({...form, [stK]:e.target.value}); if(e.target.value) clearErr(stK)}} />
                                     </div>
                                     <div className="col-span-4 md:col-span-4">
-                                       <input type="time" className="w-full bg-gray-50 border-none px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-fuchsia-100" value={form[etK] || ''} onChange={(e)=>setForm({...form, [etK]:e.target.value})} />
+                                       <input type="time" className={`w-full bg-gray-50 border px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm outline-none focus:bg-white ${hasErr(etK) ? 'border-rose-300 focus:ring-2 focus:ring-rose-100' : 'border-transparent focus:ring-2 focus:ring-fuchsia-100'}`} value={form[etK] || ''} onChange={(e)=>{setForm({...form, [etK]:e.target.value}); if(e.target.value) clearErr(etK)}} />
                                     </div>
                                  </div>
                               )
@@ -441,7 +471,7 @@ export default function CoursesPage() {
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                         <div className="space-y-2">
                            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Instructor Principal</label>
-                           <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm" value={form.teacher_id || ''} onChange={(e)=>setForm({...form, teacher_id:e.target.value})}>
+                           <select className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm ${hasErr('teacher_id') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.teacher_id || ''} onChange={(e)=>{setForm({...form, teacher_id:e.target.value}); if(e.target.value) clearErr('teacher_id')}}>
                               <option value="">Instructor...</option>
                               {teachers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
                            </select>
@@ -458,19 +488,19 @@ export default function CoursesPage() {
                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                         <div className="space-y-2">
                            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fecha Inicio</label>
-                           <input type="date" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.start_date || ''} onChange={(e)=>setForm({...form, start_date:e.target.value})} />
+                           <input type="date" className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm ${hasErr('start_date') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.start_date || ''} onChange={(e)=>{setForm({...form, start_date:e.target.value}); if(e.target.value) clearErr('start_date')}} />
                         </div>
                         <div className="space-y-2">
                            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Mensualidad ($)</label>
-                           <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.price || ''} onChange={(e)=>setForm({...form, price:e.target.value})} />
+                           <input type="number" className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm ${hasErr('price') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.price || ''} onChange={(e)=>{setForm({...form, price:e.target.value}); if(e.target.value!=='') clearErr('price')}} />
                         </div>
                         <div className="space-y-2">
                            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clase Suelta ($)</label>
-                           <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.class_price || ''} onChange={(e)=>setForm({...form, class_price:e.target.value})} />
+                           <input type="number" className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm ${hasErr('class_price') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.class_price || ''} onChange={(e)=>{setForm({...form, class_price:e.target.value}); if(e.target.value!=='') clearErr('class_price')}} />
                         </div>
                         <div className="space-y-2">
                            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Capacidad Máx.</label>
-                           <input type="number" className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm" value={form.max_capacity || ''} onChange={(e)=>setForm({...form, max_capacity:e.target.value})} />
+                           <input type="number" className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm ${hasErr('max_capacity') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.max_capacity || ''} onChange={(e)=>{setForm({...form, max_capacity:e.target.value}); if(e.target.value!=='') clearErr('max_capacity')}} />
                         </div>
                      </div>
                   </div>
@@ -488,10 +518,63 @@ export default function CoursesPage() {
                         <button
                           disabled={saving}
                           onClick={async () => {
-                             if (!form.name?.trim()) {
-                                alert("El nombre del curso es obligatorio");
-                                return;
+                             const nextErrors: Record<string, boolean> = {}
+                             const missingName = !form.name?.trim()
+                             const missingLevel = !form.level
+                             const missingType = !form.course_type
+                             const missingWeeklyClasses = !form.classes_per_week || Number(form.classes_per_week) < 1
+                             const missingTeacher = !form.teacher_id
+                             const missingStartDate = !form.start_date
+                             const missingPrice = form.price === '' || form.price == null
+                             const missingClassPrice = form.class_price === '' || form.class_price == null
+                             const missingCapacity = form.max_capacity === '' || form.max_capacity == null
+                             const missingTotalClasses = form.course_type === 'choreography' && (form.total_classes === '' || form.total_classes == null)
+
+                             let missingSchedule = false
+                             for (let num = 1; num <= visibleSlots; num++) {
+                               const suffix = num === 1 ? '' : `_${num}`
+                               const dowK = `day_of_week${suffix}`
+                               const stK = `start_time${suffix}`
+                               const etK = `end_time${suffix}`
+                               if (form[dowK] == null || form[dowK] === '' || !form[stK] || !form[etK]) {
+                                 missingSchedule = true
+                                 if (form[dowK] == null || form[dowK] === '') nextErrors[dowK] = true
+                                 if (!form[stK]) nextErrors[stK] = true
+                                 if (!form[etK]) nextErrors[etK] = true
+                               }
                              }
+
+                             if (missingLevel) nextErrors.level = true
+                             if (missingType) nextErrors.course_type = true
+                             if (missingWeeklyClasses) nextErrors.classes_per_week = true
+                             if (missingTeacher) nextErrors.teacher_id = true
+                             if (missingStartDate) nextErrors.start_date = true
+                             if (missingPrice) nextErrors.price = true
+                             if (missingClassPrice) nextErrors.class_price = true
+                             if (missingCapacity) nextErrors.max_capacity = true
+                             if (missingTotalClasses) nextErrors.total_classes = true
+
+                             if (
+                               missingName ||
+                               missingLevel ||
+                               missingType ||
+                               missingWeeklyClasses ||
+                               missingTeacher ||
+                               missingStartDate ||
+                               missingPrice ||
+                               missingClassPrice ||
+                               missingCapacity ||
+                               missingTotalClasses ||
+                               missingSchedule
+                             ) {
+                                setNameRequiredError(missingName)
+                                setFormRequiredError(true)
+                                setFieldErrors(nextErrors)
+                                return
+                             }
+                             setNameRequiredError(false)
+                             setFormRequiredError(false)
+                             setFieldErrors({})
                              setSaving(true)
                              try {
                                const fd = { ...form }
@@ -509,6 +592,11 @@ export default function CoursesPage() {
                            {saving ? 'Guardando...' : editId ? 'Actualizar Programa' : 'Crear Programa'}
                         </button>
                      </div>
+                     {formRequiredError && (
+                        <p className="text-center text-rose-600 text-[10px] md:text-xs font-black uppercase tracking-wider bg-rose-50 border border-rose-200 rounded-lg px-3 py-1.5">
+                           faltan campos obligatorios
+                        </p>
+                     )}
                   </div>
                </div>
              </div>

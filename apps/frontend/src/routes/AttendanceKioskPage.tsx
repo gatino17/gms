@@ -8,7 +8,9 @@ import {
   HiOutlineUserGroup,
   HiOutlineX,
   HiOutlineArrowLeft,
+  HiOutlineSearch,
 } from 'react-icons/hi'
+import { FiMaximize2, FiMinimize2 } from 'react-icons/fi'
 import { useTenant } from '../lib/tenant'
 
 type KioskCourse = {
@@ -66,7 +68,7 @@ export default function AttendanceKioskPage() {
     lastDayMessage?: string
   } | null>(null)
 
-  const DAY_NAMES = ['Lunes', 'Martes', 'MiÃ©rcoles', 'Jueves', 'Viernes', 'SÃ¡bado', 'Domingo']
+  const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
   const hhmm = (t?: string | null) => (t ? String(t).slice(0, 5) : '--:--')
 
   const getScheduleLabel = (course: KioskCourse['course']) => {
@@ -81,7 +83,7 @@ export default function AttendanceKioskPage() {
     if (!slots.length) return 'Horario por confirmar'
     return slots
       .map((s) => `${DAY_NAMES[s.d as number]} ${hhmm(s.st)}`)
-      .join(' Â· ')
+      .join(' · ')
   }
 
   const getWeeklyFrequencyLabel = (course: KioskCourse['course']) => {
@@ -306,9 +308,9 @@ export default function AttendanceKioskPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-zinc-950 to-zinc-900 text-zinc-100 flex flex-col font-sans">
+    <div className="h-screen bg-gradient-to-br from-black via-zinc-950 to-zinc-900 text-zinc-100 flex flex-col font-sans overflow-hidden">
       {/* Kiosk Header */}
-      <header className="h-24 bg-black/45 backdrop-blur-md border-b border-zinc-800/70 flex items-center justify-between px-10 sticky top-0 z-10">
+      <header className="h-20 md:h-24 bg-black/45 backdrop-blur-md border-b border-zinc-800/70 flex items-center justify-between px-4 md:px-10 shrink-0 sticky top-0 z-10">
         <div>
           <h1 className="text-3xl font-black text-white tracking-tight">Auto-Asistencia</h1>
           <p className="text-fuchsia-400 font-bold uppercase tracking-widest text-sm mt-1">
@@ -321,7 +323,7 @@ export default function AttendanceKioskPage() {
             className="w-14 h-14 bg-zinc-900 hover:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-fuchsia-300 transition-colors border border-zinc-700/60"
             title={isFullscreen ? 'Salir de pantalla completa' : 'Expandir a pantalla completa'}
           >
-            <span className="text-2xl font-black leading-none">{isFullscreen ? 'â¤«' : 'â›¶'}</span>
+            {isFullscreen ? <FiMinimize2 size={20} /> : <FiMaximize2 size={20} />}
           </button>
           <button
             onClick={() => setShowExitModal(true)}
@@ -335,8 +337,8 @@ export default function AttendanceKioskPage() {
 
       {/* Main Content */}
       <main
-        className={`flex-1 p-10 flex flex-col items-center relative overflow-hidden ${
-          selectedCourse ? 'justify-start pt-8' : 'justify-center'
+        className={`flex-1 min-h-0 p-4 md:p-6 lg:p-8 flex flex-col items-center relative overflow-hidden ${
+          selectedCourse ? 'justify-start pt-4 md:pt-6' : 'justify-center'
         }`}
       >
         {/* Success Overlay */}
@@ -386,52 +388,55 @@ export default function AttendanceKioskPage() {
 
         {/* Step 1: Select Course */}
         {!selectedCourse && !feedbackMsg && (
-          <div className="w-full max-w-5xl">
-            <div className="mb-8 text-center">
-              <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">{nowLabel}</h2>
+          <div className="w-full max-w-7xl h-full min-h-0 flex flex-col">
+            <div className="mb-3 md:mb-4 text-center shrink-0">
+              <h2 className="text-lg md:text-2xl font-black text-white tracking-tight">{nowLabel}</h2>
             </div>
-            <div className="mb-6">
-              <input
-                value={courseQuery}
-                onChange={(e) => setCourseQuery(e.target.value)}
-                placeholder="Buscar curso o profesor..."
-                className="w-full bg-zinc-900/70 border border-zinc-700 text-white rounded-2xl px-5 py-4 outline-none focus:border-fuchsia-500"
-              />
+            <div className="mb-3 md:mb-4 shrink-0">
+              <div className="relative">
+                <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                <input
+                  value={courseQuery}
+                  onChange={(e) => setCourseQuery(e.target.value)}
+                  placeholder="Buscar curso o profesor..."
+                  className="w-full h-12 md:h-14 bg-zinc-900/85 border border-zinc-700 text-white rounded-2xl pl-11 pr-4 text-sm md:text-base outline-none focus:border-fuchsia-500 focus:ring-2 focus:ring-fuchsia-500/20 shadow-lg shadow-black/20"
+                />
+              </div>
             </div>
             {filteredCourses.length === 0 ? (
               <div className="text-center space-y-6">
                 <HiOutlineUserGroup className="text-zinc-700 mx-auto" size={100} />
-                <h2 className="text-3xl font-black text-zinc-400">No hay cursos que coincidan con la bÃºsqueda.</h2>
+                <h2 className="text-3xl font-black text-zinc-400">No hay cursos que coincidan con la búsqueda.</h2>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="flex-1 min-h-0 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 content-start auto-rows-max overflow-visible pt-1">
                 {filteredCourses.map((row) => (
                   <button
                     key={row.course.id}
                     onClick={() => setSelectedCourse(row)}
-                    className="group relative bg-zinc-50 border border-zinc-300 rounded-[28px] p-8 text-left hover:border-fuchsia-300 transition-all hover:-translate-y-1.5 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 flex flex-col justify-between min-h-[220px] overflow-hidden"
+                    className="group relative bg-zinc-50 border border-zinc-300 rounded-2xl md:rounded-[24px] p-4 md:p-5 text-left hover:border-fuchsia-300 transition-all hover:-translate-y-1 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 flex flex-col justify-between min-h-[180px] overflow-hidden"
                   >
                     <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-r from-zinc-200 via-zinc-100 to-white" />
                     <div className="relative">
                       <div className="inline-flex items-center rounded-full bg-fuchsia-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 mb-4">
                         Modo Asistencia
                       </div>
-                      <h3 className="text-3xl font-black text-zinc-900 group-hover:text-fuchsia-700 transition-colors leading-tight">
+                      <h3 className="text-xl md:text-2xl font-black text-zinc-900 group-hover:text-fuchsia-700 transition-colors leading-tight line-clamp-2">
                         {row.course.name}
                       </h3>
                       {row.teacher?.name && (
-                        <p className="text-zinc-600 text-lg mt-3 flex items-center gap-2 font-semibold">
+                        <p className="text-zinc-600 text-sm md:text-base mt-2 flex items-center gap-2 font-semibold line-clamp-1">
                           <span className="w-2 h-2 rounded-full bg-fuchsia-500 inline-block" />
                           Prof: {row.teacher.name}
                         </p>
                       )}
                     </div>
-                    <div className="relative mt-8 flex items-center gap-3">
-                      <div className="bg-zinc-200 px-4 py-2 rounded-xl text-zinc-800 font-black uppercase tracking-widest text-sm border border-zinc-300">
+                    <div className="relative mt-3 flex items-center gap-3">
+                      <div className="bg-zinc-200 px-3 py-1.5 rounded-xl text-zinc-800 font-black uppercase tracking-widest text-[11px] border border-zinc-300">
                         {row.students.length} Inscritos
                       </div>
                     </div>
-                    <p className="relative mt-4 text-sm md:text-base text-zinc-700 font-bold">
+                    <p className="relative mt-2 text-xs md:text-sm text-zinc-700 font-bold line-clamp-2">
                       {getScheduleLabel(row.course)}
                     </p>
                     {getWeeklyFrequencyLabel(row.course) && (
@@ -448,39 +453,42 @@ export default function AttendanceKioskPage() {
 
         {/* Step 2: Select Student */}
         {selectedCourse && !feedbackMsg && (
-          <div className="w-full max-w-6xl">
-            <div className="flex items-center gap-6 mb-12">
+          <div className="w-full max-w-7xl h-full min-h-0 flex flex-col">
+            <div className="flex items-center gap-4 mb-4 md:mb-6 shrink-0">
               <button
                 onClick={() => {
                   setSelectedCourse(null)
                   setStudentQuery('')
                 }}
-                className="w-16 h-16 bg-zinc-900 hover:bg-zinc-800 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg border border-zinc-700"
+                className="w-12 h-12 md:w-14 md:h-14 bg-zinc-900 hover:bg-zinc-800 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg border border-zinc-700"
               >
-                <HiOutlineArrowLeft size={28} />
+                <HiOutlineArrowLeft size={24} />
               </button>
               <div>
-                <h2 className="text-4xl font-black text-white tracking-tight">{selectedCourse.course.name}</h2>
-                <p className="text-fuchsia-400 font-bold uppercase tracking-widest mt-2">
+                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight line-clamp-1">{selectedCourse.course.name}</h2>
+                <p className="text-fuchsia-400 font-bold uppercase tracking-widest mt-1 text-xs md:text-sm">
                   {'\u00bf'}Cu{'\u00e1'}l es tu nombre?
                 </p>
               </div>
             </div>
-            <div className="mb-6">
-              <input
-                value={studentQuery}
-                onChange={(e) => setStudentQuery(e.target.value)}
-                placeholder="Buscar alumno por nombre..."
-                className="w-full bg-zinc-900/70 border border-zinc-700 text-white rounded-2xl px-5 py-4 outline-none focus:border-fuchsia-500"
-              />
+            <div className="mb-3 md:mb-4 shrink-0">
+              <div className="relative">
+                <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                <input
+                  value={studentQuery}
+                  onChange={(e) => setStudentQuery(e.target.value)}
+                  placeholder="Buscar alumno por nombre..."
+                  className="w-full h-12 md:h-14 bg-zinc-900/85 border border-zinc-700 text-white rounded-2xl pl-11 pr-4 text-sm md:text-base outline-none focus:border-fuchsia-500 focus:ring-2 focus:ring-fuchsia-500/20 shadow-lg shadow-black/20"
+                />
+              </div>
             </div>
 
             {filteredStudents.length === 0 ? (
               <div className="text-center py-20 bg-zinc-900/70 rounded-[40px] border border-zinc-700/60">
-                <p className="text-2xl text-zinc-400 font-black">No hay alumnos que coincidan con la bÃºsqueda.</p>
+                <p className="text-2xl text-zinc-400 font-black">No hay alumnos que coincidan con la búsqueda.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="flex-1 min-h-0 grid grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 content-start auto-rows-max overflow-hidden">
                 {filteredStudents.map((s) => {
                   const initial = s.first_name ? s.first_name[0].toUpperCase() : '?'
                   const isMarkedToday = todayMarkedIds.includes(s.id)
@@ -488,22 +496,22 @@ export default function AttendanceKioskPage() {
                     <button
                       key={s.id}
                       onClick={() => markAttendance(s.id, `${s.first_name} ${s.last_name}`)}
-                      className={`relative rounded-3xl p-6 flex flex-col items-center justify-center gap-4 transition-all group active:scale-95 shadow-xl border ${
+                      className={`relative rounded-2xl md:rounded-3xl p-3 md:p-4 flex flex-col items-center justify-center gap-2 md:gap-3 transition-all group active:scale-95 shadow-xl border min-h-[150px] ${
                         isMarkedToday
                           ? 'bg-emerald-800/80 border-emerald-400 hover:bg-emerald-700'
                           : 'bg-zinc-900/85 border-zinc-700 hover:bg-fuchsia-700 hover:border-fuchsia-400'
                       }`}
                     >
                       {isMarkedToday && (
-                        <div className="absolute top-3 right-3 bg-amber-400 text-zinc-900 text-[10px] font-black uppercase px-2 py-1 rounded-full border border-amber-300 flex items-center gap-1.5 shadow-md">
-                          <span className="w-4 h-4 rounded-full bg-zinc-900 text-amber-300 flex items-center justify-center text-[12px] leading-none">
+                        <div className="absolute top-2 right-2 bg-amber-400 text-zinc-900 text-[9px] font-black uppercase px-2 py-1 rounded-full border border-amber-300 flex items-center gap-1 shadow-md">
+                          <span className="w-3.5 h-3.5 rounded-full bg-zinc-900 text-amber-300 flex items-center justify-center text-[10px] leading-none">
                             {'\u2713'}
                           </span>
                           <span>Asistencia</span>
                         </div>
                       )}
                       <div
-                        className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black transition-colors overflow-hidden border-2 ${
+                        className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl md:text-3xl font-black transition-colors overflow-hidden border-2 ${
                           isMarkedToday
                             ? 'bg-emerald-600 text-white border-emerald-300'
                             : 'bg-zinc-700 text-zinc-300 border-transparent group-hover:bg-fuchsia-500 group-hover:text-white group-hover:border-white'
@@ -516,9 +524,9 @@ export default function AttendanceKioskPage() {
                         )}
                       </div>
                       <div className="text-center">
-                        <div className="text-xl font-black text-white line-clamp-1">{s.first_name}</div>
+                        <div className="text-base md:text-lg font-black text-white line-clamp-1">{s.first_name}</div>
                         <div
-                          className={`text-sm font-medium line-clamp-1 ${
+                          className={`text-xs md:text-sm font-medium line-clamp-1 ${
                             isMarkedToday ? 'text-emerald-100' : 'text-zinc-400 group-hover:text-fuchsia-100'
                           }`}
                         >

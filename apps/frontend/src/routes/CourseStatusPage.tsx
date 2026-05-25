@@ -17,6 +17,7 @@ import {
   HiOutlineCheckCircle,
   HiOutlinePhotograph
 } from 'react-icons/hi'
+import { IoMale, IoFemale } from 'react-icons/io5'
 import { useTenant } from '../lib/tenant'
 import RenewModal from '../components/RenewModal'
 
@@ -30,6 +31,7 @@ type CourseRow = {
     photo_url?: string | null;
     first_name: string;
     last_name: string;
+    gender?: string | null;
     email?: string | null;
     phone?: string | null;
     renewal_date?: string | null;
@@ -43,6 +45,7 @@ type CourseRow = {
 
 const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const fmtCLP = (n: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(n)
+const normalizeGender = (g?: string | null) => (g || '').trim().toLowerCase()
 
 export default function CourseStatusPage() {
   const navigate = useNavigate()
@@ -236,6 +239,22 @@ export default function CourseStatusPage() {
     return groups
   }, [filteredData])
 
+  const courseGenderCounts = useMemo(() => {
+    const countsByCourse: Record<number, { total: number; female: number; male: number }> = {}
+    for (const row of filteredData) {
+      const female = row.students.filter((s) => {
+        const g = normalizeGender(s.gender)
+        return g.startsWith('f') || g.startsWith('muj') || g === 'female' || g === 'femenino' || g === 'mujer'
+      }).length
+      const male = row.students.filter((s) => {
+        const g = normalizeGender(s.gender)
+        return (g.startsWith('m') && !g.startsWith('muj')) || g === 'male' || g === 'masculino' || g === 'hombre'
+      }).length
+      countsByCourse[row.course.id] = { total: row.students.length, female, male }
+    }
+    return countsByCourse
+  }, [filteredData])
+
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-20 px-4 md:px-0">
       {/* Header & Controls */}
@@ -312,6 +331,22 @@ export default function CourseStatusPage() {
                                       <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" />
                                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest truncate">{row.teacher?.name || 'Por Asignar'}</p>
                                    </div>
+                                   {(() => {
+                                      const counts = courseGenderCounts[row.course.id] || { total: row.students.length, female: 0, male: 0 }
+                                      return (
+                                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                                          <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-[9px] font-black uppercase tracking-widest text-gray-700">{counts.total} Alumnos</span>
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-pink-50 text-[9px] font-black uppercase tracking-widest text-pink-700">
+                                            <IoFemale size={12} />
+                                            {counts.female}
+                                          </span>
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-[9px] font-black uppercase tracking-widest text-sky-700">
+                                            <IoMale size={12} />
+                                            {counts.male}
+                                          </span>
+                                        </div>
+                                      )
+                                   })()}
                                 </div>
                              </div>
                              <div className="flex items-center gap-2">

@@ -148,21 +148,29 @@ async def list_payments(
             filters.append(Payment.type == type)
     if q:
         like = f"%{q}%"
-        stmt = stmt.join(Student, Payment.student_id == Student.id, isouter=True)
+        full_name = func.concat(
+            func.coalesce(Student.first_name, ""),
+            " ",
+            func.coalesce(Student.last_name, "")
+        )
         filters.append(
             or_(
                 Payment.reference.ilike(like),
                 Payment.notes.ilike(like),
                 Payment.method.ilike(like),
                 Payment.type.ilike(like),
+                Payment.student_name.ilike(like),
                 Student.first_name.ilike(like),
-                Student.last_name.ilike(like)
+                Student.last_name.ilike(like),
+                full_name.ilike(like),
+                Course.name.ilike(like),
             )
         )
 
     def apply_filters(q_stmt):
         if q:
             q_stmt = q_stmt.join(Student, Payment.student_id == Student.id, isouter=True)
+            q_stmt = q_stmt.join(Course, Payment.course_id == Course.id, isouter=True)
         return q_stmt.where(*filters)
 
     stats_stmt = apply_filters(select(

@@ -133,6 +133,19 @@ export default function CourseDetailPage() {
   const course = data?.course || {}
   const teacher = data?.teacher || {}
   const room = data?.room || {}
+  const computedSessionsPerWeek = [
+    course.day_of_week,
+    course.day_of_week_2,
+    course.day_of_week_3,
+    course.day_of_week_4,
+    course.day_of_week_5,
+  ].filter((d) => d != null).length
+  const sessionsPerWeek =
+    computedSessionsPerWeek > 0
+      ? computedSessionsPerWeek
+      : Number(course.classes_per_week) > 0
+      ? Number(course.classes_per_week)
+      : 1
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
@@ -162,12 +175,10 @@ export default function CourseDetailPage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-               {[
+	               {[
                  { label: 'Alumnos', value: counts.total, icon: HiOutlineUserGroup, color: 'fuchsia' },
                  { label: 'Precio', value: fmtCLP(course.price || 0), icon: HiOutlineTicket, color: 'emerald' },
                  { label: 'Inicio', value: ymdToCL(course.start_date) || '---', icon: HiOutlineCalendar, color: 'indigo' },
-                 { label: 'Estado', value: course.is_active !== false ? 'Abierta' : 'Cerrada', icon: HiOutlineStar, color: 'blue' },
-                 { label: 'Sesiones', value: `${course.classes_per_week || 1}/sem`, icon: HiOutlineClock, color: 'amber' },
                  { 
                    label: 'Género', 
                    value: (
@@ -189,6 +200,8 @@ export default function CourseDetailPage() {
                    icon: HiOutlineUser, 
                    color: 'rose' 
                  },
+                 { label: 'Sesiones', value: `${sessionsPerWeek}/sem`, icon: HiOutlineClock, color: 'amber' },
+                 { label: 'Estado', value: course.is_active !== false ? 'Abierta' : 'Cerrada', icon: HiOutlineStar, color: 'blue' },
                ].map((s, i) => (
                  <div key={i} className="bg-gray-50/50 p-4 rounded-2xl md:rounded-3xl border border-gray-100 flex flex-col items-center md:items-start">
                     <div className={`text-${s.color}-600 mb-2`}><s.icon size={18} /></div>
@@ -326,3 +339,4 @@ export default function CourseDetailPage() {
     </div>
   )
 }
+

@@ -63,6 +63,12 @@ function cycleFromMonth(yyyy_mm: string, anchorDay: number) {
   const end = `${ny}-${String(nm).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
   return { start, end }
 }
+function inRangeYMD(dateYMD: string, startYMD: string, endYMD?: string | null) {
+  if (!dateYMD || !startYMD) return false
+  if (dateYMD < startYMD) return false
+  if (endYMD && dateYMD > endYMD) return false
+  return true
+}
 
 const methodLabel = (m: string) => ({
   efectivo: 'Efectivo', cash: 'Efectivo',
@@ -161,6 +167,27 @@ export default function PaymentsTeachers() {
   const totalPages = Math.ceil(detailedRows.length / pageSize)
   const safePage = Math.min(Math.max(1, page), totalPages || 1)
   const pageRows = useMemo(() => detailedRows.slice((safePage - 1) * pageSize, safePage * pageSize), [detailedRows, safePage, pageSize])
+  const getPeriodInfo = (p: Payment): { label: string; highlight?: boolean } => {
+    if (p.period_start && p.period_end) return { label: `${toDDMMYYYY(p.period_start)} - ${toDDMMYYYY(p.period_end)}` }
+    if (p.period_start && !p.period_end) return { label: `${toDDMMYYYY(p.period_start)} - Activo` }
+    if (!p.period_start && p.period_end) return { label: `--- - ${toDDMMYYYY(p.period_end)}` }
+
+    if (p.type === 'single_class') {
+      return { label: `${toDDMMYYYY(p.payment_date)} - Clase suelta`, highlight: true }
+    }
+
+    if (p.student_id && p.course_id) {
+      const related = enrollments
+        .filter(e => e.student_id === p.student_id && e.course_id === p.course_id)
+        .sort((a, b) => (b.start_date || '').localeCompare(a.start_date || ''))
+      const enrollment = related.find(e => inRangeYMD(p.payment_date, e.start_date, e.end_date)) || related[0]
+      if (enrollment?.start_date) {
+        return { label: `${toDDMMYYYY(enrollment.start_date)} - ${enrollment.end_date ? toDDMMYYYY(enrollment.end_date) : 'Activo'}` }
+      }
+    }
+
+    return { label: '---' }
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
@@ -314,9 +341,14 @@ export default function PaymentsTeachers() {
                       </span>
                     </td>
                     <td className="block md:table-cell px-6 py-2 md:py-6">
-                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        {r.period_start && r.period_end ? `${toDDMMYYYY(r.period_start)} - ${toDDMMYYYY(r.period_end)}` : '---'}
-                      </div>
+                      {(() => {
+                        const period = getPeriodInfo(r)
+                        return (
+                          <div className={`text-[10px] font-black uppercase tracking-widest ${period.highlight ? 'text-amber-700 bg-amber-100 inline-flex px-2 py-1 rounded-lg' : 'text-gray-400'}`}>
+                            {period.label}
+                          </div>
+                        )
+                      })()}
                     </td>
                     <td className="block md:table-cell px-6 py-2 md:py-6 text-left md:text-right">
                       <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Monto</div>

@@ -230,6 +230,12 @@ export default function PaymentsPage() {
   }[t] || t)
 
   const findPeriod = (p: Payment) => {
+    const directStart = (p as any).period_start as string | undefined
+    const directEnd = (p as any).period_end as string | undefined
+    if (directStart || directEnd) {
+      return `${directStart ? toDDMMYYYY(directStart) : '---'} - ${directEnd ? toDDMMYYYY(directEnd) : 'Activo'}`
+    }
+
     if (!p.student_id || !p.course_id) return ''
     const matches = enrollments.filter(e => e.student_id === p.student_id && e.course_id === p.course_id)
     const best = matches.find(e => p.payment_date >= e.start_date && (!e.end_date || p.payment_date <= e.end_date))
@@ -237,7 +243,7 @@ export default function PaymentsPage() {
   }
 
   const downloadExcel = () => {
-    const detalleData = data.map(p => ({
+    const detalleData = visibleData.map(p => ({
       ID: p.id,
       Fecha: toDDMMYYYY(p.payment_date),
       Alumno: p.student_name || students[p.student_id!]?.name || '-',
@@ -258,6 +264,18 @@ export default function PaymentsPage() {
 
   const totalPages = Math.ceil(totalItems / pageSize)
 
+  const visibleData = useMemo(() => {
+    const query = q.trim().toLowerCase()
+    if (!query) return data
+    const tokens = query.split(/\s+/).filter(Boolean)
+    return data.filter((p) => {
+      const studentText = (p.student_name || students[p.student_id!]?.name || '').toLowerCase()
+      const courseText = ((p as any).course_name || (p.course_id && courses[p.course_id]?.name) || '').toLowerCase()
+      const target = `${studentText} ${courseText}`.trim()
+      return tokens.every((t) => target.includes(t))
+    })
+  }, [data, q, students, courses])
+
   // --- Resúmenes para Tablas Secundarias ---
   // (Como ya cargamos solo lo paginado en 'data', para estos resúmenes necesitamos idealmente data completa. 
   // Pero para mantener la rapidez solicitada, usaremos lo que hay en 'data' o sugeriremos usar el Excel para el total real si hay mucha data.
@@ -265,7 +283,7 @@ export default function PaymentsPage() {
 
   const dailyRows = useMemo(() => {
     const map: Record<string, any> = {}
-    data.forEach(p => {
+    visibleData.forEach(p => {
       const d = p.payment_date
       if (!map[d]) map[d] = { date: d, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
       
@@ -280,11 +298,11 @@ export default function PaymentsPage() {
       map[d].total += amt
     })
     return Object.values(map).sort((a, b) => b.date.localeCompare(a.date))
-  }, [data])
+  }, [visibleData])
 
   const teacherRows = useMemo(() => {
     const map: Record<string, any> = {}
-    data.forEach(p => {
+    visibleData.forEach(p => {
       const name = p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || 'Sin asignar'
       if (!map[name]) map[name] = { name, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
       
@@ -298,7 +316,7 @@ export default function PaymentsPage() {
       map[name].total += amt
     })
     return Object.values(map).sort((a, b) => b.total - a.total)
-  }, [data, courses])
+  }, [visibleData, courses])
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
@@ -469,9 +487,9 @@ export default function PaymentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 block md:table-row-group">
-                {data.length === 0 && !loading ? (
+                {visibleData.length === 0 && !loading ? (
                   <tr className="block md:table-row"><td colSpan={5} className="px-8 py-20 text-center text-gray-400 font-bold block md:table-cell">No se encontraron pagos en este rango.</td></tr>
-                ) : data.map((p) => (
+                ) : visibleData.map((p) => (
                   <tr key={p.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors group">
                     <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6">
                       <div className="flex md:block items-center justify-between">
@@ -529,7 +547,7 @@ export default function PaymentsPage() {
         {viewMode === 'detalle' && totalPages > 1 && (
           <div className="px-6 md:px-8 py-4 md:py-6 bg-gray-50/50 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              {data.length} de {totalItems} registros
+              {visibleData.length} de {totalItems} registros
             </div>
             <div className="flex items-center gap-1.5 md:gap-2">
               <button 

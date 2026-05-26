@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
+import { useNavigate } from 'react-router-dom'
 import {
   HiOutlineClock,
   HiOutlineUser,
@@ -87,12 +88,22 @@ function getCourseGradient(c: Course): string {
 }
 
 export default function CoursesPage() {
+  const navigate = useNavigate()
   const { tenantId } = useTenant()
   const [data, setData] = useState<Course[]>([])
   const [loading, setLoading] = useState(false)
   const [total, setTotal] = useState(0)
   const [q, setQ] = useState('')
   
+  const [showArchived, setShowArchived] = useState(false)
+  const [deleteDecision, setDeleteDecision] = useState<Course | null>(null)
+  const [archiveSimpleDecision, setArchiveSimpleDecision] = useState<Course | null>(null)
+  const [archiveDecision, setArchiveDecision] = useState<{
+    course: Course
+    studentCount: number
+    enrollmentIds: number[]
+  } | null>(null)
+  const [archiveLoading, setArchiveLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState<any>({ is_active: true, course_type: 'regular' })
@@ -134,9 +145,113 @@ export default function CoursesPage() {
     fetchRefs()
   }, [tenantId])
 
+  const activeCourses = useMemo(() => data.filter((c) => c.is_active !== false), [data])
+  const archivedCourses = useMemo(() => data.filter((c) => c.is_active === false), [data])
+
+  const setCourseActive = async (course: Course, isActive: boolean) => {
+    const payload = {
+      name: course.name,
+      description: (course as any).description ?? null,
+      level: course.level ?? null,
+      image_url: course.image_url ?? null,
+      course_type: course.course_type ?? null,
+      total_classes: course.total_classes ?? null,
+      classes_per_week: course.classes_per_week ?? null,
+      day_of_week: course.day_of_week ?? null,
+      start_time: course.start_time ?? null,
+      end_time: course.end_time ?? null,
+      day_of_week_2: course.day_of_week_2 ?? null,
+      start_time_2: course.start_time_2 ?? null,
+      end_time_2: course.end_time_2 ?? null,
+      day_of_week_3: course.day_of_week_3 ?? null,
+      start_time_3: course.start_time_3 ?? null,
+      end_time_3: course.end_time_3 ?? null,
+      day_of_week_4: course.day_of_week_4 ?? null,
+      start_time_4: course.start_time_4 ?? null,
+      end_time_4: course.end_time_4 ?? null,
+      day_of_week_5: course.day_of_week_5 ?? null,
+      start_time_5: course.start_time_5 ?? null,
+      end_time_5: course.end_time_5 ?? null,
+      teacher_id: (course as any).teacher_id ?? null,
+      room_id: (course as any).room_id ?? null,
+      start_date: course.start_date ?? null,
+      max_capacity: (course as any).max_capacity ?? null,
+      price: course.price ?? null,
+      class_price: course.class_price ?? null,
+      is_active: isActive,
+    }
+    await api.put(`/api/pms/courses/${course.id}`, payload)
+    await load()
+  }
+
+  const fetchCourseActiveEnrollments = async (courseId: number) => {
+    const res = await api.get('/api/pms/course_status')
+    const rows = res.data || []
+    const row = rows.find((r: any) => Number(r?.course?.id) === Number(courseId))
+    const students = row?.students || []
+    const enrollmentIds = students.map((s: any) => s.enrollment_id).filter(Boolean)
+    return { studentCount: students.length, enrollmentIds }
+  }
+
+  const requestArchiveCourse = async (course: Course) => {
+    const quickCount = Number(course.student_count || 0)
+    if (quickCount <= 0) {
+      setArchiveSimpleDecision(course)
+      return
+    }
+    setArchiveLoading(true)
+    try {
+      const info = await fetchCourseActiveEnrollments(course.id)
+      setArchiveDecision({
+        course,
+        studentCount: info.studentCount || quickCount,
+        enrollmentIds: info.enrollmentIds || []
+      })
+    } catch {
+      setArchiveDecision({
+        course,
+        studentCount: quickCount,
+        enrollmentIds: []
+      })
+    } finally {
+      setArchiveLoading(false)
+    }
+  }
+
+  const archiveLeavingStudentsWithoutCourse = async () => {
+    if (!archiveDecision) return
+    setArchiveLoading(true)
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      for (const enrollmentId of archiveDecision.enrollmentIds) {
+        await api.put(`/api/pms/enrollments/${enrollmentId}`, {
+          is_active: false,
+          end_date: today
+        })
+      }
+      await setCourseActive(archiveDecision.course, false)
+      setArchiveDecision(null)
+    } finally {
+      setArchiveLoading(false)
+    }
+  }
+
+  const deleteCoursePermanently = async (course: Course) => {
+    if (Number(course.student_count || 0) > 0) {
+      setArchiveDecision({
+        course,
+        studentCount: Number(course.student_count || 0),
+        enrollmentIds: []
+      })
+      return
+    }
+    await api.delete(`/api/pms/courses/${course.id}`)
+    await load()
+  }
+
   const grouped = useMemo(() => {
     const map = new Map<number | 'nd', { label: string, items: Course[] }>()
-    for (const c of data) {
+    for (const c of activeCourses) {
       const days = [
         c.day_of_week, 
         c.day_of_week_2, 
@@ -156,7 +271,7 @@ export default function CoursesPage() {
       }
     }
     return Array.from(map.entries()).sort((a,b)=> (a[0] === 'nd' ? 99 : (a[0] as number)) - (b[0] === 'nd' ? 99 : (b[0] as number))).map(([,v])=>v)
-  }, [data])
+  }, [activeCourses])
 
   const openForm = (course: Course | null) => {
     setImageFile(null); setImagePreview(null)
@@ -309,14 +424,12 @@ export default function CoursesPage() {
                        <button onClick={(e)=>{e.stopPropagation(); openForm(c)}} className="p-2 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-xl text-white shadow-xl transition-all">
                           <HiOutlinePencil size={16} />
                        </button>
-                       <button onClick={async (e)=>{
-                          e.stopPropagation()
-                          if(confirm('¿Eliminar curso?')) {
-                             await api.delete(`/api/pms/courses/${c.id}`)
-                             load()
-                          }
-                       }} className="p-2 bg-rose-500/80 hover:bg-rose-600 backdrop-blur-md rounded-xl text-white shadow-xl transition-all">
-                          <HiOutlineTrash size={16} />
+                        <button onClick={async (e)=>{
+                           e.stopPropagation()
+                           await requestArchiveCourse(c)
+
+                        }} className="p-2 bg-rose-500/80 hover:bg-rose-600 backdrop-blur-md rounded-xl text-white shadow-xl transition-all">
+                           <HiOutlineTrash size={16} />
                        </button>
                     </div>
                   </div>
@@ -324,6 +437,158 @@ export default function CoursesPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mt-8 bg-white border border-gray-100 rounded-2xl p-4 md:p-6">
+          <button
+            onClick={() => setShowArchived((v) => !v)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div>
+              <h3 className="text-lg font-black text-gray-900">Historial de Cursos</h3>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                {archivedCourses.length} archivado(s)
+              </p>
+            </div>
+            <span className="text-xs font-black text-fuchsia-600 uppercase tracking-widest">
+              {showArchived ? 'Ocultar' : 'Ver historial'}
+            </span>
+          </button>
+
+          {showArchived && (
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {archivedCourses.length === 0 && (
+                <div className="text-sm font-bold text-gray-400">No hay cursos archivados.</div>
+              )}
+              {archivedCourses.map((c) => (
+                <div key={`arch-${c.id}`} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                  <div className="text-sm font-black text-gray-800">{c.name}</div>
+                  <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">
+                    {c.teacher_name || 'Sin instructor'}
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={async () => {
+                        if (confirm('Reactivar este curso?')) await setCourseActive(c, true)
+                      }}
+                      className="w-full py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors"
+                    >
+                      Reactivar
+                    </button>
+                    <button
+                      onClick={() => setDeleteDecision(c)}
+                      className="w-full py-2 rounded-lg bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-colors"
+                    >
+                      Borrar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {archiveDecision && (
+        <div className="fixed left-0 top-0 z-[9999] h-screen w-screen flex items-center justify-center p-4">
+          <div className="fixed left-0 top-0 h-screen w-screen bg-black/60 backdrop-blur-sm" onClick={() => !archiveLoading && setArchiveDecision(null)} />
+          <div className="relative w-full max-w-xl bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 space-y-4">
+            <h3 className="text-lg font-black text-gray-900">Curso con alumnos activos</h3>
+            <p className="text-sm text-gray-600">
+              Este curso tiene <span className="font-black">{archiveDecision.studentCount}</span> alumno(s) activo(s).
+              Debes trasladarlos o dejarlos sin curso activo antes de archivarlo.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  setArchiveDecision(null)
+                  navigate('/course-status')
+                }}
+                disabled={archiveLoading}
+                className="py-3 rounded-xl bg-fuchsia-600 text-white text-xs font-black uppercase tracking-widest hover:bg-fuchsia-700 disabled:opacity-60"
+              >
+                Ir a Trasladar
+              </button>
+              <button
+                onClick={archiveLeavingStudentsWithoutCourse}
+                disabled={archiveLoading}
+                className="py-3 rounded-xl bg-amber-500 text-white text-xs font-black uppercase tracking-widest hover:bg-amber-600 disabled:opacity-60"
+              >
+                Dejar Sin Curso
+              </button>
+            </div>
+            <button
+              onClick={() => setArchiveDecision(null)}
+              disabled={archiveLoading}
+              className="w-full py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-black uppercase tracking-widest hover:bg-gray-200 disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {archiveSimpleDecision && (
+        <div className="fixed left-0 top-0 z-[9999] h-screen w-screen flex items-center justify-center p-4">
+          <div className="fixed left-0 top-0 h-screen w-screen bg-black/60 backdrop-blur-sm" onClick={() => setArchiveSimpleDecision(null)} />
+          <div className="relative w-full max-w-lg bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 space-y-4">
+            <h3 className="text-lg font-black text-gray-900">Archivar curso</h3>
+            <p className="text-sm text-gray-600">
+              El curso <span className="font-black">{archiveSimpleDecision.name}</span> pasará al historial y no se eliminará.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setArchiveSimpleDecision(null)}
+                className="py-3 rounded-xl bg-gray-100 text-gray-700 text-xs font-black uppercase tracking-widest hover:bg-gray-200"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await setCourseActive(archiveSimpleDecision, false)
+                    setArchiveSimpleDecision(null)
+                  } catch (e: any) {
+                    alert('No se pudo archivar el curso: ' + (e?.response?.data?.detail || e?.message || 'Error'))
+                  }
+                }}
+                className="py-3 rounded-xl bg-fuchsia-600 text-white text-xs font-black uppercase tracking-widest hover:bg-fuchsia-700"
+              >
+                Archivar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteDecision && (
+        <div className="fixed left-0 top-0 z-[9999] h-screen w-screen flex items-center justify-center p-4">
+          <div className="fixed left-0 top-0 h-screen w-screen bg-black/60 backdrop-blur-sm" onClick={() => setDeleteDecision(null)} />
+          <div className="relative w-full max-w-lg bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 space-y-4">
+            <h3 className="text-lg font-black text-gray-900">Eliminar curso definitivamente</h3>
+            <p className="text-sm text-gray-600">
+              Esta accion no se puede deshacer. Se eliminará el curso <span className="font-black">{deleteDecision.name}</span>.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setDeleteDecision(null)}
+                className="py-3 rounded-xl bg-gray-100 text-gray-700 text-xs font-black uppercase tracking-widest hover:bg-gray-200"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  await deleteCoursePermanently(deleteDecision)
+                  setDeleteDecision(null)
+                }}
+                className="py-3 rounded-xl bg-rose-600 text-white text-xs font-black uppercase tracking-widest hover:bg-rose-700"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

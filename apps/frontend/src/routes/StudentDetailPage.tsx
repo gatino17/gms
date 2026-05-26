@@ -85,6 +85,12 @@ function ymdToCL(ymd?: string | null): string {
   const dt = new Date(y, (m||1)-1, d||1); 
   return dt.toLocaleDateString('es-CL', { day:'2-digit', month:'short' }) 
 }
+function minusOneDayYMD(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dt = new Date(y, (m || 1) - 1, d || 1)
+  dt.setDate(dt.getDate() - 1)
+  return toYMDInTZ(dt, CL_TZ)
+}
 
 export default function StudentDetailPage() {
   const navigate = useNavigate()
@@ -112,6 +118,12 @@ export default function StudentDetailPage() {
   const [editMode, setEditMode] = useState<'edit' | 'renew' | 'profile'>('edit')
   const [renewModalData, setRenewModalData] = useState<{ studentId: number; courseId: number; enrollmentId: number } | null>(null)
   const [editEnrollmentData, setEditEnrollmentData] = useState<any>(null)
+  const [showChangeCourseModal, setShowChangeCourseModal] = useState(false)
+  const [changeSourceEnrollment, setChangeSourceEnrollment] = useState<any>(null)
+  const [changeToCourseId, setChangeToCourseId] = useState<number | ''>('')
+  const [changeEffectiveDate, setChangeEffectiveDate] = useState<string>(toYMDInTZ(new Date(), CL_TZ))
+  const [allCourses, setAllCourses] = useState<Array<{ id: number; name: string }>>([])
+  const [changingCourse, setChangingCourse] = useState(false)
 
   const todayYMD = useMemo(() => toYMDInTZ(new Date(), CL_TZ), [])
 
@@ -125,6 +137,13 @@ export default function StudentDetailPage() {
       ])
       setData(pRes.data)
       setCourseStats(sRes.data || {})
+      try {
+        const cRes = await api.get('/api/pms/courses', { params: { limit: 500 } })
+        const items = (cRes.data?.items || cRes.data || []) as any[]
+        setAllCourses(items.map(c => ({ id: c.id, name: c.name })))
+      } catch {
+        setAllCourses([])
+      }
       try {
         const tRes = await api.get('/api/pms/tenants/me')
         setFeeSettings((tRes.data || {}) as TenantFeeSettings)
@@ -243,6 +262,49 @@ export default function StudentDetailPage() {
     }
   }
 
+  const openChangeCourseModal = (enrollment: any) => {
+    setChangeSourceEnrollment(enrollment)
+    setChangeToCourseId('')
+    setChangeEffectiveDate(toYMDInTZ(new Date(), CL_TZ))
+    setShowChangeCourseModal(true)
+  }
+
+  const handleConfirmCourseChange = async () => {
+    if (!id || !changeSourceEnrollment || !changeToCourseId || !changeEffectiveDate) return
+    if (Number(changeToCourseId) === Number(changeSourceEnrollment.course?.id)) {
+      alert('Debes seleccionar un curso distinto al actual.')
+      return
+    }
+    const sourceStartDate = String(changeSourceEnrollment.start_date || '')
+    if (sourceStartDate && changeEffectiveDate < sourceStartDate) {
+      alert(`La fecha efectiva no puede ser anterior al inicio del curso actual (${ymdToCL(sourceStartDate)}).`)
+      return
+    }
+    setChangingCourse(true)
+    try {
+      // 1) Cerrar inscripción actual
+      const closeDate = minusOneDayYMD(changeEffectiveDate)
+      await api.put(`/api/pms/enrollments/${changeSourceEnrollment.id}`, {
+        end_date: closeDate,
+        is_active: false,
+      })
+      // 2) Crear nueva inscripción desde fecha efectiva
+      await api.post('/api/pms/enrollments', {
+        student_id: Number(id),
+        course_id: Number(changeToCourseId),
+        start_date: changeEffectiveDate,
+      })
+      setShowChangeCourseModal(false)
+      setChangeSourceEnrollment(null)
+      await loadData(false)
+      await loadCalendar()
+    } catch (e: any) {
+      alert('No se pudo cambiar de curso: ' + (e?.response?.data?.detail || e?.message || 'Error'))
+    } finally {
+      setChangingCourse(false)
+    }
+  }
+
   const handleDeleteEnrollment = async (enrollmentId: number, courseName: string) => {
     const ok = window.confirm(`Â¿Eliminar el curso "${courseName}" de este alumno?`)
     if (!ok) return
@@ -268,6 +330,8 @@ export default function StudentDetailPage() {
   if (!data) return null
 
   const { student, enrollments, payments } = data
+  const activeEnrollments = enrollments.filter((e) => !!e.is_active)
+  const historicalEnrollments = enrollments.filter((e) => !e.is_active)
   const enrollmentPayments = (payments.recent || []).filter((p) => {
     const t = String(p.type || '').toLowerCase()
     const ref = String(p.reference || '').toLowerCase()
@@ -422,7 +486,7 @@ export default function StudentDetailPage() {
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                 {enrollments.map((e) => {
+                 {activeEnrollments.map((e) => {
                     const stats = courseStats[e.id] || { attended:0, expected:0 }
                     const isPaid = e.payment_status === 'activo'
                     const progress = stats.expected > 0 ? Math.min(100, (stats.attended / stats.expected) * 100) : 0
@@ -486,9 +550,15 @@ export default function StudentDetailPage() {
                           </div>
 
                           <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                             <button onClick={() => setRenewModalData({ studentId: student.id, courseId: e.course.id, enrollmentId: e.id })} className="flex-1 py-3.5 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-xl md:rounded-2xl hover:bg-fuchsia-600 hover:scale-[1.02] transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2">
-                                <HiOutlineRefresh size={18} /> Renovar Plan
+                             <button onClick={() => setRenewModalData({ studentId: student.id, courseId: e.course.id, enrollmentId: e.id })} className="flex-1 py-3.5 bg-gray-900 text-white font-bold text-xs tracking-normal rounded-xl md:rounded-2xl hover:bg-fuchsia-600 hover:scale-[1.02] transition-all shadow-xl shadow-gray-200 flex items-center justify-center">
+                                Renovar Plan
                              </button>
+                             <button
+                                onClick={() => openChangeCourseModal(e)}
+                                className="flex-1 py-3.5 bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-bold text-xs tracking-normal rounded-xl md:rounded-2xl hover:from-fuchsia-600 hover:to-purple-700 hover:scale-[1.02] transition-all shadow-lg shadow-fuchsia-100 flex items-center justify-center"
+                              >
+                                Cambiar Curso
+                              </button>
                              <button onClick={() => setEditEnrollmentData(e)} className="p-3.5 bg-gray-50 text-gray-400 rounded-xl md:rounded-2xl hover:text-fuchsia-600 hover:bg-white hover:shadow-lg transition-all flex items-center justify-center">
                                 <HiOutlinePencil size={20} />
                              </button>
@@ -504,7 +574,40 @@ export default function StudentDetailPage() {
                     )
                  })}
               </div>
+              {activeEnrollments.length === 0 && (
+                <div className="bg-white rounded-[28px] border border-gray-100 p-8 text-center text-gray-400 font-bold">
+                  Sin programas activos.
+                </div>
+              )}
            </div>
+
+           {historicalEnrollments.length > 0 && (
+             <div className="space-y-4">
+               <div className="flex items-center justify-between px-2">
+                 <h2 className="text-xl font-black text-gray-900 tracking-tight">Historial de Programas</h2>
+                 <span className="px-3 py-1 bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-xl">
+                   {historicalEnrollments.length} registro{historicalEnrollments.length > 1 ? 's' : ''}
+                 </span>
+               </div>
+               <div className="bg-white rounded-[28px] border border-gray-100 overflow-hidden">
+                 <div className="divide-y divide-gray-100">
+                   {historicalEnrollments.map((e) => (
+                     <div key={`hist-${e.id}`} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                       <div>
+                         <div className="font-black text-gray-800">{e.course.name}</div>
+                         <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                           {e.course.teacher_name || 'Sin instructor'}
+                         </div>
+                       </div>
+                       <div className="text-xs font-black text-gray-500">
+                         {ymdToCL(e.start_date) || '--'} <span className="text-gray-300 mx-1">|</span> {ymdToCL(e.end_date) || '--'}
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             </div>
+           )}
 
            {/* High-Performance Calendar Heatmap */}
            <div className="bg-white rounded-[32px] md:rounded-[50px] shadow-xl shadow-gray-100/50 border border-gray-100 p-6 md:p-10 space-y-6 md:space-y-8">
@@ -765,6 +868,68 @@ export default function StudentDetailPage() {
                 className="flex-1 py-3 rounded-2xl bg-fuchsia-600 text-white font-black text-xs uppercase tracking-widest hover:bg-fuchsia-700 transition-colors disabled:opacity-60"
               >
                 {savingFee ? 'Guardando...' : 'Confirmar cobro'}
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {showChangeCourseModal && createPortal(
+        <div className="fixed left-0 top-0 z-[999] h-screen w-screen bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-white border border-gray-200 rounded-3xl shadow-2xl p-6 md:p-8 space-y-5">
+            <div>
+              <h3 className="text-xl font-black text-gray-900">Cambiar curso</h3>
+              <p className="text-sm text-gray-500 mt-1">El curso actual se cerrará el día anterior de la fecha efectiva para evitar superposición.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Curso actual</label>
+                <input
+                  value={changeSourceEnrollment?.course?.name || '-'}
+                  readOnly
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 font-black"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Curso nuevo</label>
+                <select
+                  value={changeToCourseId}
+                  onChange={(e) => setChangeToCourseId(e.target.value ? Number(e.target.value) : '')}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-black focus:outline-none focus:ring-2 focus:ring-fuchsia-200 focus:border-fuchsia-400"
+                >
+                  <option value="">Seleccionar...</option>
+                  {allCourses
+                    .filter(c => c.id !== Number(changeSourceEnrollment?.course?.id))
+                    .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Fecha efectiva</label>
+              <input
+                type="date"
+                value={changeEffectiveDate}
+                onChange={(e) => setChangeEffectiveDate(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-black focus:outline-none focus:ring-2 focus:ring-fuchsia-200 focus:border-fuchsia-400"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setShowChangeCourseModal(false)}
+                disabled={changingCourse}
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmCourseChange}
+                disabled={changingCourse || !changeToCourseId || !changeEffectiveDate}
+                className="flex-1 py-3 rounded-2xl bg-fuchsia-600 text-white font-black text-xs uppercase tracking-widest hover:bg-fuchsia-700 transition-colors disabled:opacity-60"
+              >
+                {changingCourse ? 'Guardando...' : 'Confirmar cambio'}
               </button>
             </div>
           </div>

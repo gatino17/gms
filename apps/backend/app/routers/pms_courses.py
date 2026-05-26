@@ -27,7 +27,10 @@ async def list_courses(
             Enrollment.course_id,
             func.count(func.distinct(Enrollment.student_id)).label("student_count")
         )
-        .where(Enrollment.tenant_id == tenant_id)
+        .where(
+            Enrollment.tenant_id == tenant_id,
+            Enrollment.is_active.is_(True),
+        )
         .group_by(Enrollment.course_id)
         .subquery()
     )

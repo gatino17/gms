@@ -69,6 +69,12 @@ async def course_status(
         .subquery()
     )
 
+    enrollment_join = and_(Enrollment.course_id == Course.id, Enrollment.tenant_id == Course.tenant_id)
+    student_join = and_(Student.id == Enrollment.student_id, Student.tenant_id == Course.tenant_id)
+    if only_active:
+        enrollment_join = and_(enrollment_join, Enrollment.is_active == True)
+        student_join = and_(student_join, Student.is_active == True)
+
     stmt = (
         select(
             Course,
@@ -80,8 +86,8 @@ async def course_status(
             func.coalesce(att_subquery.c.count, 0).label("att_count"),
             func.coalesce(extra_subquery.c.count, 0).label("extra_count")
         )
-        .join(Enrollment, and_(Enrollment.course_id == Course.id, Enrollment.tenant_id == Course.tenant_id), isouter=True)
-        .join(Student, and_(Student.id == Enrollment.student_id, Student.tenant_id == Course.tenant_id), isouter=True)
+        .join(Enrollment, enrollment_join, isouter=True)
+        .join(Student, student_join, isouter=True)
         .join(Teacher, and_(Teacher.id == Course.teacher_id, Teacher.tenant_id == Course.tenant_id), isouter=True)
         .join(att_subquery, and_(att_subquery.c.student_id == Student.id, att_subquery.c.course_id == Course.id), isouter=True)
         .join(extra_subquery, and_(extra_subquery.c.student_id == Student.id, extra_subquery.c.course_id == Course.id), isouter=True)
@@ -90,8 +96,6 @@ async def course_status(
 
     if only_active:
         stmt = stmt.where(Course.is_active == True)
-        stmt = stmt.where(or_(Enrollment.id == None, Enrollment.is_active == True))
-        stmt = stmt.where(or_(Student.id == None, Student.is_active == True))
 
     if course_q: stmt = stmt.where(Course.name.ilike(f"%{course_q}%"))
     if course_id: stmt = stmt.where(Course.id == course_id)

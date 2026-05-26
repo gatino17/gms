@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import {
@@ -77,6 +77,12 @@ const methodLabel = (m: string) => ({
   convenio: 'Convenio', agreement: 'Convenio'
 }[m] || m)
 
+const displayTeacherName = (name?: string | null) => {
+  const clean = (name || '').trim()
+  if (!clean) return 'Matrículas'
+  return clean.toLowerCase() === 'sin profesor' ? 'Matrículas' : clean
+}
+
 export default function PaymentsTeachers() {
   const { tenantId } = useTenant()
   const [payments, setPayments] = useState<Payment[]>([])
@@ -145,8 +151,9 @@ export default function PaymentsTeachers() {
   const enriched = useMemo(() => {
     return payments.map(p => {
       const c = p.course_id ? courses[p.course_id] : null
-      const teacherName = c?.teacher_name || 'Sin profesor'
-      const courseName = c?.name || '-'
+      const isRegistration = (p.type || '').toLowerCase() === 'registration'
+      const teacherName = isRegistration ? 'Matrículas' : (c?.teacher_name || 'Sin profesor')
+      const courseName = isRegistration ? 'Matrícula' : (c?.name || '-')
       const studentName = p.student_name || (p.student_id ? (students[p.student_id]?.name || '-') : '-')
       return { ...p, teacherName, courseName, studentName }
     })
@@ -158,12 +165,41 @@ export default function PaymentsTeachers() {
     return Array.from(set).filter(t => t !== 'Sin profesor').sort((a, b) => a.localeCompare(b))
   }, [enriched])
 
-  const selectedAgg = useMemo(() => byTeacher.find(t => (t.teacher_name || t.teacher) === teacher), [byTeacher, teacher])
+  const summaryCards = useMemo(() => {
+    const map: Record<string, { name: string; total: number; cash: number; card: number; transfer: number; agreement: number }> = {}
+    for (const p of enriched) {
+      const name = p.teacherName || 'Matrículas'
+      if (!map[name]) map[name] = { name, total: 0, cash: 0, card: 0, transfer: 0, agreement: 0 }
+      const amt = Number(p.amount || 0)
+      const m = (p.method || '').toLowerCase()
+      map[name].total += amt
+      if (m === 'efectivo' || m === 'cash') map[name].cash += amt
+      else if (m === 'debito' || m === 'credito' || m === 'card') map[name].card += amt
+      else if (m === 'transferencia' || m === 'transfer') map[name].transfer += amt
+      else map[name].agreement += amt
+    }
+    return Object.values(map).sort((a, b) => b.total - a.total)
+  }, [enriched])
 
   const detailedRows = useMemo(() => {
     if (!teacher) return []
     return enriched.filter(p => p.teacherName === teacher).sort((a, b) => b.id - a.id)
   }, [enriched, teacher])
+
+  const selectedAgg = useMemo(() => {
+    if (!teacher) return null
+    const base = { total: 0, cash: 0, card: 0, transfer: 0, agreement: 0 }
+    for (const p of detailedRows) {
+      const amt = Number(p.amount || 0)
+      const m = (p.method || '').toLowerCase()
+      base.total += amt
+      if (m === 'efectivo' || m === 'cash') base.cash += amt
+      else if (m === 'debito' || m === 'credito' || m === 'card') base.card += amt
+      else if (m === 'transferencia' || m === 'transfer') base.transfer += amt
+      else base.agreement += amt
+    }
+    return base
+  }, [teacher, detailedRows])
 
   const totalPages = Math.ceil(detailedRows.length / pageSize)
   const safePage = Math.min(Math.max(1, page), totalPages || 1)
@@ -259,7 +295,7 @@ export default function PaymentsTeachers() {
             <div className="relative">
               <HiOutlineUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <select value={teacher} onChange={e => setTeacher(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl md:rounded-2xl font-bold text-sm md:text-base text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none">
-                <option value="">Todos los Profesores</option>
+                <option value="">Todos los responsables</option>
                 {teachers.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
@@ -280,19 +316,22 @@ export default function PaymentsTeachers() {
 
         {!teacher ? (
           <div className="p-4 md:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {byTeacher.length === 0 && !loading && (
+            {summaryCards.length === 0 && !loading && (
               <div className="col-span-full p-10 text-center text-gray-400 font-bold">
                 No hay pagos de profesores para el rango seleccionado.
               </div>
             )}
-            {byTeacher.map((t, idx) => (
-              <div key={idx} className="bg-gray-50 p-6 rounded-3xl border border-transparent hover:border-fuchsia-200 hover:bg-white transition-all group cursor-pointer" onClick={() => setTeacher(t.teacher_name || t.teacher)}>
+            {summaryCards.map((t, idx) => {
+              const teacherDisplay = displayTeacherName(t.name)
+              const isEnrollmentCard = teacherDisplay === 'Matrículas'
+              return (
+              <div key={idx} className={`p-6 rounded-3xl border transition-all group cursor-pointer ${isEnrollmentCard ? 'bg-amber-50 border-amber-200 hover:bg-amber-100/40 hover:border-amber-300' : 'bg-gray-50 border-transparent hover:border-fuchsia-200 hover:bg-white'}`} onClick={() => setTeacher(teacherDisplay)}>
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white flex items-center justify-center font-black text-xl shrink-0">
-                    {(t.teacher_name || t.teacher)?.[0] || 'P'}
+                  <div className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black text-xl shrink-0 ${isEnrollmentCard ? 'bg-gradient-to-br from-amber-500 to-orange-600' : 'bg-gradient-to-br from-fuchsia-500 to-purple-600'}`}>
+                    {teacherDisplay?.[0] || 'M'}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-lg font-black text-gray-900 truncate group-hover:text-fuchsia-600 transition-colors">{t.teacher_name || t.teacher}</div>
+                    <div className={`text-lg font-black truncate transition-colors ${isEnrollmentCard ? 'text-amber-900 group-hover:text-amber-700' : 'text-gray-900 group-hover:text-fuchsia-600'}`}>{teacherDisplay}</div>
                     <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Resumen</div>
                   </div>
                 </div>
@@ -302,14 +341,14 @@ export default function PaymentsTeachers() {
                     <span className="text-lg font-black text-gray-900">{fmtCLP.format(Number(t.total || 0))}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200/50">
-                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">💵</span> {fmtCLP.format(Number(t.cash || 0))}</div>
-                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">💳</span> {fmtCLP.format(Number(t.card || 0))}</div>
-                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">🔄</span> {fmtCLP.format(Number(t.transfer || 0))}</div>
-                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0">🤝</span> {fmtCLP.format(Number(t.agreement || 0))}</div>
+                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-emerald-600">Efec.</span> {fmtCLP.format(Number(t.cash || 0))}</div>
+                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-sky-600">Tarj.</span> {fmtCLP.format(Number(t.card || 0))}</div>
+                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-indigo-600">Transf.</span> {fmtCLP.format(Number(t.transfer || 0))}</div>
+                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-amber-600">Conv.</span> {fmtCLP.format(Number(t.agreement || 0))}</div>
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -345,6 +384,11 @@ export default function PaymentsTeachers() {
                         }`}>
                         {methodLabel(r.method)}
                       </span>
+                      {(r.type || '').toLowerCase() === 'registration' && (
+                        <div className="text-[9px] font-black text-fuchsia-600 mt-1 uppercase tracking-widest">
+                          {(String(r.reference || '').toLowerCase().includes('anual') ? 'Matrícula anual' : 'Matrícula incorporación')}
+                        </div>
+                      )}
                     </td>
                     <td className="block md:table-cell px-6 py-2 md:py-6">
                       {(() => {
@@ -390,3 +434,5 @@ export default function PaymentsTeachers() {
     </div>
   )
 }
+
+

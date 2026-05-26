@@ -17,6 +17,7 @@ from app.routers import pms_tenants
 from app.routers import pms_announcements
 from app.routers import auth
 from app.routers import pms_dashboard
+from app.routers import pms_reports
 
 app = FastAPI(title=settings.api_title)
 
@@ -80,6 +81,7 @@ app.include_router(pms_tenants.router)
 app.include_router(pms_announcements.router)
 app.include_router(auth.router, tags=["login"])
 app.include_router(pms_dashboard.router)
+app.include_router(pms_reports.router)
 
 # Static files (for uploaded images)
 static_dir = Path(__file__).resolve().parent / "static"

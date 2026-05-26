@@ -52,6 +52,7 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(false)
   const [q, setQ] = useState('')
   const [stats, setStats] = useState({ total_active: 0, total_inactive: 0, female: 0, male: 0, new_this_week: 0 })
+  const [enrollmentFeeByStudent, setEnrollmentFeeByStudent] = useState<Record<number, boolean>>({})
   
   const [showCreate, setShowCreate] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
@@ -68,9 +69,24 @@ export default function StudentsPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const res = await api.get('/api/pms/students', { params: { q, limit: 1000 } })
-      setData(res.data.items)
-      setStats(res.data.stats)
+      const studentsRes = await api.get('/api/pms/students', { params: { q, limit: 1000 } })
+      setData(studentsRes.data.items)
+      setStats(studentsRes.data.stats)
+
+      // Optional load: if payments fails, students list must still render.
+      try {
+        const paymentsRes = await api.get('/api/pms/payments', { params: { type: 'registration', limit: 1000, offset: 0 } })
+        const feeMap: Record<number, boolean> = {}
+        for (const p of (paymentsRes.data?.items || [])) {
+          const sid = Number(p?.student_id || 0)
+          if (!sid) continue
+          feeMap[sid] = true
+        }
+        setEnrollmentFeeByStudent(feeMap)
+      } catch {
+        setEnrollmentFeeByStudent({})
+      }
+
       setPage(1) // Reset to first page on new search
     } finally { setLoading(false) }
   }
@@ -210,6 +226,9 @@ export default function StudentsPage() {
                           )}
                           <span className="text-[7px] font-bold text-gray-400 uppercase tracking-tighter">
                             {s.enrollment_count || 0} inscripciones
+                          </span>
+                          <span className={`inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${enrollmentFeeByStudent[s.id] ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                            {enrollmentFeeByStudent[s.id] ? 'Con matrícula' : 'Sin matrícula'}
                           </span>
                         </div>
                       </td>

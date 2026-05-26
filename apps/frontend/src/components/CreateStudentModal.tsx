@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { 
   HiOutlineUser, 
@@ -23,6 +23,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
   const [courses, setCourses] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
   const [createdStudentId, setCreatedStudentId] = useState<number | null>(null)
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false)
   
   // Student Info
   const [form, setForm] = useState({
@@ -37,6 +38,16 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
     is_active: true
   })
 
+  const requiredErrors = {
+    first_name: !form.first_name.trim(),
+    last_name: !form.last_name.trim(),
+    phone: !form.phone.trim(),
+    gender: !form.gender.trim(),
+  }
+  const hasRequiredErrors = Object.values(requiredErrors).some(Boolean)
+
+  const normalizePhoneInput = (value: string) => value.replace(/[^0-9+\s()-]/g, '')
+
   // Photo
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -46,6 +57,11 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
   }, [])
 
   const handleSave = async (shouldEnroll: boolean = false) => {
+    setAttemptedSubmit(true)
+    if (hasRequiredErrors) {
+      setError('Completa los campos obligatorios marcados en rojo.')
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -54,13 +70,21 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
 
       if (!studentId) {
         // First attempt: Create student
-        const res = await api.post('/api/pms/students', form)
+        const payload = {
+          ...form,
+          birthdate: form.birthdate?.trim() ? form.birthdate : null,
+        }
+        const res = await api.post('/api/pms/students', payload)
         student = res.data
         studentId = student.id
         setCreatedStudentId(studentId)
       } else {
         // Retry attempt: Update existing student
-        const res = await api.put(`/api/pms/students/${studentId}`, form)
+        const payload = {
+          ...form,
+          birthdate: form.birthdate?.trim() ? form.birthdate : null,
+        }
+        const res = await api.put(`/api/pms/students/${studentId}`, payload)
         student = res.data
       }
       
@@ -169,21 +193,21 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
               <div className="lg:col-span-8 space-y-8">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombres</label>
+                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.first_name ? 'text-rose-600' : 'text-gray-400'}`}>Nombres</label>
                        <input 
                           value={form.first_name}
                           onChange={(e) => setForm(f => ({ ...f, first_name: e.target.value }))}
                           placeholder="Ej. Alejandro"
-                          className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
+                          className={`w-full px-6 py-4 bg-gray-50 border-2 rounded-2xl font-bold text-gray-700 transition-all outline-none ${attemptedSubmit && requiredErrors.first_name ? 'border-rose-400 focus:border-rose-500 focus:bg-white focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50'}`}
                        />
                     </div>
                     <div className="space-y-2">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Apellidos</label>
+                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.last_name ? 'text-rose-600' : 'text-gray-400'}`}>Apellidos</label>
                        <input 
                           value={form.last_name}
                           onChange={(e) => setForm(f => ({ ...f, last_name: e.target.value }))}
                           placeholder="Ej. García"
-                          className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
+                          className={`w-full px-6 py-4 bg-gray-50 border-2 rounded-2xl font-bold text-gray-700 transition-all outline-none ${attemptedSubmit && requiredErrors.last_name ? 'border-rose-400 focus:border-rose-500 focus:bg-white focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50'}`}
                        />
                     </div>
                     <div className="space-y-2">
@@ -196,20 +220,21 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
                        />
                     </div>
                     <div className="space-y-2">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">WhatsApp / Teléfono</label>
+                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.phone ? 'text-rose-600' : 'text-gray-400'}`}>WhatsApp / Teléfono</label>
                        <input 
                           value={form.phone}
-                          onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+                          onChange={(e) => setForm(f => ({ ...f, phone: normalizePhoneInput(e.target.value) }))}
                           placeholder="+56 9 ..."
-                          className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
+                          inputMode="tel"
+                          className={`w-full px-6 py-4 bg-gray-50 border-2 rounded-2xl font-bold text-gray-700 transition-all outline-none ${attemptedSubmit && requiredErrors.phone ? 'border-rose-400 focus:border-rose-500 focus:bg-white focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50'}`}
                        />
                     </div>
                     <div className="space-y-2">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Género</label>
+                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.gender ? 'text-rose-600' : 'text-gray-400'}`}>Género</label>
                        <select 
                           value={form.gender}
                           onChange={(e) => setForm(f => ({ ...f, gender: e.target.value }))}
-                          className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none appearance-none"
+                          className={`w-full px-6 py-4 bg-gray-50 border-2 rounded-2xl font-bold text-gray-700 transition-all outline-none appearance-none ${attemptedSubmit && requiredErrors.gender ? 'border-rose-400 focus:border-rose-500 focus:bg-white focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50'}`}
                        >
                           <option value="">Seleccionar...</option>
                           <option value="Femenino">Femenino</option>
@@ -248,7 +273,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
            
            <button 
               onClick={() => handleSave(false)}
-              disabled={loading || !form.first_name || !form.last_name}
+              disabled={loading}
               className="px-6 py-4 bg-white border-2 border-gray-200 text-gray-700 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-gray-100 disabled:opacity-50 transition-all flex items-center gap-2"
            >
               {loading ? '...' : 'Solo Guardar'}
@@ -256,7 +281,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
 
            <button 
               onClick={() => handleSave(true)}
-              disabled={loading || !form.first_name || !form.last_name}
+              disabled={loading}
               className="px-8 py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
            >
               {loading ? 'Procesando...' : 'Guardar y Pagar'} <HiOutlineChevronRight size={16} />
@@ -268,3 +293,4 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
   </div>
   )
 }
+

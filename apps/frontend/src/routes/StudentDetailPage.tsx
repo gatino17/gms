@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
@@ -61,6 +61,12 @@ type PortalData = {
   }
 }
 
+type TenantFeeSettings = {
+  enrollment_fee_enabled?: boolean
+  enrollment_fee_amount?: number | null
+  enrollment_fee_kind?: 'incorporation' | 'annual' | string | null
+}
+
 type CalDay = { date:string; expected:boolean; attended:boolean; is_recovery?: boolean; is_extra?: boolean; expected_course_ids?: number[]; attended_course_ids?: number[] }
 
 const CL_TZ = 'America/Santiago'
@@ -95,6 +101,12 @@ export default function StudentDetailPage() {
   const [calLoading, setCalLoading] = useState(false)
   const [deleteAttendanceModal, setDeleteAttendanceModal] = useState<{ date: string; courseIds: number[] } | null>(null)
   const [deletingAttendance, setDeletingAttendance] = useState(false)
+  const [loadingReport, setLoadingReport] = useState(false)
+  const [feeSettings, setFeeSettings] = useState<TenantFeeSettings | null>(null)
+  const [showFeeModal, setShowFeeModal] = useState(false)
+  const [feePayMethod, setFeePayMethod] = useState('efectivo')
+  const [feeReference, setFeeReference] = useState('')
+  const [savingFee, setSavingFee] = useState(false)
 
   const [showEdit, setShowEdit] = useState(false)
   const [editMode, setEditMode] = useState<'edit' | 'renew' | 'profile'>('edit')
@@ -113,6 +125,12 @@ export default function StudentDetailPage() {
       ])
       setData(pRes.data)
       setCourseStats(sRes.data || {})
+      try {
+        const tRes = await api.get('/api/pms/tenants/me')
+        setFeeSettings((tRes.data || {}) as TenantFeeSettings)
+      } catch {
+        setFeeSettings(null)
+      }
     } finally { if (showLoader) setLoading(false) }
   }
 
@@ -182,6 +200,61 @@ export default function StudentDetailPage() {
     }
   }
 
+  const openStudentPdfReport = async () => {
+    if (!id) return
+    setLoadingReport(true)
+    try {
+      const res = await api.get(`/api/pms/reports/student/${id}`, { responseType: 'blob' })
+      const fileUrl = URL.createObjectURL(res.data)
+      window.open(fileUrl, '_blank')
+      setTimeout(() => URL.revokeObjectURL(fileUrl), 60_000)
+    } catch (e: any) {
+      alert('No se pudo generar el reporte PDF: ' + (e?.message || 'Error'))
+    } finally {
+      setLoadingReport(false)
+    }
+  }
+
+  const handlePayEnrollmentFee = async () => {
+    if (!id) return
+    const amount = Number(feeSettings?.enrollment_fee_amount || 0)
+    if (amount <= 0) {
+      alert('No hay monto de matrícula configurado en Settings.')
+      return
+    }
+    setSavingFee(true)
+    try {
+      await api.post('/api/pms/payments', {
+        student_id: Number(id),
+        course_id: null,
+        amount,
+        payment_date: toYMDInTZ(new Date()),
+        method: feePayMethod,
+        type: 'registration',
+        reference: feeReference || `Matrícula ${feeSettings?.enrollment_fee_kind === 'annual' ? 'anual' : 'incorporación'}`,
+        notes: 'Cobro de matrícula manual desde perfil de alumno',
+      })
+      setShowFeeModal(false)
+      await loadData(false)
+    } catch (e: any) {
+      alert('No se pudo registrar la matrícula: ' + (e?.response?.data?.detail || e?.message || 'Error'))
+    } finally {
+      setSavingFee(false)
+    }
+  }
+
+  const handleDeleteEnrollment = async (enrollmentId: number, courseName: string) => {
+    const ok = window.confirm(`Â¿Eliminar el curso "${courseName}" de este alumno?`)
+    if (!ok) return
+    try {
+      await api.delete(`/api/pms/enrollments/${enrollmentId}`)
+      await loadData(false)
+      await loadCalendar()
+    } catch (e: any) {
+      alert('Error al eliminar curso: ' + (e.response?.data?.detail || e.message))
+    }
+  }
+
   if (loading && !data) return (
     <div className="flex flex-col items-center justify-center py-40 gap-4">
       <div className="w-16 h-16 relative">
@@ -195,6 +268,32 @@ export default function StudentDetailPage() {
   if (!data) return null
 
   const { student, enrollments, payments } = data
+  const enrollmentPayments = (payments.recent || []).filter((p) => {
+    const t = String(p.type || '').toLowerCase()
+    const ref = String(p.reference || '').toLowerCase()
+    return t === 'registration' || ref.includes('matricula')
+  })
+  const latestEnrollmentPayment = enrollmentPayments
+    .slice()
+    .sort((a, b) => String(b.payment_date || '').localeCompare(String(a.payment_date || '')))[0]
+  const hasEnrollmentFee = !!latestEnrollmentPayment
+  const canPayEnrollmentFee =
+    !hasEnrollmentFee &&
+    !!feeSettings?.enrollment_fee_enabled &&
+    Number(feeSettings?.enrollment_fee_amount || 0) > 0
+  const enrollmentKind = latestEnrollmentPayment
+    ? (String(latestEnrollmentPayment.reference || '').toLowerCase().includes('anual')
+      ? 'Anual'
+      : String(latestEnrollmentPayment.reference || '').toLowerCase().includes('incorporacion')
+        ? 'Incorporacion'
+        : 'Matricula')
+    : null
+  const getRegistrationKindLabel = (reference?: string | null) => {
+    const ref = String(reference || '').toLowerCase()
+    if (ref.includes('anual')) return 'Matrícula anual'
+    if (ref.includes('incorporacion') || ref.includes('incorporación')) return 'Matrícula incorporación'
+    return 'Matrícula'
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 pb-20 px-4">
@@ -205,7 +304,13 @@ export default function StudentDetailPage() {
            <span className="font-black uppercase tracking-widest text-[10px] group-hover:translate-x-1 transition-transform">Volver</span>
         </button>
         <div className="flex w-full sm:w-auto gap-3">
-           <button onClick={() => window.open(`/api/pms/reports/student/${id}`, '_blank')} className="flex-1 sm:flex-none p-3 bg-white border border-gray-100 rounded-2xl shadow-sm text-gray-400 hover:text-fuchsia-600 transition-all flex items-center justify-center"><HiOutlineExternalLink size={20} /></button>
+           <button
+             onClick={openStudentPdfReport}
+             disabled={loadingReport}
+             className="flex-1 sm:flex-none px-6 py-3 bg-white border border-gray-100 rounded-2xl shadow-sm font-black text-gray-600 text-[10px] uppercase tracking-widest hover:bg-gray-50 hover:text-fuchsia-600 transition-all flex items-center justify-center gap-2"
+           >
+              <HiOutlineExternalLink size={16} /> {loadingReport ? 'Generando...' : 'Reporte PDF'}
+           </button>
            <button onClick={() => { setEditMode('profile'); setShowEdit(true) }} className="flex-[2] sm:flex-none px-6 py-3 bg-white border border-gray-100 rounded-2xl shadow-sm font-black text-gray-600 text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
               <HiOutlinePencil size={16} /> Perfil
            </button>
@@ -234,7 +339,7 @@ export default function StudentDetailPage() {
                     <h1 className="text-3xl font-black text-gray-900 leading-tight">{student.first_name} {student.last_name}</h1>
                     <div className="flex items-center justify-center gap-2 mt-2">
                        <span className="px-3 py-1 bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-full">Alumno Pro</span>
-                       <span className="text-gray-300">•</span>
+                       <span className="text-gray-300">|</span>
                        <span className="text-gray-400 font-bold text-xs">#{student.id}</span>
                     </div>
                  </div>
@@ -254,14 +359,39 @@ export default function StudentDetailPage() {
                           <div className="text-sm font-bold text-gray-700">{student.phone || 'Sin Teléfono'}</div>
                        </div>
                     </div>
-                    {student.joined_at && (
                     <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-3xl border border-gray-100/50">
                        <div className="p-3 bg-white rounded-2xl text-fuchsia-600"><HiOutlineCalendar size={20} /></div>
                        <div>
+                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Matricula</div>
+                          <div className={`text-sm font-black ${hasEnrollmentFee ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {hasEnrollmentFee ? 'Con matricula' : 'Sin matricula'}
+                          </div>
+                          <div className="text-[10px] font-bold text-gray-500 mt-0.5">
+                            {hasEnrollmentFee
+                              ? `${enrollmentKind} | Ultimo cobro: ${ymdToCL(latestEnrollmentPayment?.payment_date)}`
+                              : 'No registra cobro de matricula'}
+                          </div>
+                          {canPayEnrollmentFee && (
+                            <button
+                              onClick={() => {
+                                setFeeReference(`Matrícula ${feeSettings?.enrollment_fee_kind === 'annual' ? 'anual' : 'incorporación'}`)
+                                setShowFeeModal(true)
+                              }}
+                              className="mt-2 inline-flex items-center px-3 py-1.5 rounded-xl bg-fuchsia-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 transition-colors"
+                            >
+                              Pagar matrícula
+                            </button>
+                          )}
+                        </div>
+                    </div>
+                    {student.joined_at && (
+                      <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-3xl border border-gray-100/50">
+                        <div className="p-3 bg-white rounded-2xl text-fuchsia-600"><HiOutlineCalendar size={20} /></div>
+                        <div>
                           <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Miembro desde</div>
                           <div className="text-sm font-bold text-gray-700">{ymdToCL(student.joined_at)}</div>
-                       </div>
-                    </div>
+                        </div>
+                      </div>
                     )}
                  </div>
               </div>
@@ -324,7 +454,7 @@ export default function StudentDetailPage() {
                                      { d: e.course.day_of_week_5, t: e.course.start_time_5 },
                                    ].filter(s => s.d !== null && s.d !== undefined).map((s, idx) => (
                                      <div key={idx} className="text-[11px] md:text-sm font-black text-gray-700">
-                                       {DAY_NAMES_MON_FIRST[s.d! % 7]} • {(s.t || '').slice(0, 5)}
+                                       {DAY_NAMES_MON_FIRST[s.d! % 7]} | {(s.t || '').slice(0, 5)}
                                      </div>
                                    ))}
                                  </div>
@@ -361,6 +491,13 @@ export default function StudentDetailPage() {
                              </button>
                              <button onClick={() => setEditEnrollmentData(e)} className="p-3.5 bg-gray-50 text-gray-400 rounded-xl md:rounded-2xl hover:text-fuchsia-600 hover:bg-white hover:shadow-lg transition-all flex items-center justify-center">
                                 <HiOutlinePencil size={20} />
+                             </button>
+                             <button
+                                onClick={() => handleDeleteEnrollment(e.id, e.course.name)}
+                                className="p-3.5 bg-rose-50 text-rose-400 rounded-xl md:rounded-2xl hover:text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center"
+                                title="Eliminar curso"
+                             >
+                                <HiOutlineTrash size={20} />
                              </button>
                           </div>
                        </div>
@@ -443,12 +580,12 @@ export default function StudentDetailPage() {
                           {(payments.recent || []).map((p) => (
                              <tr key={p.id} className="hover:bg-fuchsia-50/10 transition-colors group">
                                 <td className="px-6 md:px-10 py-5 md:py-7">
-                                   <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors text-sm">{p.course_name || 'Inscripción General'}</div>
+                                   <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors text-sm">{p.type === 'registration' ? 'Matrícula' : (p.course_name || 'Inscripción General')}</div>
                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-lg ${p.type === 'monthly' ? 'bg-fuchsia-50 text-fuchsia-600' : p.type === 'single_class' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'}`}>{p.type === 'monthly' ? 'Mensualidad' : p.type === 'single_class' ? 'Clase Suelta' : p.type === 'registration' ? 'Matrícula' : 'Pago'}</span>
-                                       {p.teacher_name && (
+                                      <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-lg ${p.type === 'monthly' ? 'bg-fuchsia-50 text-fuchsia-600' : p.type === 'single_class' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'}`}>{p.type === 'monthly' ? 'Mensualidad' : p.type === 'single_class' ? 'Clase Suelta' : p.type === 'registration' ? getRegistrationKindLabel(p.reference) : 'Pago'}</span>
+                                       {p.teacher_name && p.type !== 'registration' && (
                                           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter shrink-0">
-                                             • Prof: {p.teacher_name}
+                                             | Prof: {p.teacher_name}
                                           </span>
                                        )}
                                    </div>
@@ -508,7 +645,7 @@ export default function StudentDetailPage() {
         />
       )}
 
-      {/* Modal de Edición de Inscripción */}
+      {/* Modal de Edición de inscripción */}
       {editEnrollmentData && (
         <EditEnrollmentModal
           isOpen={true}
@@ -571,7 +708,71 @@ export default function StudentDetailPage() {
           </div>
         </div>
       , document.body)}
+
+      {showFeeModal && createPortal(
+        <div className="fixed left-0 top-0 z-[999] h-screen w-screen bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white border border-gray-200 rounded-3xl shadow-2xl p-6 md:p-8 space-y-5">
+            <div>
+              <h3 className="text-xl font-black text-gray-900">Cobrar matrícula</h3>
+              <p className="text-sm text-gray-500 mt-1">Se registrará solo el cobro de matrícula para este alumno.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Monto</label>
+                <input
+                  value={new Intl.NumberFormat('es-CL').format(Number(feeSettings?.enrollment_fee_amount || 0))}
+                  readOnly
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 font-black"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Método</label>
+                <select
+                  value={feePayMethod}
+                  onChange={(e) => setFeePayMethod(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-black"
+                >
+                  <option value="efectivo">Efectivo</option>
+                  <option value="debito">Débito</option>
+                  <option value="credito">Crédito</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="convenio">Convenio</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Referencia</label>
+              <input
+                value={feeReference}
+                onChange={(e) => setFeeReference(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setShowFeeModal(false)}
+                disabled={savingFee}
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handlePayEnrollmentFee}
+                disabled={savingFee}
+                className="flex-1 py-3 rounded-2xl bg-fuchsia-600 text-white font-black text-xs uppercase tracking-widest hover:bg-fuchsia-700 transition-colors disabled:opacity-60"
+              >
+                {savingFee ? 'Guardando...' : 'Confirmar cobro'}
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
     </div>
   )
 }
+
+
 

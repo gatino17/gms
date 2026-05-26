@@ -79,6 +79,20 @@ function cycleFromMonth(yyyy_mm: string, anchorDay: number) {
   const end = `${ny}-${String(nm).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
   return { start, end }
 }
+function excelAmount(raw: any) {
+  const n = Number(raw || 0)
+  if (!Number.isFinite(n)) return 0
+  return Number.isInteger(n) ? n : Number(n.toFixed(2))
+}
+function tenantInitials(name?: string | null) {
+  const words = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (!words.length) return 'TEN'
+  const initials = words.slice(0, 3).map(w => w[0]?.toUpperCase() || '').join('')
+  return initials || 'TEN'
+}
 
 type ViewMode = 'detalle' | 'resumen-diario' | 'resumen-profesor'
 
@@ -251,24 +265,191 @@ export default function PaymentsPage() {
     return best ? `${toDDMMYYYY(best.start_date)} - ${best.end_date ? toDDMMYYYY(best.end_date) : 'Activo'}` : ''
   }
 
-  const downloadExcel = () => {
-    const detalleData = visibleData.map(p => ({
+  const downloadExcel = async () => {
+    try {
+      const all: Payment[] = []
+      let offset = 0
+      const limit = 1000
+
+      while (true) {
+        const params: any = {
+          limit,
+          offset,
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined,
+          q: q || undefined,
+          method: fMethod || undefined,
+          type: fType || undefined,
+        }
+        const res = await api.get('/api/pms/payments', { params })
+        const chunk: Payment[] = res.data?.items || []
+        all.push(...chunk)
+        if (chunk.length < limit) break
+        offset += limit
+      }
+
+      const exportRows = all.length ? all : visibleData
+      if (!exportRows.length) {
+        alert('No hay registros para exportar con los filtros actuales.')
+        return
+      }
+
+      const toProfessorBucket = (p: Payment) =>
+        (p.type === 'registration'
+          ? 'Matrículas'
+          : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || 'Sin asignar'))
+
+      const courseWithSchedule = (p: Payment) => {
+        if (p.type === 'registration') return 'Matrícula'
+        const courseName = p.course_name || (p.course_id && courses[p.course_id]?.name) || 'Gasto General'
+        const courseRef = p.course_id ? courses[p.course_id] : undefined
+        const dayIdx = courseRef?.day_of_week
+        const time = (courseRef?.start_time || '').slice(0, 5)
+        if (dayIdx === null || dayIdx === undefined || !time) return courseName
+        const dayLabel = DN[dayIdx] || ''
+        return dayLabel ? `${courseName} - ${dayLabel} ${time}` : courseName
+      }
+
+      const detalleData = exportRows.map(p => ({
       ID: p.id,
       Fecha: toDDMMYYYY(p.payment_date),
       Alumno: p.student_name || students[p.student_id!]?.name || '-',
-      Curso: p.course_name || (p.course_id && courses[p.course_id]?.name) || 'Gasto General',
-      Profesor: p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || '-',
+      Curso: courseWithSchedule(p),
+      Profesor: p.type === 'registration' ? '-' : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || '-'),
+      Periodo: findPeriod(p),
       Metodo: methodLabel(p.method),
       Tipo: typeLabel(p.type),
-      Monto: p.amount,
+      Monto: excelAmount(p.amount),
       Referencia: p.reference || '',
       Notas: p.notes || ''
     }))
 
-    const wb = XLSX.utils.book_new()
-    const ws = XLSX.utils.json_to_sheet(detalleData)
-    XLSX.utils.book_append_sheet(wb, ws, 'Pagos')
-    XLSX.writeFile(wb, `Pagos_${dateFrom}_a_${dateTo}.xlsx`)
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.json_to_sheet(detalleData)
+      XLSX.utils.book_append_sheet(wb, ws, 'Pagos')
+
+      // Hoja resumen diario (por fecha y medio de pago)
+      const dailyMap: Record<string, { Fecha: string; Efectivo: number; Debito: number; Transferencia: number; Convenio: number; Total: number }> = {}
+      for (const p of exportRows) {
+        const key = p.payment_date
+        if (!dailyMap[key]) {
+          dailyMap[key] = {
+            Fecha: toDDMMYYYY(key),
+            Efectivo: 0,
+            Debito: 0,
+            Transferencia: 0,
+            Convenio: 0,
+            Total: 0,
+          }
+        }
+        const amt = excelAmount(p.amount)
+        const m = (p.method || '').toLowerCase()
+        if (m === 'efectivo' || m === 'cash') dailyMap[key].Efectivo += amt
+        else if (m === 'debito' || m === 'credito' || m === 'card') dailyMap[key].Debito += amt
+        else if (m === 'transferencia' || m === 'transfer') dailyMap[key].Transferencia += amt
+        else dailyMap[key].Convenio += amt
+        dailyMap[key].Total += amt
+      }
+      const resumenDiarioRows = Object.entries(dailyMap)
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .map(([, row]) => row)
+      const wsResumenDiario = XLSX.utils.json_to_sheet(resumenDiarioRows)
+      XLSX.utils.book_append_sheet(wb, wsResumenDiario, 'Resumen Diario')
+
+      // Hoja por profesor (incluye Matrículas como bucket propio)
+      const byProfessor: Record<string, any[]> = {}
+      const summaryByProfessor: Record<string, { total: number; count: number; cash: number; card: number; transfer: number; agreement: number }> = {}
+      for (const p of exportRows) {
+        const bucket = toProfessorBucket(p)
+        if (!byProfessor[bucket]) byProfessor[bucket] = []
+        if (!summaryByProfessor[bucket]) summaryByProfessor[bucket] = { total: 0, count: 0, cash: 0, card: 0, transfer: 0, agreement: 0 }
+        const amt = Number(p.amount || 0)
+        const m = (p.method || '').toLowerCase()
+        summaryByProfessor[bucket].total += Number(p.amount || 0)
+        summaryByProfessor[bucket].count += 1
+        if (m === 'efectivo' || m === 'cash') summaryByProfessor[bucket].cash += amt
+        else if (m === 'debito' || m === 'credito' || m === 'card') summaryByProfessor[bucket].card += amt
+        else if (m === 'transferencia' || m === 'transfer') summaryByProfessor[bucket].transfer += amt
+        else summaryByProfessor[bucket].agreement += amt
+        byProfessor[bucket].push({
+          ID: p.id,
+          Fecha: toDDMMYYYY(p.payment_date),
+          Alumno: p.student_name || students[p.student_id!]?.name || '-',
+          Curso: courseWithSchedule(p),
+          Profesor: p.type === 'registration' ? '-' : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || '-'),
+          Periodo: findPeriod(p),
+          Metodo: methodLabel(p.method),
+          Tipo: typeLabel(p.type),
+          Monto: excelAmount(p.amount),
+          Referencia: p.reference || '',
+          Notas: p.notes || ''
+        })
+      }
+
+      const makeUniqueSheetName = (base: string, used: Set<string>) => {
+        const safeBase = (base.replace(/[\\\/\?\*\[\]\:]/g, ' ').trim() || 'Sin asignar')
+        let candidate = safeBase.slice(0, 31)
+        let i = 2
+        while (used.has(candidate)) {
+          const suffix = ` (${i})`
+          const head = safeBase.slice(0, Math.max(1, 31 - suffix.length))
+          candidate = `${head}${suffix}`
+          i += 1
+        }
+        used.add(candidate)
+        return candidate
+      }
+      const usedSheetNames = new Set<string>(['Pagos', 'Resumen Responsables'])
+      Object.entries(byProfessor).forEach(([teacherName, rows]) => {
+        const rowsWithoutProfessor = rows.map(({ Profesor, ...rest }) => rest)
+        const wsTeacher = XLSX.utils.json_to_sheet(rowsWithoutProfessor)
+        const baseName = teacherName === 'Matrículas' ? 'Matrículas' : `Prof - ${teacherName}`
+        const sheetName = makeUniqueSheetName(baseName, usedSheetNames)
+        XLSX.utils.book_append_sheet(wb, wsTeacher, sheetName)
+      })
+
+      // Hoja resumen global por profesor + matrículas
+      const resumenRows = Object.entries(summaryByProfessor)
+        .map(([responsable, data]) => ({
+          Responsable: responsable,
+          Registros: data.count,
+          Efectivo: data.cash,
+          'Débito/Tarjeta': data.card,
+          Transferencia: data.transfer,
+          Convenio: data.agreement,
+          Total: data.total,
+        }))
+        .sort((a, b) => b.Total - a.Total)
+      const wsResumen = XLSX.utils.json_to_sheet(resumenRows)
+      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen Responsables')
+
+      // Orden final de hojas: Pagos, Resumen Diario, Resumen Responsables, resto
+      const sheetOrder = wb.SheetNames || []
+      const idxDiario = sheetOrder.indexOf('Resumen Diario')
+      const idxResumen = sheetOrder.indexOf('Resumen Responsables')
+      if (idxDiario >= 0) {
+        sheetOrder.splice(idxDiario, 1)
+        sheetOrder.splice(1, 0, 'Resumen Diario')
+      }
+      const currentIdxResumen = sheetOrder.indexOf('Resumen Responsables')
+      if (currentIdxResumen >= 0) {
+        sheetOrder.splice(currentIdxResumen, 1)
+        sheetOrder.splice(2, 0, 'Resumen Responsables')
+      }
+      wb.SheetNames = sheetOrder
+
+      const todayFileDate = toYMDInTZ(new Date())
+      let tenantLabel = 'TEN'
+      try {
+        const tRes = await api.get('/api/pms/tenants/me')
+        tenantLabel = tenantInitials(tRes.data?.name)
+      } catch {
+        tenantLabel = 'TEN'
+      }
+      XLSX.writeFile(wb, `${tenantLabel}_pagos_hoy_${todayFileDate}.xlsx`)
+    } catch (e: any) {
+      alert('No se pudo generar el Excel: ' + (e?.message || 'Error'))
+    }
   }
 
   const totalPages = Math.ceil(totalItems / pageSize)
@@ -297,7 +478,7 @@ export default function PaymentsPage() {
       if (!map[d]) map[d] = { date: d, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
       
       const m = p.method
-      const amt = Number(p.amount || 0)
+        const amt = excelAmount(p.amount)
       
       if (m === 'efectivo' || m === 'cash') map[d].cash += amt
       else if (m === 'debito' || m === 'credito' || m === 'card') map[d].card += amt
@@ -312,7 +493,10 @@ export default function PaymentsPage() {
   const teacherRows = useMemo(() => {
     const map: Record<string, any> = {}
     visibleData.forEach(p => {
-      const name = p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || 'Sin asignar'
+      const name =
+        (p.type || '').toLowerCase() === 'registration'
+          ? 'Matrícula'
+          : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || 'Sin asignar')
       if (!map[name]) map[name] = { name, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
       
       const m = p.method
@@ -508,7 +692,9 @@ export default function PaymentsPage() {
                     </td>
                     <td className="block md:table-cell px-6 py-2 md:py-6">
                       <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors truncate">{p.student_name || students[p.student_id!]?.name || '-'}</div>
-                      <div className="text-xs font-bold text-gray-500 truncate">{p.course_name || (p.course_id && courses[p.course_id]?.name) || 'Gasto General'}</div>
+                      <div className="text-xs font-bold text-gray-500 truncate">
+                        {p.type === 'registration' ? 'Matrícula' : (p.course_name || (p.course_id && courses[p.course_id]?.name) || 'Gasto General')}
+                      </div>
                       {p.notes && <div className="text-[10px] text-gray-400 italic mt-1 line-clamp-1">"{p.notes}"</div>}
                     </td>
                     <td className="block md:table-cell px-6 py-2 md:py-6">

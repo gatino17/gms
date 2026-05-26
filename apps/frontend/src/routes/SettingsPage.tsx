@@ -31,6 +31,12 @@ type TenantSettings = {
   facebook_url?: string | null
   website_url?: string | null
   attendance_pin?: string | null
+  enrollment_fee_enabled?: boolean
+  enrollment_fee_amount?: number | null
+  enrollment_fee_apply_to?: 'new_only' | 'new_and_reentry' | null
+  enrollment_fee_allow_waive?: boolean
+  enrollment_fee_kind?: 'incorporation' | 'annual' | null
+  enrollment_fee_renewal?: 'never' | 'yearly' | null
 }
 
 type RoomItem = {
@@ -59,6 +65,12 @@ export default function SettingsPage() {
     facebook_url: '',
     website_url: '',
     attendance_pin: '',
+    enrollment_fee_enabled: false,
+    enrollment_fee_amount: null,
+    enrollment_fee_apply_to: 'new_only',
+    enrollment_fee_allow_waive: false,
+    enrollment_fee_kind: 'incorporation',
+    enrollment_fee_renewal: 'never',
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -215,6 +227,20 @@ export default function SettingsPage() {
     }
     await saveGlobalSettings({ attendance_pin: settings.attendance_pin })
     alert('PIN de asistencia actualizado correctamente.')
+  }
+
+  const handleSaveEnrollmentFee = async () => {
+    await saveGlobalSettings({
+      enrollment_fee_enabled: !!settings.enrollment_fee_enabled,
+      enrollment_fee_amount: settings.enrollment_fee_amount == null || Number(settings.enrollment_fee_amount) <= 0
+        ? null
+        : Number(settings.enrollment_fee_amount),
+      enrollment_fee_apply_to: settings.enrollment_fee_apply_to || 'new_only',
+      enrollment_fee_allow_waive: !!settings.enrollment_fee_allow_waive,
+      enrollment_fee_kind: settings.enrollment_fee_kind || 'incorporation',
+      enrollment_fee_renewal: settings.enrollment_fee_renewal || 'never',
+    })
+    alert('Configuración de matrícula actualizada correctamente.')
   }
 
   if (loading) {
@@ -395,6 +421,110 @@ export default function SettingsPage() {
                  </div>
               </div>
            </div>
+        </div>
+      </div>
+
+      {/* Enrollment Fee Section */}
+      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+             <HiOutlineCog className="text-2xl" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Matrícula</h2>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Reglas de cobro inicial</p>
+          </div>
+        </div>
+
+        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-6">
+          <label className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100">
+            <input
+              type="checkbox"
+              checked={!!settings.enrollment_fee_enabled}
+              onChange={(e) => setSettings(s => ({ ...s, enrollment_fee_enabled: e.target.checked }))}
+              className="h-5 w-5 accent-rose-600"
+            />
+            <div>
+              <div className="text-sm font-black text-gray-800">Cobrar matrícula</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Activa cobro adicional en inscripción inicial</div>
+            </div>
+          </label>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Monto matrícula</label>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                value={settings.enrollment_fee_amount ?? ''}
+                onChange={(e) => setSettings(s => ({ ...s, enrollment_fee_amount: e.target.value === '' ? null : Number(e.target.value) }))}
+                className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-rose-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm"
+                placeholder="Ej: 15000"
+                disabled={!settings.enrollment_fee_enabled}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Aplicar a</label>
+              <select
+                value={settings.enrollment_fee_apply_to || 'new_only'}
+                onChange={(e) => setSettings(s => ({ ...s, enrollment_fee_apply_to: e.target.value as 'new_only' | 'new_and_reentry' }))}
+                className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-rose-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm appearance-none"
+                disabled={!settings.enrollment_fee_enabled}
+              >
+                <option value="new_only">Solo nuevos alumnos</option>
+                <option value="new_and_reentry">Nuevos y reingresos</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de matrícula</label>
+              <select
+                value={settings.enrollment_fee_kind || 'incorporation'}
+                onChange={(e) => setSettings(s => ({ ...s, enrollment_fee_kind: e.target.value as 'incorporation' | 'annual' }))}
+                className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-rose-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm appearance-none"
+                disabled={!settings.enrollment_fee_enabled}
+              >
+                <option value="incorporation">Incorporación</option>
+                <option value="annual">Anual</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Renovación de matrícula</label>
+              <select
+                value={settings.enrollment_fee_renewal || 'never'}
+                onChange={(e) => setSettings(s => ({ ...s, enrollment_fee_renewal: e.target.value as 'never' | 'yearly' }))}
+                className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-rose-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm appearance-none"
+                disabled={!settings.enrollment_fee_enabled}
+              >
+                <option value="never">Por siempre (una sola vez)</option>
+                <option value="yearly">Renovación anual</option>
+              </select>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100">
+            <input
+              type="checkbox"
+              checked={!!settings.enrollment_fee_allow_waive}
+              onChange={(e) => setSettings(s => ({ ...s, enrollment_fee_allow_waive: e.target.checked }))}
+              className="h-5 w-5 accent-rose-600"
+              disabled={!settings.enrollment_fee_enabled}
+            />
+            <div>
+              <div className="text-sm font-black text-gray-800">Permitir omitir matrícula al cobrar</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Útil para becas, promociones o excepción administrativa</div>
+            </div>
+          </label>
+
+          <div className="flex justify-end">
+            <button
+              onClick={handleSaveEnrollmentFee}
+              disabled={isSavingMsg}
+              className="px-8 py-3.5 bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50"
+            >
+              Guardar Matrícula
+            </button>
+          </div>
         </div>
       </div>
       {/* Social Media Section */}

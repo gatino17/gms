@@ -54,6 +54,12 @@ class Tenant(Base):
     tiktok_url: Mapped[Optional[str]] = mapped_column(String(255))
     facebook_url: Mapped[Optional[str]] = mapped_column(String(255))
     website_url: Mapped[Optional[str]] = mapped_column(String(255))
+    enrollment_fee_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    enrollment_fee_amount: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    enrollment_fee_apply_to: Mapped[Optional[str]] = mapped_column(String(30), default="new_only")
+    enrollment_fee_allow_waive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    enrollment_fee_kind: Mapped[Optional[str]] = mapped_column(String(20), default="incorporation")
+    enrollment_fee_renewal: Mapped[Optional[str]] = mapped_column(String(20), default="never")
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
 
 

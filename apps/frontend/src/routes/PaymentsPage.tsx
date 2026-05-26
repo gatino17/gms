@@ -229,6 +229,15 @@ export default function PaymentsPage() {
     convenio: 'Convenio'
   }[t] || t)
 
+  const registrationVariantLabel = (p: Payment) => {
+    const ref = (p.reference || '').toLowerCase()
+    const notes = (p.notes || '').toLowerCase()
+    const joined = `${ref} ${notes}`
+    if (joined.includes('anual')) return 'Matrícula anual'
+    if (joined.includes('incorporación') || joined.includes('incorporacion')) return 'Matrícula incorporación'
+    return 'Matrícula'
+  }
+
   const findPeriod = (p: Payment) => {
     const directStart = (p as any).period_start as string | undefined
     const directEnd = (p as any).period_end as string | undefined
@@ -512,7 +521,13 @@ export default function PaymentsPage() {
                         }`}>
                           {methodLabel(p.method)}
                         </span>
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{typeLabel(p.type)}</span>
+                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${
+                          p.type === 'monthly' ? 'bg-fuchsia-50 text-fuchsia-600' :
+                          p.type === 'single_class' ? 'bg-amber-100 text-amber-700' :
+                          p.type === 'registration' ? 'bg-rose-100 text-rose-700' :
+                          p.type === 'agreement' || p.type === 'convenio' ? 'bg-cyan-50 text-cyan-700' :
+                          'bg-gray-100 text-gray-500'
+                        }`}>{p.type === 'registration' ? registrationVariantLabel(p) : typeLabel(p.type)}</span>
                       </div>
                       <div className="text-[9px] font-bold text-gray-400 mt-1">{findPeriod(p)}</div>
                     </td>

@@ -24,6 +24,12 @@ class TenantOut(BaseModel):
     attendance_pin: Optional[str] = None
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
+    enrollment_fee_enabled: bool = False
+    enrollment_fee_amount: Optional[Decimal] = None
+    enrollment_fee_apply_to: Optional[str] = "new_only"
+    enrollment_fee_allow_waive: bool = False
+    enrollment_fee_kind: Optional[str] = "incorporation"
+    enrollment_fee_renewal: Optional[str] = "never"
     created_at: datetime
     admin_is_superuser: Optional[bool] = None
 
@@ -47,6 +53,12 @@ class TenantCreate(BaseModel):
     tiktok_url: Optional[str] = None
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
+    enrollment_fee_enabled: Optional[bool] = False
+    enrollment_fee_amount: Optional[Decimal] = None
+    enrollment_fee_apply_to: Optional[str] = "new_only"
+    enrollment_fee_allow_waive: Optional[bool] = False
+    enrollment_fee_kind: Optional[str] = "incorporation"
+    enrollment_fee_renewal: Optional[str] = "never"
     is_superuser: bool = False
 
 
@@ -67,6 +79,12 @@ class TenantUpdate(BaseModel):
     attendance_pin: Optional[str] = Field(default=None, max_length=4)
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
+    enrollment_fee_enabled: Optional[bool] = None
+    enrollment_fee_amount: Optional[Decimal] = None
+    enrollment_fee_apply_to: Optional[str] = None
+    enrollment_fee_allow_waive: Optional[bool] = None
+    enrollment_fee_kind: Optional[str] = None
+    enrollment_fee_renewal: Optional[str] = None
     is_superuser: Optional[bool] = None
 
 
@@ -84,6 +102,12 @@ class TenantSelfUpdate(BaseModel):
     attendance_pin: Optional[str] = Field(default=None, max_length=4)
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
+    enrollment_fee_enabled: Optional[bool] = None
+    enrollment_fee_amount: Optional[Decimal] = None
+    enrollment_fee_apply_to: Optional[str] = None
+    enrollment_fee_allow_waive: Optional[bool] = None
+    enrollment_fee_kind: Optional[str] = None
+    enrollment_fee_renewal: Optional[str] = None
 
 
 class StudentBase(BaseModel):

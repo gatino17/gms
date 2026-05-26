@@ -67,8 +67,8 @@ export default function AppLayout() {
 
   const navTop = [
     { to: '/', label: 'Dashboard', icon: <HiOutlineHome /> },
-    { to: '/course-status', label: 'Estado cursos', icon: <HiOutlineViewList /> },
     { to: '/students', label: 'Alumnos', icon: <HiOutlineUserGroup /> },
+    { to: '/course-status', label: 'Estado cursos', icon: <HiOutlineViewList /> },
     { to: '/courses', label: 'Cursos', icon: <HiOutlineBookOpen /> },
   ]
 

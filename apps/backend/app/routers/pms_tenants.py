@@ -76,6 +76,17 @@ async def create_tenant(
         phone=payload.phone,
         whatsapp_message=payload.whatsapp_message,
         logo_url=payload.logo_url,
+        currency=payload.currency,
+        instagram_url=payload.instagram_url,
+        tiktok_url=payload.tiktok_url,
+        facebook_url=payload.facebook_url,
+        website_url=payload.website_url,
+        enrollment_fee_enabled=bool(payload.enrollment_fee_enabled),
+        enrollment_fee_amount=payload.enrollment_fee_amount,
+        enrollment_fee_apply_to=payload.enrollment_fee_apply_to or "new_only",
+        enrollment_fee_allow_waive=bool(payload.enrollment_fee_allow_waive),
+        enrollment_fee_kind=payload.enrollment_fee_kind or "incorporation",
+        enrollment_fee_renewal=payload.enrollment_fee_renewal or "never",
     )
     db.add(tenant)
     await db.flush()
@@ -248,6 +259,30 @@ async def update_tenant(
         tenant.whatsapp_message = data["whatsapp_message"]
     if "logo_url" in data:
         tenant.logo_url = data["logo_url"]
+    if "currency" in data:
+        tenant.currency = data["currency"]
+    if "instagram_url" in data:
+        tenant.instagram_url = data["instagram_url"]
+    if "tiktok_url" in data:
+        tenant.tiktok_url = data["tiktok_url"]
+    if "facebook_url" in data:
+        tenant.facebook_url = data["facebook_url"]
+    if "website_url" in data:
+        tenant.website_url = data["website_url"]
+    if "attendance_pin" in data:
+        tenant.attendance_pin = data["attendance_pin"]
+    if "enrollment_fee_enabled" in data:
+        tenant.enrollment_fee_enabled = bool(data["enrollment_fee_enabled"])
+    if "enrollment_fee_amount" in data:
+        tenant.enrollment_fee_amount = data["enrollment_fee_amount"]
+    if "enrollment_fee_apply_to" in data:
+        tenant.enrollment_fee_apply_to = data["enrollment_fee_apply_to"]
+    if "enrollment_fee_allow_waive" in data:
+        tenant.enrollment_fee_allow_waive = bool(data["enrollment_fee_allow_waive"])
+    if "enrollment_fee_kind" in data:
+        tenant.enrollment_fee_kind = data["enrollment_fee_kind"]
+    if "enrollment_fee_renewal" in data:
+        tenant.enrollment_fee_renewal = data["enrollment_fee_renewal"]
     if "is_superuser" in data:
         if admin_user is None:
             admin_user = await db.scalar(

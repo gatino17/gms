@@ -90,9 +90,10 @@ export default function PaymentsTeachers() {
   const [teacher, setTeacher] = useState<string>('')
 
   const todayYMD = useMemo(() => toYMDInTZ(new Date()), [])
-  const [dateFrom, setDateFrom] = useState(todayYMD)
-  const [dateTo, setDateTo] = useState(todayYMD)
-  const [quickRange, setQuickRange] = useState('dia_hoy')
+  const initialMonthRange = useMemo(() => monthRangeFor(), [])
+  const [dateFrom, setDateFrom] = useState(initialMonthRange.start)
+  const [dateTo, setDateTo] = useState(initialMonthRange.end)
+  const [quickRange, setQuickRange] = useState('mes_actual')
   const [pickMonth, setPickMonth] = useState('')
   const [cycleMonth, setCycleMonth] = useState('')
 
@@ -279,6 +280,11 @@ export default function PaymentsTeachers() {
 
         {!teacher ? (
           <div className="p-4 md:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {byTeacher.length === 0 && !loading && (
+              <div className="col-span-full p-10 text-center text-gray-400 font-bold">
+                No hay pagos de profesores para el rango seleccionado.
+              </div>
+            )}
             {byTeacher.map((t, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-3xl border border-transparent hover:border-fuchsia-200 hover:bg-white transition-all group cursor-pointer" onClick={() => setTeacher(t.teacher_name || t.teacher)}>
                 <div className="flex items-center gap-4 mb-4">

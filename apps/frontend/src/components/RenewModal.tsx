@@ -33,9 +33,24 @@ type CourseInfo = {
   class_price?: number | null
 }
 
+type TenantFeeSettings = {
+  enrollment_fee_enabled?: boolean
+  enrollment_fee_amount?: number | null
+  enrollment_fee_apply_to?: 'new_only' | 'new_and_reentry' | string | null
+  enrollment_fee_allow_waive?: boolean
+  enrollment_fee_kind?: 'incorporation' | 'annual' | string | null
+  enrollment_fee_renewal?: 'never' | 'yearly' | string | null
+}
+
+type PaymentHistoryRow = {
+  id: number
+  payment_date?: string | null
+  type?: string | null
+}
+
 type DayCoding = 'ISO1' | 'MON0'
 
-const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+const DAY_NAMES = ['Lunes', 'Martes', 'MiÃ©rcoles', 'Jueves', 'Viernes', 'SÃ¡bado', 'Domingo']
 // ===================== Constantes / Utils =====================
 const CL_TZ = 'America/Santiago'
 
@@ -134,12 +149,18 @@ export default function RenewModal({
   const [renewMode, setRenewMode] = useState<'monthly'|'single_class'>('monthly')
   const [renewStartDate, setRenewStartDate] = useState<string>('')
   const [computedEndDate, setComputedEndDate] = useState<string>('')
+  const [allowManualEndDate, setAllowManualEndDate] = useState<boolean>(false)
   const [singleDate, setSingleDate] = useState<string>('')
   const [markAttendance, setMarkAttendance] = useState<boolean>(true)
   
   const [payAmount, setPayAmount] = useState<string>('')
   const [payMethod, setPayMethod] = useState<string>('efectivo')
   const [payReference, setPayReference] = useState<string>('')
+  const [feeSettings, setFeeSettings] = useState<TenantFeeSettings | null>(null)
+  const [includeEnrollmentFee, setIncludeEnrollmentFee] = useState(false)
+  const [enrollmentFeeAmount, setEnrollmentFeeAmount] = useState<number>(0)
+  const [enrollmentFeeEligible, setEnrollmentFeeEligible] = useState(false)
+  const [enrollmentFeeHint, setEnrollmentFeeHint] = useState<string>('')
   
   const [outOfPlanDates, setOutOfPlanDates] = useState<string[]>([])
   const [showOutOfPlanOptions, setShowOutOfPlanOptions] = useState(false)
@@ -158,10 +179,16 @@ export default function RenewModal({
       setRenewMode('monthly')
       setRenewStartDate('')
       setComputedEndDate('')
+      setAllowManualEndDate(false)
       setSingleDate('')
       setPayAmount('')
       setPayMethod('efectivo')
       setPayReference('')
+      setFeeSettings(null)
+      setIncludeEnrollmentFee(false)
+      setEnrollmentFeeAmount(0)
+      setEnrollmentFeeEligible(false)
+      setEnrollmentFeeHint('')
       setOutOfPlanDates([])
       setShowOutOfPlanOptions(false)
       setOutOfPlanOption(null)
@@ -173,9 +200,11 @@ export default function RenewModal({
       try {
         setLoading(true)
         setError(null)
-        const [studentRes, courseRes] = await Promise.all([
+        const [studentRes, courseRes, tenantRes, regPaymentsRes] = await Promise.all([
           api.get(`/api/pms/students/${studentId}/portal`),
-          api.get(`/api/pms/courses/${courseId}`)
+          api.get(`/api/pms/courses/${courseId}`),
+          api.get('/api/pms/tenants/me'),
+          api.get('/api/pms/payments', { params: { student_id: Number(studentId), type: 'registration', limit: 1000, offset: 0 } }),
         ])
 
         const student = studentRes.data.student
@@ -184,11 +213,13 @@ export default function RenewModal({
         const enrollments = studentRes.data.enrollments || []
         const enroll = enrollments.find((e: Enrollment) => e.id === Number(enrollmentId))
         if (!enroll) {
-          setError('Matrícula no encontrada')
+          setError('MatrÃ­cula no encontrada')
           setLoading(false)
           return
         }
         setEnrollment(enroll)
+        const settings = (tenantRes.data || {}) as TenantFeeSettings
+        setFeeSettings(settings)
 
         const courseInfo = (courseRes.data as any)?.course ?? (courseRes.data as any)?.item ?? (courseRes.data ?? null)
         if (!courseInfo || typeof courseInfo !== 'object' || courseInfo.id == null) {
@@ -217,7 +248,50 @@ export default function RenewModal({
         setRenewStartDate(startDefault)
         setComputedEndDate(calculate4thOccurrence(startDefault))
         setPayAmount(courseInfo.price ? String(courseInfo.price) : '')
-        setPayReference('Renovación mensual (4 clases)')
+        const feeEnabled = !!settings.enrollment_fee_enabled
+        const feeAmount = Number(settings.enrollment_fee_amount || 0)
+        const registrationPayments: PaymentHistoryRow[] = (regPaymentsRes.data?.items || []).filter((x: any) => (x?.type || '') === 'registration')
+        const hasRegistrationBefore = registrationPayments.length > 0
+        const applyTo = (settings.enrollment_fee_apply_to || 'new_only') as 'new_only' | 'new_and_reentry'
+        const renewalRule = (settings.enrollment_fee_renewal || 'never') as 'never' | 'yearly'
+        const kind = (settings.enrollment_fee_kind || 'incorporation') as 'incorporation' | 'annual'
+        const isInitialPayment = !enroll.end_date
+
+        let eligible = false
+        let hint = ''
+        if (!isInitialPayment) {
+          eligible = false
+          hint = 'La matrÃ­cula solo aplica en registro de pago inicial.'
+        } else if (!feeEnabled || feeAmount <= 0) {
+          eligible = false
+          hint = 'MatrÃ­cula desactivada o sin monto.'
+        } else if (applyTo === 'new_only' && hasRegistrationBefore) {
+          eligible = false
+          hint = 'Este alumno ya pagÃ³ matrÃ­cula anteriormente.'
+        } else if (renewalRule === 'never') {
+          eligible = !hasRegistrationBefore
+          if (!eligible) hint = 'MatrÃ­cula configurada por siempre: ya fue cobrada antes.'
+        } else {
+          const dates = registrationPayments
+            .map(p => p.payment_date || '')
+            .filter(Boolean)
+            .sort()
+          const lastPayment = dates.length ? dates[dates.length - 1] : null
+          if (!lastPayment) {
+            eligible = true
+          } else {
+            const limit = new Date(lastPayment + 'T00:00:00')
+            limit.setFullYear(limit.getFullYear() + 1)
+            eligible = new Date() >= limit
+            if (!eligible) hint = `MatrÃ­cula ${kind === 'annual' ? 'anual' : 'de incorporaciÃ³n'} aÃºn vigente hasta ${limit.toLocaleDateString('es-CL')}.`
+          }
+        }
+        const shouldOfferFee = eligible
+        setEnrollmentFeeAmount(feeAmount > 0 ? feeAmount : 0)
+        setIncludeEnrollmentFee(shouldOfferFee)
+        setEnrollmentFeeEligible(eligible)
+        setEnrollmentFeeHint(hint)
+        setPayReference('RenovaciÃ³n mensual (4 clases)')
 
         // Detectar clases fuera de plan
         if (enroll.end_date && uiIdx !== null) {
@@ -258,7 +332,7 @@ export default function RenewModal({
 
         setLoading(false)
       } catch (e: any) {
-        setError(e?.message || 'No se pudo cargar la información')
+        setError(e?.message || 'No se pudo cargar la informaciÃ³n')
         setLoading(false)
       }
     }
@@ -274,14 +348,14 @@ export default function RenewModal({
         setPayAmount(String(course.price))
       }
       if (!payReference || payReference === 'Clase suelta') {
-        setPayReference('Renovación mensual (4 clases)')
+        setPayReference('RenovaciÃ³n mensual (4 clases)')
       }
     }
     if (renewMode === 'single_class') {
       if (course?.class_price && (!payAmount || payAmount === String(course.price))) {
         setPayAmount(String(course.class_price))
       }
-      if (!payReference || payReference === 'Renovación mensual (4 clases)') {
+      if (!payReference || payReference === 'RenovaciÃ³n mensual (4 clases)') {
         setPayReference('Clase suelta')
       }
     }
@@ -292,6 +366,14 @@ export default function RenewModal({
       if (!studentId || !enrollmentId || !courseId) return
       setSaving(true)
       setError(null)
+      const shouldChargeEnrollmentFee = !!(
+        feeSettings?.enrollment_fee_enabled &&
+        enrollmentFeeEligible &&
+        includeEnrollmentFee &&
+        enrollmentFeeAmount > 0 &&
+        enrollment &&
+        !enrollment.end_date
+      )
 
       if (renewMode === 'monthly') {
         if (!renewStartDate) throw new Error('Seleccione fecha de inicio')
@@ -318,7 +400,7 @@ export default function RenewModal({
             finalStartDate = earliestDate
             finalEndDate = calculate4thOccurrence(earliestDate)
           } else {
-            throw new Error('Debe seleccionar cómo manejar las clases fuera de plan')
+            throw new Error('Debe seleccionar cÃ³mo manejar las clases fuera de plan')
           }
         }
 
@@ -335,10 +417,24 @@ export default function RenewModal({
           payment_date: toYMDInTZ(new Date()),
           course_id: Number(courseId),
           enrollment_id: Number(enrollmentId),
-          reference: payReference || 'Renovación mensual (4 clases)',
+          reference: payReference || 'RenovaciÃ³n mensual (4 clases)',
           period_start: finalStartDate,
           period_end: finalEndDate,
         })
+        if (shouldChargeEnrollmentFee) {
+          const feeKind = feeSettings?.enrollment_fee_kind === 'annual' ? 'anual' : 'incorporaciÃ³n'
+          await api.post('/api/pms/payments', {
+            student_id: Number(studentId),
+            type: 'registration',
+            method: payMethod,
+            amount: Number(enrollmentFeeAmount || 0),
+            payment_date: toYMDInTZ(new Date()),
+            course_id: Number(courseId),
+            enrollment_id: Number(enrollmentId),
+            reference: `MatrÃ­cula ${feeKind}`,
+            notes: `Cobro de matrÃ­cula ${feeKind} (inscripciÃ³n inicial)`,
+          })
+        }
       } else {
         if (!singleDate) throw new Error('Seleccione fecha de clase')
         
@@ -352,6 +448,20 @@ export default function RenewModal({
           enrollment_id: Number(enrollmentId),
           reference: payReference || 'Clase suelta',
         })
+        if (shouldChargeEnrollmentFee) {
+          const feeKind = feeSettings?.enrollment_fee_kind === 'annual' ? 'anual' : 'incorporaciÃ³n'
+          await api.post('/api/pms/payments', {
+            student_id: Number(studentId),
+            type: 'registration',
+            method: payMethod,
+            amount: Number(enrollmentFeeAmount || 0),
+            payment_date: singleDate || toYMDInTZ(new Date()),
+            course_id: Number(courseId),
+            enrollment_id: Number(enrollmentId),
+            reference: `MatrÃ­cula ${feeKind}`,
+            notes: `Cobro de matrÃ­cula ${feeKind} (inscripciÃ³n inicial)`,
+          })
+        }
 
         if (markAttendance) {
           await api.post('/api/pms/attendance', {
@@ -365,7 +475,7 @@ export default function RenewModal({
 
       onSuccess()
     } catch (e: any) {
-      setError(e?.message || 'No se pudo completar la renovación')
+      setError(e?.message || 'No se pudo completar la renovaciÃ³n')
     } finally {
       setSaving(false)
     }
@@ -394,7 +504,7 @@ export default function RenewModal({
             </h2>
             <div className="mt-1">
               <span className="text-white font-black uppercase text-[10px] tracking-widest block mb-1">
-                {studentName ? studentName : 'Cargando...'} {enrollment?.course.name && ` — ${enrollment.course.name}`}
+                {studentName ? studentName : 'Cargando...'} {enrollment?.course.name && ` â€” ${enrollment.course.name}`}
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-white/60 font-black uppercase text-[8px] tracking-widest">Horarios:</span>
@@ -437,18 +547,18 @@ export default function RenewModal({
             </div>
           ) : (
             <>
-              {/* Información del periodo anterior */}
+              {/* InformaciÃ³n del periodo anterior */}
               {enrollment && (
                 <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                   <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Periodo Anterior</div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-gray-50 rounded-xl p-3 border border-gray-100/50">
                       <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Inicio</span>
-                      <span className="font-semibold text-gray-900">{enrollment.start_date ? ymdToCL(enrollment.start_date) : '—'}</span>
+                      <span className="font-semibold text-gray-900">{enrollment.start_date ? ymdToCL(enrollment.start_date) : 'â€”'}</span>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-3 border border-gray-100/50">
                       <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Fin</span>
-                      <span className="font-semibold text-gray-900">{enrollment.end_date ? ymdToCL(enrollment.end_date) : '—'}</span>
+                      <span className="font-semibold text-gray-900">{enrollment.end_date ? ymdToCL(enrollment.end_date) : 'â€”'}</span>
                     </div>
                   </div>
                 </div>
@@ -464,7 +574,7 @@ export default function RenewModal({
                     <div className="flex-1">
                       <h4 className="font-bold text-amber-900 text-lg">Clases fuera de plan detectadas</h4>
                       <p className="text-sm text-amber-800/80 mt-1">
-                        El alumno asistió en {outOfPlanDates.length} fecha(s) después del periodo anterior.
+                        El alumno asistiÃ³ en {outOfPlanDates.length} fecha(s) despuÃ©s del periodo anterior.
                       </p>
                       
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -483,7 +593,7 @@ export default function RenewModal({
                           <div>
                             <div className="font-bold text-gray-900">Convertir a clases sueltas</div>
                             <div className="text-xs text-gray-500 mt-1 leading-relaxed">
-                              Se crearán pagos individuales por cada asistencia extra.
+                              Se crearÃ¡n pagos individuales por cada asistencia extra.
                             </div>
                           </div>
                         </label>
@@ -493,9 +603,9 @@ export default function RenewModal({
                             <input type="radio" name="outOfPlanOption" value="adjust" checked={outOfPlanOption === 'adjust'} onChange={() => setOutOfPlanOption('adjust')} className="w-4 h-4 text-amber-600 border-amber-300 focus:ring-amber-500" />
                           </div>
                           <div>
-                            <div className="font-bold text-gray-900">Ajustar periodo hacia atrás</div>
+                            <div className="font-bold text-gray-900">Ajustar periodo hacia atrÃ¡s</div>
                             <div className="text-xs text-gray-500 mt-1 leading-relaxed">
-                              El nuevo periodo iniciará desde <strong className="text-amber-800">{ymdToCL(outOfPlanDates.sort()[0])}</strong> cubriendo las faltas.
+                              El nuevo periodo iniciarÃ¡ desde <strong className="text-amber-800">{ymdToCL(outOfPlanDates.sort()[0])}</strong> cubriendo las faltas.
                             </div>
                           </div>
                         </label>
@@ -508,7 +618,7 @@ export default function RenewModal({
               {/* Formulario principal */}
               <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Modo de Renovación</label>
+                  <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Modo de RenovaciÃ³n</label>
                   <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100 w-full sm:w-auto self-start">
                     <button 
                       type="button"
@@ -533,12 +643,33 @@ export default function RenewModal({
                     <div className="space-y-1.5">
                       <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Fecha de inicio</label>
                       <input type="date" value={renewStartDate} onChange={e => setRenewStartDate(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-all" />
-                      <p className="text-[10px] text-gray-400 font-medium">Próximo día según periodo anterior</p>
+                      <p className="text-[10px] text-gray-400 font-medium">PrÃ³ximo dÃ­a segÃºn periodo anterior</p>
                     </div>
                     <div className="space-y-1.5">
                       <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Fecha de fin <span className="text-gray-300 font-normal tracking-normal">(4ta clase)</span></label>
-                      <input type="date" value={computedEndDate} readOnly className="w-full bg-gray-50/50 border border-transparent rounded-xl px-4 py-3 text-sm font-semibold text-gray-500 cursor-not-allowed" />
-                      <p className="text-[10px] text-gray-400 font-medium">Calculado automáticamente (+3 semanas)</p>
+                      <input
+                        type="date"
+                        value={computedEndDate}
+                        readOnly={!allowManualEndDate}
+                        onChange={e => setComputedEndDate(e.target.value)}
+                        className={`w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+                          allowManualEndDate
+                            ? 'bg-gray-50 border border-gray-200 text-gray-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500'
+                            : 'bg-gray-50/50 border border-transparent text-gray-500 cursor-not-allowed'
+                        }`}
+                      />
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] text-gray-400 font-medium">Calculado automáticamente (+3 semanas)</p>
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={allowManualEndDate}
+                            onChange={(e) => setAllowManualEndDate(e.target.checked)}
+                            className="h-4 w-4 accent-fuchsia-600"
+                          />
+                          <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest">Editar fin</span>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -552,7 +683,7 @@ export default function RenewModal({
                         <input type="checkbox" checked={markAttendance} onChange={e => setMarkAttendance(e.target.checked)} className="peer appearance-none w-5 h-5 border-2 border-gray-300 rounded focus:ring-fuchsia-500 focus:ring-offset-1 checked:bg-fuchsia-500 checked:border-fuchsia-500 transition-all cursor-pointer" />
                         <svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                       </div>
-                      <span className="text-sm font-semibold text-gray-600 group-hover:text-gray-900 transition-colors">Marcar asistencia automáticamente</span>
+                      <span className="text-sm font-semibold text-gray-600 group-hover:text-gray-900 transition-colors">Marcar asistencia automÃ¡ticamente</span>
                     </label>
                   </div>
                 )}
@@ -560,7 +691,7 @@ export default function RenewModal({
 
               {/* Pago */}
               <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-5">
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Información de Pago</div>
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">InformaciÃ³n de Pago</div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   <div className="space-y-1.5">
@@ -580,12 +711,12 @@ export default function RenewModal({
                   </div>
                   
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Método</label>
+                    <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">MÃ©todo</label>
                     <div className="relative">
                       <select value={payMethod} onChange={e => setPayMethod(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-all cursor-pointer">
                         <option value="efectivo">Efectivo</option>
-                        <option value="debito">Débito</option>
-                        <option value="credito">Crédito</option>
+                        <option value="debito">DÃ©bito</option>
+                        <option value="credito">CrÃ©dito</option>
                         <option value="transferencia">Transferencia</option>
                         <option value="convenio">Convenio</option>
                       </select>
@@ -604,6 +735,40 @@ export default function RenewModal({
                       onChange={e => setPayReference(e.target.value)}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-all"
                     />
+                  </div>
+                </div>
+
+                {enrollment && !enrollment.end_date && feeSettings?.enrollment_fee_enabled && Number(feeSettings?.enrollment_fee_amount || 0) > 0 && (
+                  <div className="p-4 rounded-xl border border-rose-100 bg-rose-50/40 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="inline-flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includeEnrollmentFee}
+                          onChange={(e) => setIncludeEnrollmentFee(e.target.checked)}
+                          disabled={!enrollmentFeeEligible || !feeSettings?.enrollment_fee_allow_waive}
+                          className="h-4 w-4 accent-rose-600"
+                        />
+                        <span className="text-sm font-black text-rose-700 uppercase tracking-widest">Cobrar MatrÃ­cula</span>
+                      </label>
+                      <span className="text-sm font-black text-rose-700">
+                        ${new Intl.NumberFormat('es-CL').format(Number(enrollmentFeeAmount || 0))}
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">
+                      Se aÃ±adirÃ¡ como pago separado tipo matrÃ­cula en este registro inicial.
+                    </p>
+                    {!enrollmentFeeEligible && enrollmentFeeHint && (
+                      <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">
+                        {enrollmentFeeHint}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-end">
+                  <div className="px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm font-black">
+                    Total: ${new Intl.NumberFormat('es-CL').format(Number(payAmount || 0) + (includeEnrollmentFee ? Number(enrollmentFeeAmount || 0) : 0))}
                   </div>
                 </div>
               </div>

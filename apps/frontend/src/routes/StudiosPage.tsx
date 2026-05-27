@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
-import { HiOutlinePlus, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi'
+import { HiOutlinePlus, HiOutlineEye, HiOutlineEyeOff, HiOutlineCurrencyDollar, HiOutlineUserGroup, HiOutlinePencilAlt } from 'react-icons/hi'
 
 type StudioForm = {
   name: string
@@ -16,6 +16,9 @@ type StudioForm = {
   website_url: string
   is_superuser: boolean
   currency: string
+  plan_id: string
+  billing_cycle: 'monthly' | 'annual'
+  price_locked: string
 }
 
 type StudioUpdateForm = {
@@ -33,6 +36,29 @@ type StudioUpdateForm = {
   website_url: string
   is_superuser: boolean
   currency: string
+  plan_id: string
+  billing_cycle: 'monthly' | 'annual'
+  price_locked: string
+  plan_start_date: string
+  plan_renewal_date: string
+}
+
+type TenantPlan = {
+  id: number
+  name: string
+  max_active_students: number
+  monthly_price: string | number
+  annual_price: string | number
+  is_active: boolean
+  is_custom: boolean
+}
+type PlanForm = {
+  name: string
+  max_active_students: string
+  monthly_price: string
+  annual_price: string
+  is_active: boolean
+  is_custom: boolean
 }
 
 type Studio = {
@@ -52,6 +78,14 @@ type Studio = {
   created_at: string
   admin_is_superuser?: boolean | null
   currency?: string | null
+  plan_id?: number | null
+  plan_name?: string | null
+  max_active_students?: number | null
+  billing_cycle?: string | null
+  price_locked?: string | number | null
+  plan_label_snapshot?: string | null
+  plan_start_date?: string | null
+  plan_renewal_date?: string | null
 }
 
 const defaultForm: StudioForm = {
@@ -68,6 +102,11 @@ const defaultForm: StudioForm = {
   website_url: '',
   is_superuser: false,
   currency: 'CLP',
+  plan_id: '',
+  billing_cycle: 'monthly',
+  price_locked: '',
+  plan_start_date: '',
+  plan_renewal_date: '',
 }
 
 const defaultEditForm: StudioUpdateForm = {
@@ -85,11 +124,27 @@ const defaultEditForm: StudioUpdateForm = {
   website_url: '',
   is_superuser: false,
   currency: 'CLP',
+  plan_id: '',
+  billing_cycle: 'monthly',
+  price_locked: '',
 }
 
 const normalizeOptional = (value: string) => {
   const trimmed = value.trim()
   return trimmed.length ? trimmed : undefined
+}
+const normalizeDateInput = (value?: string | null) => {
+  if (!value) return ''
+  return String(value).slice(0, 10)
+}
+const toInputDate = (value: Date) => value.toISOString().slice(0, 10)
+const computeRenewalFromStart = (startDate: string, cycle: 'monthly' | 'annual') => {
+  if (!startDate) return ''
+  const base = new Date(`${startDate}T00:00:00`)
+  if (Number.isNaN(base.getTime())) return ''
+  const next = new Date(base)
+  next.setDate(next.getDate() + (cycle === 'annual' ? 365 : 30))
+  return toInputDate(next)
 }
 
 export default function StudiosPage() {
@@ -107,9 +162,68 @@ export default function StudiosPage() {
   const [editError, setEditError] = useState<string | null>(null)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [renewingId, setRenewingId] = useState<number | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [createLogoFile, setCreateLogoFile] = useState<File | null>(null)
   const [createLogoPreview, setCreateLogoPreview] = useState<string>('')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [renewTarget, setRenewTarget] = useState<Studio | null>(null)
+  const [plans, setPlans] = useState<TenantPlan[]>([])
+  const [planForm, setPlanForm] = useState<PlanForm>({
+    name: '',
+    max_active_students: '',
+    monthly_price: '',
+    annual_price: '',
+    is_active: true,
+    is_custom: true,
+  })
+  const [planEditingId, setPlanEditingId] = useState<number | null>(null)
+  const [isSavingPlan, setIsSavingPlan] = useState(false)
+  const [planMessage, setPlanMessage] = useState<string | null>(null)
+  const [planError, setPlanError] = useState<string | null>(null)
+  const [showPlanForm, setShowPlanForm] = useState(false)
+  const [deletingPlanId, setDeletingPlanId] = useState<number | null>(null)
+  const [planDeleteTarget, setPlanDeleteTarget] = useState<TenantPlan | null>(null)
+
+  const currencyFormatter = new Intl.NumberFormat('es-CL')
+  const formatMoney = (value?: string | number | null) => {
+    if (value == null || value === '') return '-'
+    const num = Number(value)
+    if (Number.isNaN(num)) return '-'
+    return `$${currencyFormatter.format(Math.round(num))}`
+  }
+
+  const planAccent = (max: number) => {
+    if (max <= 20) return 'from-emerald-500/25 to-emerald-400/10 border-emerald-300/40 text-emerald-100'
+    if (max <= 80) return 'from-sky-500/25 to-sky-400/10 border-sky-300/40 text-sky-100'
+    if (max <= 160) return 'from-violet-500/25 to-violet-400/10 border-violet-300/40 text-violet-100'
+    return 'from-amber-500/25 to-amber-400/10 border-amber-300/40 text-amber-100'
+  }
+
+  const planDaysLeft = (studio: Studio) => {
+    if (!studio.plan_id || !studio.plan_renewal_date) return null
+    const end = new Date(studio.plan_renewal_date)
+    if (Number.isNaN(end.getTime())) return null
+    const now = new Date()
+    const diffMs = end.getTime() - now.getTime()
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  }
+
+  const formatShortDate = (value?: string | null) => {
+    if (!value) return '--'
+    const raw = String(value)
+    const ymdMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (ymdMatch) {
+      const [, year, month, day] = ymdMatch
+      return `${day}-${month}-${year}`
+    }
+    const d = new Date(raw)
+    if (Number.isNaN(d.getTime())) return '--'
+    const day = `${d.getDate()}`.padStart(2, '0')
+    const month = `${d.getMonth() + 1}`.padStart(2, '0')
+    const year = d.getFullYear()
+    return `${day}-${month}-${year}`
+  }
 
   const fetchStudios = async () => {
     setIsLoadingStudios(true)
@@ -124,12 +238,104 @@ export default function StudiosPage() {
     }
   }
 
+  const fetchPlans = async () => {
+    try {
+      const { data } = await api.get<TenantPlan[]>('/api/pms/tenants/plans')
+      setPlans(data)
+    } catch {
+      setPlans([])
+    }
+  }
+
+  const resetPlanForm = () => {
+    setPlanForm({
+      name: '',
+      max_active_students: '',
+      monthly_price: '',
+      annual_price: '',
+      is_active: true,
+      is_custom: true,
+    })
+    setPlanEditingId(null)
+    setShowPlanForm(false)
+  }
+
+  const handleEditPlan = (plan: TenantPlan) => {
+    setPlanEditingId(plan.id)
+    setPlanForm({
+      name: plan.name,
+      max_active_students: String(plan.max_active_students),
+      monthly_price: String(plan.monthly_price),
+      annual_price: String(plan.annual_price),
+      is_active: !!plan.is_active,
+      is_custom: !!plan.is_custom,
+    })
+    setPlanMessage(null)
+    setPlanError(null)
+    setShowPlanForm(true)
+  }
+
+  const handleSavePlan = async (event: FormEvent) => {
+    event.preventDefault()
+    setIsSavingPlan(true)
+    setPlanMessage(null)
+    setPlanError(null)
+    try {
+      const payload = {
+        name: planForm.name.trim(),
+        max_active_students: Number(planForm.max_active_students || 0),
+        monthly_price: Number(planForm.monthly_price || 0),
+        annual_price: Number(planForm.annual_price || 0),
+        is_active: !!planForm.is_active,
+        is_custom: !!planForm.is_custom,
+      }
+      if (planEditingId) {
+        await api.put(`/api/pms/tenants/plans/${planEditingId}`, payload)
+        setPlanMessage('Plan actualizado correctamente.')
+      } else {
+        await api.post('/api/pms/tenants/plans', payload)
+        setPlanMessage('Plan creado correctamente.')
+      }
+      resetPlanForm()
+      await fetchPlans()
+    } catch (err: any) {
+      setPlanError(err?.message || 'No se pudo guardar el plan.')
+    } finally {
+      setIsSavingPlan(false)
+    }
+  }
+
+  const confirmDeletePlan = async () => {
+    if (!planDeleteTarget) return
+    setDeletingPlanId(planDeleteTarget.id)
+    setPlanMessage(null)
+    setPlanError(null)
+    try {
+      await api.delete(`/api/pms/tenants/plans/${planDeleteTarget.id}`)
+      if (planEditingId === planDeleteTarget.id) {
+        resetPlanForm()
+      }
+      setPlanMessage('Plan eliminado correctamente.')
+      setPlanDeleteTarget(null)
+      await fetchPlans()
+    } catch (err: any) {
+      setPlanError(err?.message || 'No se pudo eliminar el plan.')
+    } finally {
+      setDeletingPlanId(null)
+    }
+  }
+
   useEffect(() => {
     fetchStudios()
+    fetchPlans()
   }, [])
 
   useEffect(() => {
     if (editTarget) {
+      const resolvedStartDate = normalizeDateInput(editTarget.plan_start_date || editTarget.created_at)
+      const resolvedCycle = editTarget.billing_cycle === 'annual' ? 'annual' : 'monthly'
+      const resolvedRenewalDate =
+        normalizeDateInput(editTarget.plan_renewal_date) || computeRenewalFromStart(resolvedStartDate, resolvedCycle)
       setEditForm({
         name: editTarget.name,
         email: editTarget.contact_email ?? '',
@@ -145,6 +351,11 @@ export default function StudiosPage() {
         website_url: editTarget.website_url ?? '',
         is_superuser: !!editTarget.admin_is_superuser,
         currency: editTarget.currency ?? 'CLP',
+        plan_id: editTarget.plan_id ? String(editTarget.plan_id) : '',
+        billing_cycle: resolvedCycle,
+        price_locked: editTarget.price_locked != null ? String(editTarget.price_locked) : '',
+        plan_start_date: resolvedStartDate,
+        plan_renewal_date: resolvedRenewalDate,
       })
       setEditMessage(null)
       setEditError(null)
@@ -153,6 +364,34 @@ export default function StudiosPage() {
       setEditForm(defaultEditForm)
     }
   }, [editTarget])
+
+  useEffect(() => {
+    if (!form.plan_id) return
+    const selected = plans.find((p) => p.id === Number(form.plan_id))
+    if (!selected) return
+    const defaultPrice = form.billing_cycle === 'annual' ? selected.annual_price : selected.monthly_price
+    setForm((prev) => ({ ...prev, price_locked: String(defaultPrice) }))
+  }, [form.plan_id, form.billing_cycle, plans])
+
+  useEffect(() => {
+    if (!editForm.plan_id) return
+    const selected = plans.find((p) => p.id === Number(editForm.plan_id))
+    if (!selected) return
+    const defaultPrice = editForm.billing_cycle === 'annual' ? selected.annual_price : selected.monthly_price
+    setEditForm((prev) => ({ ...prev, price_locked: String(defaultPrice) }))
+  }, [editForm.plan_id, editForm.billing_cycle, plans])
+
+  useEffect(() => {
+    if (!editForm.plan_start_date) return
+    const base = new Date(`${editForm.plan_start_date}T00:00:00`)
+    if (Number.isNaN(base.getTime())) return
+    const next = new Date(base)
+    next.setDate(next.getDate() + (editForm.billing_cycle === 'annual' ? 365 : 30))
+    const computed = toInputDate(next)
+    if (computed !== editForm.plan_renewal_date) {
+      setEditForm((prev) => ({ ...prev, plan_renewal_date: computed }))
+    }
+  }, [editForm.plan_start_date, editForm.billing_cycle])
 
   const handleChange = (field: keyof StudioForm, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value as any }))
@@ -179,6 +418,9 @@ export default function StudiosPage() {
         website_url: normalizeOptional(form.website_url),
         is_superuser: !!form.is_superuser,
         currency: form.currency,
+        plan_id: form.plan_id ? Number(form.plan_id) : undefined,
+        billing_cycle: form.billing_cycle,
+        price_locked: form.price_locked ? Number(form.price_locked) : undefined,
       })
       if (createLogoFile) {
         try {
@@ -224,6 +466,11 @@ export default function StudiosPage() {
         website_url: normalizeOptional(editForm.website_url),
         is_superuser: !!editForm.is_superuser,
         currency: editForm.currency,
+        plan_id: editForm.plan_id ? Number(editForm.plan_id) : null,
+        billing_cycle: editForm.billing_cycle,
+        price_locked: editForm.price_locked ? Number(editForm.price_locked) : undefined,
+        plan_start_date: normalizeDateInput(editForm.plan_start_date) || null,
+        plan_renewal_date: normalizeDateInput(editForm.plan_renewal_date) || null,
       })
       setEditMessage('Estudio actualizado correctamente.')
       setSuccess('Estudio actualizado correctamente.')
@@ -256,6 +503,44 @@ export default function StudiosPage() {
     } finally {
       setDeletingId(null)
     }
+  }
+
+  const toIsoDate = (d: Date) => {
+    const y = d.getFullYear()
+    const m = `${d.getMonth() + 1}`.padStart(2, '0')
+    const day = `${d.getDate()}`.padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
+  const handleRenewPlan = async (studio: Studio) => {
+    if (!studio.plan_id) {
+      setError('Este estudio no tiene plan asignado.')
+      return
+    }
+    const cycle = studio.billing_cycle === 'annual' ? 'annual' : 'monthly'
+    const base = studio.plan_renewal_date ? new Date(studio.plan_renewal_date) : new Date()
+    const now = new Date()
+    const start = base.getTime() > now.getTime() ? base : now
+    const next = new Date(start)
+    next.setDate(next.getDate() + (cycle === 'annual' ? 365 : 30))
+    setRenewingId(studio.id)
+    setError(null)
+    setSuccess(null)
+    try {
+      await api.put(`/api/pms/tenants/${studio.id}`, { plan_renewal_date: toIsoDate(next) })
+      setSuccess(`Plan renovado para ${studio.name}.`)
+      await fetchStudios()
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo renovar el plan.')
+    } finally {
+      setRenewingId(null)
+    }
+  }
+
+  const confirmRenewPlan = async () => {
+    if (!renewTarget) return
+    await handleRenewPlan(renewTarget)
+    setRenewTarget(null)
   }
 
   const handleUploadLogo = async (file: File) => {
@@ -292,20 +577,168 @@ export default function StudiosPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="space-y-1 text-center sm:text-left">
-           <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Administración Central</span>
+           <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Administracion Central</span>
            <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Estudios</h1>
-           <p className="text-gray-500 font-medium text-sm md:text-base">Gestión de sedes y configuración de tenants.</p>
+           <p className="text-gray-500 font-medium text-sm md:text-base">Gestion de sedes y configuracion de tenants.</p>
         </div>
       </div>
 
-      <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-8">
+      <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800 p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-fuchsia-400/30 shadow-[0_20px_60px_rgba(217,70,239,0.18)] space-y-8">
+        <div>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base md:text-lg font-black text-white">Planes de Suscripcion</h2>
+              <p className="text-fuchsia-100/80 text-xs md:text-sm font-medium">Edita precios y cupos por plan.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (showPlanForm && !planEditingId) {
+                  setShowPlanForm(false)
+                } else {
+                  setPlanEditingId(null)
+                  setPlanForm({
+                    name: '',
+                    max_active_students: '',
+                    monthly_price: '',
+                    annual_price: '',
+                    is_active: true,
+                    is_custom: true,
+                  })
+                  setShowPlanForm(true)
+                }
+              }}
+              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-white bg-fuchsia-600 hover:bg-fuchsia-700 shadow-lg shadow-fuchsia-500/30"
+            >
+              {showPlanForm && !planEditingId ? 'Cerrar formulario' : 'Nuevo plan'}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">
+            {plans.map((plan) => (
+              <div key={plan.id} className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-4 text-white">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-sm font-black text-white">{plan.name}</h3>
+                  <button
+                    type="button"
+                    onClick={() => handleEditPlan(plan)}
+                    className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-fuchsia-200 hover:text-white"
+                  >
+                    <HiOutlinePencilAlt className="h-3.5 w-3.5" />
+                    Editar
+                  </button>
+                </div>
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setPlanDeleteTarget(plan)}
+                    disabled={deletingPlanId === plan.id}
+                    className="text-[10px] font-black uppercase tracking-widest text-rose-200 hover:text-rose-100 disabled:opacity-50"
+                  >
+                    {deletingPlanId === plan.id ? 'Eliminando...' : 'Eliminar'}
+                  </button>
+                </div>
+                <div className={`mt-3 rounded-2xl bg-gradient-to-r border px-3 py-2 ${planAccent(plan.max_active_students)}`}>
+                  <p className="inline-flex items-center gap-2">
+                    <HiOutlineUserGroup className="h-5 w-5" />
+                    <span className="text-3xl leading-none font-black text-white">{plan.max_active_students}</span>
+                    <span className="text-[11px] uppercase tracking-widest font-black">alumnos</span>
+                  </p>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <p className="inline-flex items-center gap-1 text-xs font-black text-fuchsia-100"><HiOutlineCurrencyDollar className="h-4 w-4" />Mensual</p>
+                  <p className="text-2xl font-black text-white leading-none">{formatMoney(plan.monthly_price)}</p>
+                </div>
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <p className="inline-flex items-center gap-1 text-xs font-black text-fuchsia-100"><HiOutlineCurrencyDollar className="h-4 w-4" />Anual</p>
+                  <p className="text-xl font-black text-fuchsia-200 leading-none">{formatMoney(plan.annual_price)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {showPlanForm && (
+          <form onSubmit={handleSavePlan} className="mt-5 grid grid-cols-1 md:grid-cols-6 gap-3">
+            <input className="md:col-span-2 px-4 py-3 bg-white/95 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-fuchsia-200" placeholder="Nombre plan" value={planForm.name} onChange={(e) => setPlanForm((p) => ({ ...p, name: e.target.value }))} required />
+            <input type="number" min={1} className="px-4 py-3 bg-white/95 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-fuchsia-200" placeholder="Cupo" value={planForm.max_active_students} onChange={(e) => setPlanForm((p) => ({ ...p, max_active_students: e.target.value }))} required />
+            <input type="number" min={0} className="px-4 py-3 bg-white/95 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-fuchsia-200" placeholder="Mensual" value={planForm.monthly_price} onChange={(e) => setPlanForm((p) => ({ ...p, monthly_price: e.target.value }))} required />
+            <input type="number" min={0} className="px-4 py-3 bg-white/95 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-fuchsia-200" placeholder="Anual" value={planForm.annual_price} onChange={(e) => setPlanForm((p) => ({ ...p, annual_price: e.target.value }))} required />
+            <button type="submit" disabled={isSavingPlan} className="px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white bg-gradient-to-r from-fuchsia-500 to-pink-500 shadow-lg shadow-fuchsia-500/40 disabled:opacity-50">
+              {isSavingPlan ? 'Guardando...' : (planEditingId ? 'Actualizar' : 'Crear')}
+            </button>
+          </form>
+          )}
+          {planMessage && <div className="mt-3 text-[10px] font-black uppercase tracking-widest text-emerald-300">{planMessage}</div>}
+          {planError && <div className="mt-3 text-[10px] font-black uppercase tracking-widest text-rose-300">{planError}</div>}
+        </div>
+      </div>
+      {planDeleteTarget && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm" onClick={() => setPlanDeleteTarget(null)} />
+          <div className="relative w-full max-w-md rounded-3xl bg-white border border-gray-100 shadow-2xl p-6">
+            <h3 className="text-lg font-black text-gray-900">Eliminar plan</h3>
+            <p className="mt-2 text-sm font-semibold text-gray-500">
+              Vas a eliminar <span className="text-gray-900">{planDeleteTarget.name}</span>. Esta accion no se puede deshacer.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPlanDeleteTarget(null)}
+                className="flex-1 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-600 hover:bg-gray-200"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeletePlan}
+                disabled={deletingPlanId === planDeleteTarget.id}
+                className="flex-1 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50"
+              >
+                {deletingPlanId === planDeleteTarget.id ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-6">
         <div>
           <h2 className="text-base md:text-lg font-black text-gray-900">Registrar Nuevo Estudio</h2>
-          <p className="text-gray-400 text-xs md:text-sm font-medium">El tenant se asignará de forma automática según el nombre.</p>
+          <p className="text-gray-400 text-xs md:text-sm font-medium">Usa el boton para abrir el formulario completo en una ventana.</p>
         </div>
+        <div className="flex justify-start">
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-lg shadow-fuchsia-200 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+          >
+            + Nuevo Estudio
+          </button>
+        </div>
+      </div>
 
-        <form className="space-y-8" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+      {showCreateModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6">
+          <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
+          <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto border border-gray-100 flex flex-col">
+            <div className="sticky top-0 bg-white/90 backdrop-blur-xl z-20 flex items-center justify-between px-8 py-6 border-b border-gray-50">
+              <div>
+                <h2 className="text-lg font-black text-gray-900">Registrar Nuevo Estudio</h2>
+                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Configuracion inicial del tenant</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="p-3 rounded-2xl text-gray-400 hover:bg-gray-100 transition-all"
+                aria-label="Cerrar"
+              >
+                <HiOutlinePlus className="rotate-45" size={24} />
+              </button>
+            </div>
+
+            <form className="space-y-8 p-8" onSubmit={handleSubmit}>
+          <div className="space-y-7">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Datos Base</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del estudio</label>
               <input
@@ -352,6 +785,12 @@ export default function StudiosPage() {
               </div>
               <label htmlFor="is_superuser" className="text-xs font-black text-gray-500 uppercase tracking-widest cursor-pointer">Admin Superusuario</label>
             </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Ubicacion y Contacto</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Direccion</label>
               <input
@@ -400,9 +839,59 @@ export default function StudiosPage() {
               >
                 <option value="CLP">CLP - Peso Chileno ($)</option>
                 <option value="ARS">ARS - Peso Argentino ($)</option>
-                <option value="USD">USD - Dólar Estadounidense (US$)</option>
+                <option value="USD">USD - Dolar Estadounidense (US$)</option>
               </select>
             </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Plan del Tenant</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Plan contratado</label>
+              <select
+                value={form.plan_id}
+                onChange={(e) => handleChange('plan_id', e.target.value)}
+                className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
+              >
+                <option value="">Sin plan</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.max_active_students} alumnos)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Modalidad</label>
+              <select
+                value={form.billing_cycle}
+                onChange={(e) => handleChange('billing_cycle', e.target.value as 'monthly' | 'annual')}
+                className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
+              >
+                <option value="monthly">Mensual</option>
+                <option value="annual">Anual</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Precio pactado</label>
+              <input
+                type="number"
+                min={0}
+                step="1"
+                value={form.price_locked}
+                onChange={(e) => handleChange('price_locked', e.target.value)}
+                className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                placeholder="0"
+              />
+            </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Redes Sociales</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Redes Sociales (Insta / TikTok)</label>
               <div className="grid grid-cols-2 gap-4">
@@ -441,6 +930,12 @@ export default function StudiosPage() {
                 />
               </div>
             </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Logo</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Logo</label>
               <div className="flex items-center gap-4 p-2 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
@@ -481,6 +976,8 @@ export default function StudiosPage() {
                 </div>
               </div>
             </div>
+              </div>
+            </div>
           </div>
 
           {success && <div className="p-4 rounded-2xl border-2 border-emerald-100 bg-emerald-50 text-emerald-600 text-xs font-black uppercase tracking-widest text-center">{success}</div>}
@@ -495,8 +992,10 @@ export default function StudiosPage() {
               {isSubmitting ? 'Procesando...' : 'Crear Sede / Estudio'}
             </button>
           </div>
-        </form>
-      </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-8 py-5 border-b border-gray-50 flex items-center justify-between">
@@ -526,7 +1025,8 @@ export default function StudiosPage() {
                   <tr className="text-left border-b border-gray-100">
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tenant</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estudio / Admin</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ubicación</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ubicacion</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Plan contratado</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Logo</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Acciones</th>
                   </tr>
@@ -543,8 +1043,34 @@ export default function StudiosPage() {
                       <div className="text-[10px] font-bold text-gray-400 truncate">{studio.contact_email}</div>
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
-                      <div className="text-xs font-black text-gray-700">{studio.address || 'Sin dirección'}</div>
+                      <div className="text-xs font-black text-gray-700">{studio.address || 'Sin direccion'}</div>
                       <div className="text-[10px] font-bold text-gray-400">{studio.city}, {studio.country}</div>
+                    </td>
+                    <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="text-sm font-black text-gray-900">{studio.plan_label_snapshot || studio.plan_name || 'Sin plan'}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-black text-gray-600">
+                          {studio.max_active_students ? `${studio.max_active_students} alumnos` : '-'}
+                        </span>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                          studio.billing_cycle === 'annual'
+                            ? 'text-violet-700 bg-violet-50 border-violet-200'
+                            : 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                        }`}>
+                          {studio.billing_cycle === 'annual' ? 'Anual' : 'Mensual'}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs font-bold text-gray-500">Contratado: {formatShortDate(studio.plan_start_date || studio.created_at)}</div>
+                      <div className="text-xs font-bold text-gray-500">Renueva: {formatShortDate(studio.plan_renewal_date)}</div>
+                      <div className="text-xs font-black text-fuchsia-600">{formatMoney(studio.price_locked)}</div>
+                      {(() => {
+                        const daysLeft = planDaysLeft(studio)
+                        if (daysLeft == null) return null
+                        if (daysLeft < 0) {
+                          return <div className="text-xs font-black text-rose-600">Plan vencido ({Math.abs(daysLeft)} dias)</div>
+                        }
+                        return <div className="text-xs font-black text-amber-600">Te faltan {daysLeft} dias</div>
+                      })()}
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle text-center">
                         <div className="flex justify-center">
@@ -563,6 +1089,17 @@ export default function StudiosPage() {
                       </td>
                       <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
                         <div className="flex items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            className="p-2.5 rounded-xl border border-gray-100 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100 transition-all disabled:opacity-30"
+                            onClick={() => setRenewTarget(studio)}
+                            disabled={renewingId === studio.id}
+                            title="Renovar plan"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v6h6M20 20v-6h-6M5.5 14A7 7 0 0017 17.5M18.5 10A7 7 0 007 6.5" />
+                            </svg>
+                          </button>
                           <button
                             type="button"
                             className="p-2.5 rounded-xl border border-gray-100 text-gray-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 hover:border-fuchsia-100 transition-all"
@@ -596,7 +1133,7 @@ export default function StudiosPage() {
       {editTarget && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6">
           <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setEditTarget(null)} />
-          <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-100 flex flex-col">
+          <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-y-auto border border-gray-100 flex flex-col">
             <div className="sticky top-0 bg-white/80 backdrop-blur-xl z-20 flex items-center justify-between px-8 py-6 border-b border-gray-50">
               <div>
                 <h2 className="text-lg font-black text-gray-900">Editar Estudio</h2>
@@ -610,90 +1147,175 @@ export default function StudiosPage() {
               </button>
             </div>
 
-            <form className="p-8 space-y-6" onSubmit={handleUpdate}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del estudio</label>
-                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} required className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Correo administrador</label>
-                  <input type="email" value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} required className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nueva Contraseña</label>
-                  <div className="relative">
-                    <input
-                      type={showNewPassword ? 'text' : 'password'}
-                      value={editForm.password}
-                      onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
-                      placeholder="Sin cambios"
-                      className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none pr-12 text-sm"
-                    />
-                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                       {showNewPassword ? <HiOutlineEyeOff size={18} /> : <HiOutlineEye size={18} />}
-                    </button>
+            <form className="p-10 lg:p-12 space-y-10" onSubmit={handleUpdate}>
+              <div className="grid grid-cols-1 2xl:grid-cols-[1fr_320px] gap-10">
+                <div className="space-y-8">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Datos Base</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del estudio</label>
+                        <input type="text" value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} required className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Correo administrador</label>
+                        <input type="email" value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} required className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nueva Contrasena</label>
+                        <div className="relative">
+                          <input
+                            type={showNewPassword ? 'text' : 'password'}
+                            value={editForm.password}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
+                            placeholder="Sin cambios"
+                            className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none pr-12 text-sm"
+                          />
+                          <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                            {showNewPassword ? <HiOutlineEyeOff size={18} /> : <HiOutlineEye size={18} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 px-2">
+                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${editForm.is_superuser ? 'bg-fuchsia-600 border-fuchsia-600' : 'border-gray-200'}`}>
+                          <input id="edit_is_superuser" type="checkbox" checked={editForm.is_superuser} onChange={(e) => setEditForm((prev) => ({ ...prev, is_superuser: e.target.checked }))} className="hidden" />
+                          {editForm.is_superuser && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        </div>
+                        <label htmlFor="edit_is_superuser" className="text-xs font-black text-gray-500 uppercase tracking-widest cursor-pointer">Superusuario</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Ubicacion y Contacto</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Direccion</label>
+                        <input type="text" value={editForm.address} onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Pais / Ciudad</label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <input type="text" value={editForm.country} onChange={(e) => setEditForm((prev) => ({ ...prev, country: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Pais" />
+                          <input type="text" value={editForm.city} onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Ciudad" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Telefono</label>
+                        <input type="text" value={editForm.phone} onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Moneda</label>
+                        <select
+                          value={editForm.currency}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, currency: e.target.value }))}
+                          className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
+                        >
+                          <option value="CLP">CLP - Peso Chileno ($)</option>
+                          <option value="ARS">ARS - Peso Argentino ($)</option>
+                          <option value="USD">USD - Dolar Estadounidense (US$)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Plan del Tenant</p>
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
+                        <div className="space-y-2 min-w-0">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Plan contratado</label>
+                        <select
+                          value={editForm.plan_id}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, plan_id: e.target.value }))}
+                          className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
+                        >
+                          <option value="">Sin plan</option>
+                          {plans.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.max_active_students} alumnos)
+                            </option>
+                          ))}
+                        </select>
+                        </div>
+                        <div className="space-y-2 min-w-0">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Modalidad</label>
+                        <select
+                          value={editForm.billing_cycle}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, billing_cycle: e.target.value as 'monthly' | 'annual' }))}
+                          className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
+                        >
+                          <option value="monthly">Mensual</option>
+                          <option value="annual">Anual</option>
+                        </select>
+                        </div>
+                        <div className="space-y-2 min-w-0">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Precio pactado</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step="1"
+                          value={editForm.price_locked}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, price_locked: e.target.value }))}
+                          className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                        />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-7 pt-2">
+                        <div className="space-y-2 min-w-0">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fecha contratado</label>
+                        <input
+                          type="date"
+                          value={editForm.plan_start_date}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, plan_start_date: e.target.value }))}
+                          className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                        />
+                        </div>
+                        <div className="space-y-2 min-w-0">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fecha renueva</label>
+                        <input
+                          type="date"
+                          value={editForm.plan_renewal_date}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, plan_renewal_date: e.target.value }))}
+                          className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                        />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Redes Sociales</p>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-7">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Insta / TikTok</label>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <input type="text" value={editForm.instagram_url} onChange={(e) => setEditForm((prev) => ({ ...prev, instagram_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="@insta" />
+                          <input type="text" value={editForm.tiktok_url} onChange={(e) => setEditForm((prev) => ({ ...prev, tiktok_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="@tiktok" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Web / FB</label>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <input type="text" value={editForm.website_url} onChange={(e) => setEditForm((prev) => ({ ...prev, website_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Web" />
+                          <input type="text" value={editForm.facebook_url} onChange={(e) => setEditForm((prev) => ({ ...prev, facebook_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="FB" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 px-2">
-                  <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${editForm.is_superuser ? 'bg-fuchsia-600 border-fuchsia-600' : 'border-gray-200'}`}>
-                     <input id="edit_is_superuser" type="checkbox" checked={editForm.is_superuser} onChange={(e) => setEditForm((prev) => ({ ...prev, is_superuser: e.target.checked }))} className="hidden" />
-                     {editForm.is_superuser && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                  </div>
-                  <label htmlFor="edit_is_superuser" className="text-xs font-black text-gray-500 uppercase tracking-widest cursor-pointer">Superusuario</label>
-                </div>
+
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Dirección</label>
-                  <input type="text" value={editForm.address} onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
-                </div>
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Pais / Ciudad</label>
-                   <div className="grid grid-cols-2 gap-4">
-                      <input type="text" value={editForm.country} onChange={(e) => setEditForm((prev) => ({ ...prev, country: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="País" />
-                      <input type="text" value={editForm.city} onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Ciudad" />
-                   </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Teléfono</label>
-                  <input type="text" value={editForm.phone} onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Moneda</label>
-                  <select
-                    value={editForm.currency}
-                    onChange={(e) => setEditForm((prev) => ({ ...prev, currency: e.target.value }))}
-                    className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
-                  >
-                    <option value="CLP">CLP - Peso Chileno ($)</option>
-                    <option value="ARS">ARS - Peso Argentino ($)</option>
-                    <option value="USD">USD - Dólar Estadounidense (US$)</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Insta / TikTok</label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <input type="text" value={editForm.instagram_url} onChange={(e) => setEditForm((prev) => ({ ...prev, instagram_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="@insta" />
-                    <input type="text" value={editForm.tiktok_url} onChange={(e) => setEditForm((prev) => ({ ...prev, tiktok_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="@tiktok" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Web / FB</label>
-                   <div className="grid grid-cols-2 gap-4">
-                      <input type="text" value={editForm.website_url} onChange={(e) => setEditForm((prev) => ({ ...prev, website_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="Web" />
-                      <input type="text" value={editForm.facebook_url} onChange={(e) => setEditForm((prev) => ({ ...prev, facebook_url: e.target.value }))} className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" placeholder="FB" />
-                   </div>
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Logo</label>
-                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                    <div className="h-16 w-16 rounded-2xl border bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600">Logo</p>
+                  <div className="p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                    <div className="h-40 w-full rounded-2xl border bg-white flex items-center justify-center overflow-hidden shadow-sm">
                       {editForm.logo_url ? (
                         <img src={toAbsoluteUrl(editForm.logo_url)} alt="logo" className="h-full w-full object-cover" />
                       ) : (
-                        <span className="text-[8px] font-black text-gray-300 uppercase text-center px-1">Sin Logo</span>
+                        <span className="text-[10px] font-black text-gray-300 uppercase">Sin Logo</span>
                       )}
                     </div>
-                    <label className="flex-1 text-center py-4 bg-white border border-gray-100 rounded-xl text-[10px] font-black text-fuchsia-600 uppercase tracking-widest cursor-pointer hover:bg-fuchsia-50 transition-colors shadow-sm">
+                    <label className="mt-4 block text-center py-3 bg-white border border-gray-100 rounded-xl text-[10px] font-black text-fuchsia-600 uppercase tracking-widest cursor-pointer hover:bg-fuchsia-50 transition-colors shadow-sm">
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; handleUploadLogo(file) }} />
                       {uploadingLogo ? 'Subiendo...' : 'Cambiar Imagen'}
                     </label>
@@ -713,6 +1335,39 @@ export default function StudiosPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {renewTarget && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm" onClick={() => setRenewTarget(null)} />
+          <div className="relative w-full max-w-md rounded-3xl bg-white border border-gray-100 shadow-2xl p-6">
+            <h3 className="text-lg font-black text-gray-900">Renovar plan</h3>
+            <p className="mt-2 text-sm font-semibold text-gray-500">
+              ¿Estas seguro que renovaras este plan por{' '}
+              <span className="text-gray-900">
+                {renewTarget.billing_cycle === 'annual' ? '365 dias' : '30 dias'}
+              </span>{' '}
+              mas?
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setRenewTarget(null)}
+                className="flex-1 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-600 hover:bg-gray-200"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmRenewPlan}
+                disabled={renewingId === renewTarget.id}
+                className="flex-1 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {renewingId === renewTarget.id ? 'Renovando...' : 'Confirmar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

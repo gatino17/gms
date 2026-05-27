@@ -12,18 +12,51 @@ type TenantOption = {
   contact_email?: string | null
 }
 
+const parseYmdLocal = (value?: string | null) => {
+  if (!value) return null
+  const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2]) - 1
+  const d = Number(m[3])
+  const dt = new Date(y, mo, d)
+  return Number.isNaN(dt.getTime()) ? null : dt
+}
+
+const daysUntilDate = (value?: string | null) => {
+  const end = parseYmdLocal(value)
+  if (!end) return null
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const diffMs = end.getTime() - today.getTime()
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+}
+
 export default function AppLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { tenantId, setTenantId } = useTenant()
   const { logout, user } = useAuth()
-  const [tenantInfo, setTenantInfo] = useState<{ id:number; name:string; slug:string; created_at:string; email?: string | null; contact_email?: string | null; sidebar_theme?: string | null } | null>(null)
+  const [tenantInfo, setTenantInfo] = useState<{
+    id:number
+    name:string
+    slug:string
+    created_at:string
+    email?: string | null
+    contact_email?: string | null
+    sidebar_theme?: string | null
+    plan_id?: number | null
+    plan_name?: string | null
+    plan_renewal_date?: string | null
+    billing_cycle?: string | null
+  } | null>(null)
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem('sidebarCollapsed') === '1' } catch { return false }
   })
   const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([])
   const [loadingTenants, setLoadingTenants] = useState(false)
   const [canSwitchTenants, setCanSwitchTenants] = useState(false)
+  const [warningDismissed, setWarningDismissed] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -40,6 +73,18 @@ export default function AppLayout() {
     }
     load()
   }, [tenantId])
+
+  const planDaysLeft = tenantInfo?.plan_id ? daysUntilDate(tenantInfo.plan_renewal_date) : null
+  const isCriticalPlanState = tenantInfo?.plan_id != null && planDaysLeft != null && planDaysLeft <= 0
+  const isWarningPlanState = tenantInfo?.plan_id != null && planDaysLeft != null && planDaysLeft > 0 && planDaysLeft <= 4
+
+  useEffect(() => {
+    setWarningDismissed(false)
+  }, [tenantInfo?.id, tenantInfo?.plan_renewal_date])
+
+  const dismissPlanWarning = () => {
+    setWarningDismissed(true)
+  }
 
   useEffect(() => {
     const loadTenants = async () => {
@@ -98,6 +143,7 @@ export default function AppLayout() {
 
   const userDisplay = user?.full_name || user?.email || 'Usuario'
   const userEmail = user?.email || 'Sesión activa'
+  const planActionRoute = user?.is_superuser ? '/studios' : '/settings'
 
   return (
     <div className="min-h-screen flex bg-slate-50 font-sans antialiased text-slate-900">
@@ -197,6 +243,50 @@ export default function AppLayout() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {isCriticalPlanState && (
+          <div className="fixed inset-0 z-[10000]">
+            <div className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm" />
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <div className="w-full max-w-lg rounded-3xl border-2 border-rose-300 bg-white shadow-2xl p-6 md:p-7">
+                <p className="text-xs md:text-sm font-black text-rose-700 uppercase tracking-widest">Plan vencido</p>
+                <p className="text-sm md:text-base font-bold text-slate-800 mt-2">
+                  Se acabo tu plan. Favor renovar y comunicarte con administracion.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate(planActionRoute)}
+                  className="mt-6 w-full px-4 py-3 rounded-2xl bg-rose-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-rose-700 transition-colors"
+                >
+                  Renovar ahora
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isWarningPlanState && !warningDismissed && !isCriticalPlanState && (
+          <div className="fixed inset-0 z-[9999]">
+            <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]" />
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <div className="w-full max-w-lg rounded-3xl border-2 border-amber-300 bg-white shadow-2xl p-6 md:p-7">
+                <p className="text-xs md:text-sm font-black text-amber-700 uppercase tracking-widest">Aviso de renovacion</p>
+                <p className="text-sm md:text-base font-bold text-slate-800 mt-2">
+                  Tu plan vence en {planDaysLeft} dia{planDaysLeft === 1 ? '' : 's'}. Se esta acabando el plan.
+                </p>
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={dismissPlanWarning}
+                    className="w-full px-4 py-3 rounded-2xl bg-white border border-amber-300 text-amber-700 text-[11px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Top Header */}
         <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 z-20 sticky top-0">
           <div className="flex items-center gap-4">

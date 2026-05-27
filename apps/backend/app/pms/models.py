@@ -54,12 +54,33 @@ class Tenant(Base):
     tiktok_url: Mapped[Optional[str]] = mapped_column(String(255))
     facebook_url: Mapped[Optional[str]] = mapped_column(String(255))
     website_url: Mapped[Optional[str]] = mapped_column(String(255))
+    plan_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tenant_plans.id", ondelete="SET NULL"), index=True)
+    billing_cycle: Mapped[Optional[str]] = mapped_column(String(20), default="monthly")
+    price_locked: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    plan_label_snapshot: Mapped[Optional[str]] = mapped_column(String(120))
+    plan_start_date: Mapped[Optional[date]] = mapped_column(Date)
+    plan_renewal_date: Mapped[Optional[date]] = mapped_column(Date)
     enrollment_fee_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     enrollment_fee_amount: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
     enrollment_fee_apply_to: Mapped[Optional[str]] = mapped_column(String(30), default="new_only")
     enrollment_fee_allow_waive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     enrollment_fee_kind: Mapped[Optional[str]] = mapped_column(String(20), default="incorporation")
     enrollment_fee_renewal: Mapped[Optional[str]] = mapped_column(String(20), default="never")
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+
+    plan: Mapped[Optional["TenantPlan"]] = relationship("TenantPlan")
+
+
+class TenantPlan(Base):
+    __tablename__ = "tenant_plans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    max_active_students: Mapped[int] = mapped_column(Integer, nullable=False)
+    monthly_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    annual_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    is_custom: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
 
 

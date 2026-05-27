@@ -2,19 +2,28 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Header, UploadFile, File
 import logging
+from datetime import date, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, delete
 from pathlib import Path
 import secrets
 
-from app.pms.models import Tenant
+from app.pms.models import Tenant, TenantPlan
 from app.pms.deps import (
     get_tenant_id,
     get_db_session,
     get_current_active_superuser,
     get_current_user,
 )
-from app.pms.schemas import TenantOut, TenantCreate, TenantUpdate, TenantSelfUpdate
+from app.pms.schemas import (
+    TenantOut,
+    TenantCreate,
+    TenantUpdate,
+    TenantSelfUpdate,
+    TenantPlanOut,
+    TenantPlanCreate,
+    TenantPlanUpdate,
+)
 from app.core import security
 from app.pms import models
 from pydantic import BaseModel
@@ -26,6 +35,27 @@ class VerifyUnlockPayload(BaseModel):
 router = APIRouter(prefix="/api/pms/tenants", tags=["pms-tenants"])
 logger = logging.getLogger(__name__)
 
+DEFAULT_TENANT_PLANS = [
+    {"name": "Inicio 15", "max_active_students": 15, "monthly_price": 12000, "annual_price": 115200, "is_custom": False},
+    {"name": "Estandar 60", "max_active_students": 60, "monthly_price": 40000, "annual_price": 300000, "is_custom": False},
+    {"name": "Pro 120", "max_active_students": 120, "monthly_price": 65000, "annual_price": 400000, "is_custom": False},
+    {"name": "Super Pro 300", "max_active_students": 300, "monthly_price": 85000, "annual_price": 500000, "is_custom": False},
+]
+
+
+def _resolve_tenant_plan_snapshot(tenant: Tenant) -> None:
+    if tenant.plan is not None:
+        setattr(tenant, "plan_name", tenant.plan.name)
+        setattr(tenant, "max_active_students", tenant.plan.max_active_students)
+    else:
+        setattr(tenant, "plan_name", None)
+        setattr(tenant, "max_active_students", None)
+
+
+def _next_renewal_for_cycle(cycle: str, base_date: date | None = None) -> date:
+    today = base_date or date.today()
+    return today + timedelta(days=365 if cycle == "annual" else 30)
+
 
 @router.get("/", response_model=list[TenantOut])
 async def list_tenants(
@@ -35,11 +65,77 @@ async def list_tenants(
     res = await db.execute(select(Tenant).order_by(Tenant.created_at.desc()))
     tenants = res.scalars().all()
     for t in tenants:
+        t.plan = await db.get(TenantPlan, t.plan_id) if t.plan_id else None
+        _resolve_tenant_plan_snapshot(t)
         admin_flag = await db.scalar(
             select(models.User.is_superuser).where(models.User.tenant_id == t.id).order_by(models.User.id)
         )
         setattr(t, "admin_is_superuser", bool(admin_flag) if admin_flag is not None else None)
     return tenants
+
+
+@router.get("/plans", response_model=list[TenantPlanOut])
+async def list_tenant_plans(
+    _: models.User = Depends(get_current_active_superuser),
+    db: AsyncSession = Depends(get_db_session),
+):
+    res = await db.execute(select(TenantPlan).order_by(TenantPlan.max_active_students.asc(), TenantPlan.name.asc()))
+    plans = res.scalars().all()
+    if plans:
+        return plans
+    created = [TenantPlan(**item) for item in DEFAULT_TENANT_PLANS]
+    for item in created:
+        db.add(item)
+    await db.commit()
+    res2 = await db.execute(select(TenantPlan).order_by(TenantPlan.max_active_students.asc(), TenantPlan.name.asc()))
+    return res2.scalars().all()
+
+
+@router.post("/plans", response_model=TenantPlanOut, status_code=status.HTTP_201_CREATED)
+async def create_tenant_plan(
+    payload: TenantPlanCreate,
+    _: models.User = Depends(get_current_active_superuser),
+    db: AsyncSession = Depends(get_db_session),
+):
+    obj = TenantPlan(**payload.model_dump(exclude_unset=True))
+    db.add(obj)
+    await db.commit()
+    await db.refresh(obj)
+    return obj
+
+
+@router.put("/plans/{plan_id}", response_model=TenantPlanOut)
+async def update_tenant_plan(
+    plan_id: int,
+    payload: TenantPlanUpdate,
+    _: models.User = Depends(get_current_active_superuser),
+    db: AsyncSession = Depends(get_db_session),
+):
+    obj = await db.get(TenantPlan, plan_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Plan no encontrado")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(obj, field, value)
+    await db.commit()
+    await db.refresh(obj)
+    return obj
+
+
+@router.delete("/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tenant_plan(
+    plan_id: int,
+    _: models.User = Depends(get_current_active_superuser),
+    db: AsyncSession = Depends(get_db_session),
+):
+    obj = await db.get(TenantPlan, plan_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Plan no encontrado")
+    in_use = await db.scalar(select(func.count()).select_from(Tenant).where(Tenant.plan_id == plan_id)) or 0
+    if in_use > 0:
+        raise HTTPException(status_code=400, detail="No se puede eliminar: el plan esta asignado a uno o mas estudios")
+    await db.delete(obj)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
@@ -65,6 +161,12 @@ async def create_tenant(
         base_slug = f"tenant-{counter}"
         slug_exists = await db.scalar(select(Tenant).where(Tenant.slug == base_slug))
 
+    selected_plan = await db.get(TenantPlan, payload.plan_id) if payload.plan_id else None
+    if payload.plan_id and not selected_plan:
+        raise HTTPException(status_code=400, detail="Plan seleccionado no existe")
+    billing_cycle = payload.billing_cycle or "monthly"
+    if billing_cycle not in ("monthly", "annual"):
+        raise HTTPException(status_code=400, detail="Ciclo de cobro invalido")
     tenant = Tenant(
         name=payload.name.strip(),
         slug=base_slug,
@@ -81,6 +183,14 @@ async def create_tenant(
         tiktok_url=payload.tiktok_url,
         facebook_url=payload.facebook_url,
         website_url=payload.website_url,
+        plan_id=selected_plan.id if selected_plan else None,
+        billing_cycle=billing_cycle,
+        price_locked=payload.price_locked if payload.price_locked is not None else (
+            selected_plan.monthly_price if (selected_plan and billing_cycle == "monthly") else (selected_plan.annual_price if selected_plan else None)
+        ),
+        plan_label_snapshot=selected_plan.name if selected_plan else None,
+        plan_start_date=payload.plan_start_date or (date.today() if selected_plan else None),
+        plan_renewal_date=payload.plan_renewal_date or ( _next_renewal_for_cycle(billing_cycle) if selected_plan else None ),
         enrollment_fee_enabled=bool(payload.enrollment_fee_enabled),
         enrollment_fee_amount=payload.enrollment_fee_amount,
         enrollment_fee_apply_to=payload.enrollment_fee_apply_to or "new_only",
@@ -103,6 +213,8 @@ async def create_tenant(
 
     await db.commit()
     await db.refresh(tenant)
+    tenant.plan = selected_plan
+    _resolve_tenant_plan_snapshot(tenant)
     return tenant
 
 
@@ -115,6 +227,8 @@ async def get_current_tenant(
     tenant = res.scalar_one_or_none()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
+    tenant.plan = await db.get(TenantPlan, tenant.plan_id) if tenant.plan_id else None
+    _resolve_tenant_plan_snapshot(tenant)
     return tenant
 
 
@@ -269,6 +383,41 @@ async def update_tenant(
         tenant.facebook_url = data["facebook_url"]
     if "website_url" in data:
         tenant.website_url = data["website_url"]
+    if "plan_id" in data:
+        if data["plan_id"] is None:
+            tenant.plan_id = None
+            tenant.plan_label_snapshot = None
+            tenant.plan_start_date = None
+            tenant.plan_renewal_date = None
+        else:
+            selected_plan = await db.get(TenantPlan, int(data["plan_id"]))
+            if not selected_plan:
+                raise HTTPException(status_code=400, detail="Plan seleccionado no existe")
+            tenant.plan_id = selected_plan.id
+            tenant.plan_label_snapshot = selected_plan.name
+            if "price_locked" not in data:
+                cycle = data.get("billing_cycle") or tenant.billing_cycle or "monthly"
+                tenant.price_locked = selected_plan.monthly_price if cycle == "monthly" else selected_plan.annual_price
+            if "plan_start_date" not in data:
+                tenant.plan_start_date = date.today()
+            if "plan_renewal_date" not in data:
+                cycle = data.get("billing_cycle") or tenant.billing_cycle or "monthly"
+                tenant.plan_renewal_date = _next_renewal_for_cycle(cycle)
+    if "billing_cycle" in data and data["billing_cycle"]:
+        cycle = data["billing_cycle"]
+        if cycle not in ("monthly", "annual"):
+            raise HTTPException(status_code=400, detail="Ciclo de cobro invalido")
+        tenant.billing_cycle = cycle
+        if "plan_renewal_date" not in data and tenant.plan_id:
+            tenant.plan_renewal_date = _next_renewal_for_cycle(cycle)
+    if "price_locked" in data:
+        tenant.price_locked = data["price_locked"]
+    if "plan_label_snapshot" in data:
+        tenant.plan_label_snapshot = data["plan_label_snapshot"]
+    if "plan_renewal_date" in data:
+        tenant.plan_renewal_date = data["plan_renewal_date"]
+    if "plan_start_date" in data:
+        tenant.plan_start_date = data["plan_start_date"]
     if "attendance_pin" in data:
         tenant.attendance_pin = data["attendance_pin"]
     if "enrollment_fee_enabled" in data:
@@ -302,6 +451,8 @@ async def update_tenant(
 
     await db.commit()
     await db.refresh(tenant)
+    tenant.plan = await db.get(TenantPlan, tenant.plan_id) if tenant.plan_id else None
+    _resolve_tenant_plan_snapshot(tenant)
     return tenant
 
 

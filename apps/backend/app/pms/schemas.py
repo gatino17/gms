@@ -24,6 +24,14 @@ class TenantOut(BaseModel):
     attendance_pin: Optional[str] = None
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
+    plan_id: Optional[int] = None
+    plan_name: Optional[str] = None
+    max_active_students: Optional[int] = None
+    billing_cycle: Optional[str] = "monthly"
+    price_locked: Optional[Decimal] = None
+    plan_label_snapshot: Optional[str] = None
+    plan_start_date: Optional[date] = None
+    plan_renewal_date: Optional[date] = None
     enrollment_fee_enabled: bool = False
     enrollment_fee_amount: Optional[Decimal] = None
     enrollment_fee_apply_to: Optional[str] = "new_only"
@@ -53,6 +61,11 @@ class TenantCreate(BaseModel):
     tiktok_url: Optional[str] = None
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
+    plan_id: Optional[int] = None
+    billing_cycle: Optional[str] = "monthly"
+    price_locked: Optional[Decimal] = None
+    plan_start_date: Optional[date] = None
+    plan_renewal_date: Optional[date] = None
     enrollment_fee_enabled: Optional[bool] = False
     enrollment_fee_amount: Optional[Decimal] = None
     enrollment_fee_apply_to: Optional[str] = "new_only"
@@ -79,6 +92,12 @@ class TenantUpdate(BaseModel):
     attendance_pin: Optional[str] = Field(default=None, max_length=4)
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
+    plan_id: Optional[int] = None
+    billing_cycle: Optional[str] = None
+    price_locked: Optional[Decimal] = None
+    plan_label_snapshot: Optional[str] = None
+    plan_start_date: Optional[date] = None
+    plan_renewal_date: Optional[date] = None
     enrollment_fee_enabled: Optional[bool] = None
     enrollment_fee_amount: Optional[Decimal] = None
     enrollment_fee_apply_to: Optional[str] = None
@@ -102,6 +121,7 @@ class TenantSelfUpdate(BaseModel):
     attendance_pin: Optional[str] = Field(default=None, max_length=4)
     facebook_url: Optional[str] = None
     website_url: Optional[str] = None
+    billing_cycle: Optional[str] = None
     enrollment_fee_enabled: Optional[bool] = None
     enrollment_fee_amount: Optional[Decimal] = None
     enrollment_fee_apply_to: Optional[str] = None
@@ -333,6 +353,36 @@ class AnnouncementOut(AnnouncementBase):
     tenant_id: int
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TenantPlanBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    max_active_students: int = Field(..., ge=1)
+    monthly_price: Decimal = Field(..., ge=0)
+    annual_price: Decimal = Field(..., ge=0)
+    is_active: bool = True
+    is_custom: bool = False
+
+
+class TenantPlanCreate(TenantPlanBase):
+    pass
+
+
+class TenantPlanUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    max_active_students: Optional[int] = Field(default=None, ge=1)
+    monthly_price: Optional[Decimal] = Field(default=None, ge=0)
+    annual_price: Optional[Decimal] = Field(default=None, ge=0)
+    is_active: Optional[bool] = None
+    is_custom: Optional[bool] = None
+
+
+class TenantPlanOut(TenantPlanBase):
+    id: int
+    created_at: datetime
 
     class Config:
         from_attributes = True

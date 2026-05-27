@@ -93,6 +93,16 @@ function tenantInitials(name?: string | null) {
   const initials = words.slice(0, 3).map(w => w[0]?.toUpperCase() || '').join('')
   return initials || 'TEN'
 }
+function historicCourseNameFromReference(reference?: string | null) {
+  const ref = String(reference || '')
+  const m = ref.match(/\[CursoHistorico:(.+?)\]/i)
+  return m?.[1]?.trim() || ''
+}
+function historicTeacherFromReference(reference?: string | null) {
+  const ref = String(reference || '')
+  const m = ref.match(/\[ProfesorHistorico:(.+?)\]/i)
+  return m?.[1]?.trim() || ''
+}
 
 type ViewMode = 'detalle' | 'resumen-diario' | 'resumen-profesor'
 
@@ -297,11 +307,12 @@ export default function PaymentsPage() {
       const toProfessorBucket = (p: Payment) =>
         (p.type === 'registration'
           ? 'Matrículas'
-          : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || 'Sin asignar'))
+          : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || 'Sin asignar'))
 
       const courseWithSchedule = (p: Payment) => {
         if (p.type === 'registration') return 'Matrícula'
-        const courseName = p.course_name || (p.course_id && courses[p.course_id]?.name) || 'Gasto General'
+        const historicName = historicCourseNameFromReference(p.reference)
+        const courseName = p.course_name || (p.course_id && courses[p.course_id]?.name) || historicName || 'Gasto General'
         const courseRef = p.course_id ? courses[p.course_id] : undefined
         const dayIdx = courseRef?.day_of_week
         const time = (courseRef?.start_time || '').slice(0, 5)
@@ -315,7 +326,7 @@ export default function PaymentsPage() {
       Fecha: toDDMMYYYY(p.payment_date),
       Alumno: p.student_name || students[p.student_id!]?.name || '-',
       Curso: courseWithSchedule(p),
-      Profesor: p.type === 'registration' ? '-' : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || '-'),
+      Profesor: p.type === 'registration' ? '-' : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || '-'),
       Periodo: findPeriod(p),
       Metodo: methodLabel(p.method),
       Tipo: typeLabel(p.type),
@@ -376,7 +387,7 @@ export default function PaymentsPage() {
           Fecha: toDDMMYYYY(p.payment_date),
           Alumno: p.student_name || students[p.student_id!]?.name || '-',
           Curso: courseWithSchedule(p),
-          Profesor: p.type === 'registration' ? '-' : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || '-'),
+          Profesor: p.type === 'registration' ? '-' : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || '-'),
           Periodo: findPeriod(p),
           Metodo: methodLabel(p.method),
           Tipo: typeLabel(p.type),
@@ -496,7 +507,7 @@ export default function PaymentsPage() {
       const name =
         (p.type || '').toLowerCase() === 'registration'
           ? 'Matrícula'
-          : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || 'Sin asignar')
+          : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || 'Sin asignar')
       if (!map[name]) map[name] = { name, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
       
       const m = p.method
@@ -693,7 +704,7 @@ export default function PaymentsPage() {
                     <td className="block md:table-cell px-6 py-2 md:py-6">
                       <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors truncate">{p.student_name || students[p.student_id!]?.name || '-'}</div>
                       <div className="text-xs font-bold text-gray-500 truncate">
-                        {p.type === 'registration' ? 'Matrícula' : (p.course_name || (p.course_id && courses[p.course_id]?.name) || 'Gasto General')}
+                        {p.type === 'registration' ? 'Matrícula' : (p.course_name || (p.course_id && courses[p.course_id]?.name) || historicCourseNameFromReference(p.reference) || 'Gasto General')}
                       </div>
                       {p.notes && <div className="text-[10px] text-gray-400 italic mt-1 line-clamp-1">"{p.notes}"</div>}
                     </td>

@@ -48,11 +48,19 @@ type Course = {
   room_name?: string | null
   student_count?: number
   total_classes?: number | null
+  created_at?: string
+  updated_at?: string
 }
 
 const DAY_NAMES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
 const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' })
 const hhmm = (t?: string | null) => (t ? String(t).slice(0, 5) : '--:--')
+const fmtDate = (value?: string | null) => {
+  if (!value) return '--'
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return String(value).slice(0, 10)
+  return dt.toLocaleDateString('es-CL')
+}
 
 function getCourseGradient(c: Course): string {
   if (c.is_active === false) return 'from-gray-300 to-gray-500'
@@ -467,6 +475,10 @@ export default function CoursesPage() {
                   <div className="text-sm font-black text-gray-800">{c.name}</div>
                   <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">
                     {c.teacher_name || 'Sin instructor'}
+                  </div>
+                  <div className="mt-2 space-y-1 text-[10px] font-bold text-gray-500">
+                    <div>Inicio: <span className="text-gray-700">{fmtDate(c.start_date)}</span></div>
+                    <div>Archivado: <span className="text-gray-700">{fmtDate(c.updated_at)}</span></div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button

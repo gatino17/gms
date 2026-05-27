@@ -6,7 +6,7 @@ import secrets
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.pms.models import Course, Teacher, Room, Enrollment
+from app.pms.models import Course, Teacher, Room, Enrollment, Payment
 from app.pms.schemas import CourseOut, CourseCreate, CourseUpdate, CourseListItem, CourseListResponse
 from app.pms.deps import get_tenant_id, get_db_session
 
@@ -123,6 +123,34 @@ async def delete_course(
     obj = res.scalar_one_or_none()
     if not obj:
         raise HTTPException(status_code=404, detail="Curso no encontrado")
+
+    # Preserve course + teacher snapshot on related payments before deleting course
+    teacher_name = None
+    if obj.teacher_id:
+        tres = await db.execute(
+            select(Teacher.name).where(
+                Teacher.id == obj.teacher_id,
+                Teacher.tenant_id == tenant_id,
+            )
+        )
+        teacher_name = tres.scalar_one_or_none()
+
+    pres = await db.execute(
+        select(Payment).where(
+            Payment.tenant_id == tenant_id,
+            Payment.course_id == course_id,
+        )
+    )
+    payments = pres.scalars().all()
+    course_marker_prefix = "[CursoHistorico:"
+    teacher_marker_prefix = "[ProfesorHistorico:"
+    for p in payments:
+        ref = (p.reference or "").strip()
+        if course_marker_prefix not in ref:
+            ref = f"{course_marker_prefix}{obj.name}] {ref}".strip()
+        if teacher_name and teacher_marker_prefix not in ref:
+            ref = f"{teacher_marker_prefix}{teacher_name}] {ref}".strip()
+        p.reference = ref.strip()
 
     await db.delete(obj)
     await db.commit()

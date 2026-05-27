@@ -240,6 +240,8 @@ class CourseListItem(BaseModel):
     room_id: Optional[int] = None
     max_capacity: Optional[int] = None
     total_classes: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 class CourseListResponse(BaseModel):
     items: list[CourseListItem]

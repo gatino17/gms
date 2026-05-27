@@ -25,6 +25,7 @@ type Payment = {
   amount: number
   method: 'cash' | 'card' | 'transfer' | 'agreement' | string
   type?: 'monthly' | 'single_class' | 'rental' | 'agreement' | string
+  reference?: string | null
   notes?: string | null
   payment_date: string
   student_name?: string | null
@@ -81,6 +82,11 @@ const displayTeacherName = (name?: string | null) => {
   const clean = (name || '').trim()
   if (!clean) return 'Matrículas'
   return clean.toLowerCase() === 'sin profesor' ? 'Matrículas' : clean
+}
+const historicTeacherFromReference = (reference?: string | null) => {
+  const ref = String(reference || '')
+  const m = ref.match(/\[ProfesorHistorico:(.+?)\]/i)
+  return m?.[1]?.trim() || ''
 }
 
 export default function PaymentsTeachers() {
@@ -152,7 +158,7 @@ export default function PaymentsTeachers() {
     return payments.map(p => {
       const c = p.course_id ? courses[p.course_id] : null
       const isRegistration = (p.type || '').toLowerCase() === 'registration'
-      const teacherName = isRegistration ? 'Matrículas' : (c?.teacher_name || 'Sin profesor')
+      const teacherName = isRegistration ? 'Matrículas' : (c?.teacher_name || historicTeacherFromReference(p.reference) || 'Sin profesor')
       const courseName = isRegistration ? 'Matrícula' : (c?.name || '-')
       const studentName = p.student_name || (p.student_id ? (students[p.student_id]?.name || '-') : '-')
       return { ...p, teacherName, courseName, studentName }

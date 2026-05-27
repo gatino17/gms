@@ -313,7 +313,7 @@ export default function CourseStatusPage() {
       for (const s of movableStudents) {
         if (targetRow?.students.some((st) => st.id === s.id)) {
           fail += 1
-          errors.push(`${s.first_name} ${s.last_name}: ya está inscrito en el curso destino`)
+          errors.push(`${s.first_name} ${s.last_name}: ya esta inscrito en el curso destino`)
           continue
         }
         try {
@@ -826,11 +826,13 @@ export default function CourseStatusPage() {
               {transferResult && (
                 <div className={`rounded-xl border p-3 ${transferResult.fail > 0 ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
                   <div className="text-xs font-black uppercase tracking-widest">
-                    Traslado parcial: {transferResult.ok} movido(s) | {transferResult.fail} con problema
+                    {transferResult.ok === 0 && transferResult.fail > 0
+                      ? `No se movio ningun alumno | ${transferResult.fail} ya inscritos`
+                      : `Traslado parcial: ${transferResult.ok} movido(s) | ${transferResult.fail} ya inscritos`}
                   </div>
                   {transferResult.errors.length > 0 && (
                     <div className="mt-2 max-h-28 overflow-y-auto text-[11px] font-bold space-y-1">
-                      {transferResult.errors.map((err, idx) => <div key={idx}>• {err}</div>)}
+                      {transferResult.errors.map((err, idx) => <div key={idx}>- {err}</div>)}
                     </div>
                   )}
                 </div>
@@ -1089,6 +1091,7 @@ export default function CourseStatusPage() {
     </div>
   )
 }
+
 
 
 

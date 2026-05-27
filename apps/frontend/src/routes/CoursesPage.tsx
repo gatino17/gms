@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
 import {
   HiOutlineClock,
   HiOutlineUser,
-  HiOutlineCalendar,
   HiOutlineTag,
   HiOutlinePencil,
   HiOutlineTrash,
@@ -625,7 +624,7 @@ export default function CoursesPage() {
                      <div className="flex flex-col-reverse md:grid md:grid-cols-12 gap-6 md:gap-10">
                         <div className="md:col-span-8 space-y-6 md:space-y-8">
                            <div className="space-y-2">
-                              <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del Curso</label>
+                              <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del Curso <span className="text-rose-500">*</span></label>
                               <input
                                 className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none shadow-sm ${
                                   nameRequiredError
@@ -648,7 +647,7 @@ export default function CoursesPage() {
                            </div>
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                               <div className="space-y-2">
-                                 <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nivel</label>
+                                 <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nivel <span className="text-rose-500">*</span></label>
                                  <select className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm ${hasErr('level') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.level || ''} onChange={(e)=>{setForm({...form, level:e.target.value}); if(e.target.value) clearErr('level')}}>
                                     <option value="">Seleccionar nivel...</option>
                                     <option value="Básico">Básico</option>
@@ -657,14 +656,14 @@ export default function CoursesPage() {
                                  </select>
                               </div>
                               <div className="space-y-2">
-                                 <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de Programa</label>
+                                 <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de Programa <span className="text-rose-500">*</span></label>
                                  <select className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm ${hasErr('course_type') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.course_type || 'regular'} onChange={(e)=>{setForm({...form, course_type:e.target.value}); if(e.target.value) clearErr('course_type')}}>
                                     <option value="regular">Regular</option>
                                     <option value="choreography">Coreografía</option>
                                  </select>
                               </div>
                               <div className="space-y-2">
-                                 <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clases por Semana</label>
+                                 <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clases por Semana <span className="text-rose-500">*</span></label>
                                  <select 
                                     className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm ${hasErr('classes_per_week') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} 
                                     value={form.classes_per_week || 1} 
@@ -680,7 +679,7 @@ export default function CoursesPage() {
                               </div>
                               {form.course_type === 'choreography' && (
                                  <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                                    <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Total Clases del Proyecto</label>
+                                    <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Total Clases del Proyecto <span className="text-rose-500">*</span></label>
                                     <input 
                                        type="number" 
                                        className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 transition-all outline-none shadow-sm ${hasErr('total_classes') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} 
@@ -719,7 +718,7 @@ export default function CoursesPage() {
                      {/* Horarios Grid */}
                       <div className="bg-white p-6 md:p-8 rounded-3xl md:rounded-[40px] border border-gray-100 shadow-sm space-y-4 md:space-y-6">
                         <div className="flex items-center gap-3 text-fuchsia-600 font-black uppercase tracking-widest text-[9px] md:text-[10px]">
-                           <HiOutlineClock size={18} /> Programación Semanal
+                           <HiOutlineClock size={18} /> Programación Semanal <span className="text-rose-500">*</span>
                         </div>
                         <div className="space-y-3 md:space-y-4">
                            {[1,2,3,4,5].slice(0, visibleSlots).map(num => {
@@ -746,14 +745,14 @@ export default function CoursesPage() {
                       </div>
 
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-                        <div className="space-y-2">
-                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Instructor Principal</label>
+                        <div className="space-y-2 relative">
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Instructor Principal <span className="text-rose-500">*</span></label>
                            <select className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm ${hasErr('teacher_id') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.teacher_id || ''} onChange={(e)=>{setForm({...form, teacher_id:e.target.value}); if(e.target.value) clearErr('teacher_id')}}>
                               <option value="">Instructor...</option>
                               {teachers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
                            </select>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2 relative">
                            <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Sala Asignada</label>
                            <select className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none appearance-none shadow-sm" value={form.room_id || ''} onChange={(e)=>setForm({...form, room_id:e.target.value})}>
                               <option value="">Sala...</option>
@@ -762,21 +761,21 @@ export default function CoursesPage() {
                         </div>
                      </div>
 
-                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                         <div className="space-y-2">
-                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fecha Inicio</label>
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Fecha Inicio <span className="text-rose-500">*</span></label>
                            <input type="date" className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm ${hasErr('start_date') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.start_date || ''} onChange={(e)=>{setForm({...form, start_date:e.target.value}); if(e.target.value) clearErr('start_date')}} />
                         </div>
                         <div className="space-y-2">
-                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Mensualidad ($)</label>
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Mensualidad ($) <span className="text-rose-500">*</span></label>
                            <input type="number" className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm ${hasErr('price') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.price || ''} onChange={(e)=>{setForm({...form, price:e.target.value}); if(e.target.value!=='') clearErr('price')}} />
                         </div>
                         <div className="space-y-2">
-                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clase Suelta ($)</label>
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Clase Suelta ($) <span className="text-rose-500">*</span></label>
                            <input type="number" className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm ${hasErr('class_price') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.class_price || ''} onChange={(e)=>{setForm({...form, class_price:e.target.value}); if(e.target.value!=='') clearErr('class_price')}} />
                         </div>
                         <div className="space-y-2">
-                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Capacidad Máx.</label>
+                           <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Capacidad Máx. <span className="text-rose-500">*</span></label>
                            <input type="number" className={`w-full bg-white border-2 px-4 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-bold text-gray-700 outline-none shadow-sm ${hasErr('max_capacity') ? 'border-rose-400 focus:border-rose-500 focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:ring-8 focus:ring-fuchsia-50'}`} value={form.max_capacity || ''} onChange={(e)=>{setForm({...form, max_capacity:e.target.value}); if(e.target.value!=='') clearErr('max_capacity')}} />
                         </div>
                      </div>
@@ -883,3 +882,4 @@ export default function CoursesPage() {
     </div>
   )
 }
+

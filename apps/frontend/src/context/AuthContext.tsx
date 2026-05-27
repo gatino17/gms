@@ -68,6 +68,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [token, user?.tenant_id, user?.is_superuser, setTenantId])
 
+  useEffect(() => {
+    if (!token) return
+    const ping = () => {
+      api.post('/login/session-ping').catch(() => {})
+    }
+    ping()
+    const timer = setInterval(ping, 60_000)
+    const onVisible = () => {
+      if (!document.hidden) ping()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [token])
+
   const login = (newToken: string, userInfo?: Partial<User>) => {
     console.debug('[AuthContext] login start', { prevTenant: tenantId, userInfo })
     localStorage.setItem('token', newToken)

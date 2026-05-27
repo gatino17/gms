@@ -137,8 +137,16 @@ export default function AppLayout() {
   }
 
   const handleLogout = () => {
-    logout()
-    navigate('/login')
+    ;(async () => {
+      try {
+        await api.post('/login/logout')
+      } catch {
+        // si falla backend, igual limpiamos cliente para no bloquear salida
+      } finally {
+        logout()
+        navigate('/login')
+      }
+    })()
   }
 
   const userDisplay = user?.full_name || user?.email || 'Usuario'

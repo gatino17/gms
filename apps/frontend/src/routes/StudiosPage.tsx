@@ -19,6 +19,9 @@ type StudioForm = {
   plan_id: string
   billing_cycle: 'monthly' | 'annual'
   price_locked: string
+  max_sessions: string
+  plan_start_date: string
+  plan_renewal_date: string
 }
 
 type StudioUpdateForm = {
@@ -41,6 +44,7 @@ type StudioUpdateForm = {
   price_locked: string
   plan_start_date: string
   plan_renewal_date: string
+  max_sessions: string
 }
 
 type TenantPlan = {
@@ -86,6 +90,8 @@ type Studio = {
   plan_label_snapshot?: string | null
   plan_start_date?: string | null
   plan_renewal_date?: string | null
+  active_sessions?: number | null
+  max_sessions?: number | null
 }
 
 const defaultForm: StudioForm = {
@@ -105,6 +111,7 @@ const defaultForm: StudioForm = {
   plan_id: '',
   billing_cycle: 'monthly',
   price_locked: '',
+  max_sessions: '3',
   plan_start_date: '',
   plan_renewal_date: '',
 }
@@ -127,6 +134,9 @@ const defaultEditForm: StudioUpdateForm = {
   plan_id: '',
   billing_cycle: 'monthly',
   price_locked: '',
+  plan_start_date: '',
+  plan_renewal_date: '',
+  max_sessions: '3',
 }
 
 const normalizeOptional = (value: string) => {
@@ -162,6 +172,7 @@ export default function StudiosPage() {
   const [editError, setEditError] = useState<string | null>(null)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [revokingSessionsId, setRevokingSessionsId] = useState<number | null>(null)
   const [renewingId, setRenewingId] = useState<number | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [createLogoFile, setCreateLogoFile] = useState<File | null>(null)
@@ -225,16 +236,22 @@ export default function StudiosPage() {
     return `${day}-${month}-${year}`
   }
 
-  const fetchStudios = async () => {
-    setIsLoadingStudios(true)
-    setListError(null)
+  const fetchStudios = async (silent = false) => {
+    if (!silent) {
+      setIsLoadingStudios(true)
+      setListError(null)
+    }
     try {
       const { data } = await api.get<Studio[]>('/api/pms/tenants')
       setStudios(data)
     } catch (err: any) {
-      setListError(err?.message || 'No se pudieron cargar los estudios.')
+      if (!silent) {
+        setListError(err?.message || 'No se pudieron cargar los estudios.')
+      }
     } finally {
-      setIsLoadingStudios(false)
+      if (!silent) {
+        setIsLoadingStudios(false)
+      }
     }
   }
 
@@ -331,6 +348,20 @@ export default function StudiosPage() {
   }, [])
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      fetchStudios(true)
+    }, 15000)
+    const onVisible = () => {
+      if (!document.hidden) fetchStudios(true)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
+
+  useEffect(() => {
     if (editTarget) {
       const resolvedStartDate = normalizeDateInput(editTarget.plan_start_date || editTarget.created_at)
       const resolvedCycle = editTarget.billing_cycle === 'annual' ? 'annual' : 'monthly'
@@ -356,6 +387,7 @@ export default function StudiosPage() {
         price_locked: editTarget.price_locked != null ? String(editTarget.price_locked) : '',
         plan_start_date: resolvedStartDate,
         plan_renewal_date: resolvedRenewalDate,
+        max_sessions: String(editTarget.max_sessions ?? 3),
       })
       setEditMessage(null)
       setEditError(null)
@@ -421,6 +453,9 @@ export default function StudiosPage() {
         plan_id: form.plan_id ? Number(form.plan_id) : undefined,
         billing_cycle: form.billing_cycle,
         price_locked: form.price_locked ? Number(form.price_locked) : undefined,
+        max_sessions: form.max_sessions ? Number(form.max_sessions) : 3,
+        plan_start_date: normalizeDateInput(form.plan_start_date) || null,
+        plan_renewal_date: normalizeDateInput(form.plan_renewal_date) || null,
       })
       if (createLogoFile) {
         try {
@@ -469,6 +504,7 @@ export default function StudiosPage() {
         plan_id: editForm.plan_id ? Number(editForm.plan_id) : null,
         billing_cycle: editForm.billing_cycle,
         price_locked: editForm.price_locked ? Number(editForm.price_locked) : undefined,
+        max_sessions: editForm.max_sessions ? Number(editForm.max_sessions) : 3,
         plan_start_date: normalizeDateInput(editForm.plan_start_date) || null,
         plan_renewal_date: normalizeDateInput(editForm.plan_renewal_date) || null,
       })
@@ -502,6 +538,24 @@ export default function StudiosPage() {
       setError(err?.message || 'No se pudo eliminar el estudio.')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleRevokeAllSessions = async (tenantId: number) => {
+    const target = studios.find((s) => s.id === tenantId)
+    if (!target) return
+    if (!window.confirm(`Cerrar todas las sesiones activas de ${target.name}?`)) return
+    setRevokingSessionsId(tenantId)
+    setError(null)
+    setSuccess(null)
+    try {
+      await api.post(`/api/pms/tenants/${tenantId}/sessions/revoke-all`)
+      setSuccess('Sesiones cerradas correctamente.')
+      await fetchStudios()
+    } catch (err: any) {
+      setError(err?.message || 'No se pudieron cerrar las sesiones.')
+    } finally {
+      setRevokingSessionsId(null)
     }
   }
 
@@ -738,7 +792,7 @@ export default function StudiosPage() {
           <div className="space-y-7">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Datos Base</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del estudio</label>
               <input
@@ -886,6 +940,20 @@ export default function StudiosPage() {
                 placeholder="0"
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Maximo sesiones</label>
+              <select
+                value={form.max_sessions}
+                onChange={(e) => handleChange('max_sessions', e.target.value)}
+                className="w-full px-5 py-3 md:py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
+              >
+                <option value="1">1 sesion</option>
+                <option value="2">2 sesiones</option>
+                <option value="3">3 sesiones</option>
+                <option value="4">4 sesiones</option>
+                <option value="5">5 sesiones</option>
+              </select>
+            </div>
               </div>
             </div>
 
@@ -1027,6 +1095,7 @@ export default function StudiosPage() {
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estudio / Admin</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ubicacion</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Plan contratado</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sesiones</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Logo</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Acciones</th>
                   </tr>
@@ -1072,6 +1141,17 @@ export default function StudiosPage() {
                         return <div className="text-xs font-black text-amber-600">Te faltan {daysLeft} dias</div>
                       })()}
                     </td>
+                    <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                        (studio.active_sessions || 0) >= (studio.max_sessions || 3)
+                          ? 'text-rose-700 bg-rose-50 border-rose-200'
+                          : (studio.active_sessions || 0) >= Math.max(1, (studio.max_sessions || 3) - 1)
+                            ? 'text-amber-700 bg-amber-50 border-amber-200'
+                            : 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                      }`}>
+                        {studio.active_sessions || 0}/{studio.max_sessions || 3}
+                      </span>
+                    </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle text-center">
                         <div className="flex justify-center">
                           {studio.logo_url ? (
@@ -1089,6 +1169,17 @@ export default function StudiosPage() {
                       </td>
                       <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
                         <div className="flex items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            className="p-2.5 rounded-xl border border-gray-100 text-gray-400 hover:text-amber-600 hover:bg-amber-50 hover:border-amber-100 transition-all disabled:opacity-30"
+                            onClick={() => handleRevokeAllSessions(studio.id)}
+                            disabled={revokingSessionsId === studio.id}
+                            title="Cerrar sesiones activas"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 8H5a2 2 0 01-2-2V6a2 2 0 012-2h8" />
+                            </svg>
+                          </button>
                           <button
                             type="button"
                             className="p-2.5 rounded-xl border border-gray-100 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100 transition-all disabled:opacity-30"
@@ -1222,7 +1313,7 @@ export default function StudiosPage() {
                   <div className="pt-4 border-t border-gray-100">
                     <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Plan del Tenant</p>
                     <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-7">
                         <div className="space-y-2 min-w-0">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Plan contratado</label>
                         <select
@@ -1259,6 +1350,20 @@ export default function StudiosPage() {
                           onChange={(e) => setEditForm((prev) => ({ ...prev, price_locked: e.target.value }))}
                           className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
                         />
+                        </div>
+                        <div className="space-y-2 min-w-0">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Maximo sesiones</label>
+                        <select
+                          value={editForm.max_sessions}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, max_sessions: e.target.value }))}
+                          className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none cursor-pointer"
+                        >
+                          <option value="1">1 sesion</option>
+                          <option value="2">2 sesiones</option>
+                          <option value="3">3 sesiones</option>
+                          <option value="4">4 sesiones</option>
+                          <option value="5">5 sesiones</option>
+                        </select>
                         </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-7 pt-2">

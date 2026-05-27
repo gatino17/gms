@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+﻿import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
@@ -119,6 +119,21 @@ const methodLabel: Record<string, string> = {
   transfer: 'Transferencia',
 }
 
+function cleanHistoricConcept(raw?: string | null) {
+  if (!raw) return 'Concepto Vario'
+  let text = String(raw)
+  text = text.replace(/\[ProfesorHistorico:[^\]]+\]/gi, '').trim()
+  text = text.replace(/\[CursoHistorico:[^\]]+\]/gi, '').trim()
+  text = text.replace(/\s{2,}/g, ' ').trim()
+  if (!text) return 'Concepto Vario'
+  const normalized = text.toLowerCase()
+  if (normalized.includes('matricula') && normalized.includes('incorporacion')) {
+    return 'Matricula incorporacion'
+  }
+  if (normalized.includes('matricula')) return 'Matricula'
+  return text
+}
+
 export default function DashboardPage() {
   const { tenantId } = useTenant()
   const [loading, setLoading] = useState(false)
@@ -147,7 +162,6 @@ export default function DashboardPage() {
   const paymentsRecent = summary?.recent_payments || []
   const alerts = summary?.alerts || { pending_count: 0, birthdays: [], soon_end: [] }
   const attendances30d = summary?.attendance_30d || 0
-  const revByMethod = kpis?.revenue_by_method || {}
 
   const kpiData = [
     { label: 'Alumnos activos', value: kpis?.active_students || 0, icon: <HiUserGroup />, color: 'fuchsia' },
@@ -308,8 +322,13 @@ export default function DashboardPage() {
                         </div>
                         <div className="min-w-0">
                           <div className="text-xs md:text-sm font-black text-gray-900 group-hover:text-emerald-600 transition-colors truncate">
-                            {p.course_name || p.reference || 'Concepto Vario'}
+                            {cleanHistoricConcept(p.course_name || p.reference)}
                           </div>
+                          {p.student_name && (
+                            <div className="text-[9px] md:text-[10px] font-bold text-gray-500 truncate">
+                              Alumno: {p.student_name}
+                            </div>
+                          )}
                           <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5 truncate">
                              {methodLabel[p.method] || p.method}
                           </div>
@@ -324,15 +343,6 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Resumen por método */}
-              <div className="mt-8 md:mt-10 pt-8 md:pt-10 border-t border-gray-100 grid grid-cols-3 gap-3 md:gap-6">
-                {['cash', 'card', 'transfer'].map(m => (
-                  <div key={m} className="p-3 md:p-6 rounded-xl md:rounded-[24px] bg-gray-50/50 border border-gray-50 text-center group hover:bg-white hover:border-emerald-100 transition-all">
-                    <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 md:mb-2 truncate">{methodLabel[m] || m}</div>
-                    <div className="text-xs md:text-xl font-black text-gray-900 truncate">{fmtCLP.format(revByMethod[m] || 0)}</div>
-                  </div>
-                ))}
-              </div>
             </div>
           </section>
         </div>
@@ -408,7 +418,7 @@ export default function DashboardPage() {
                 <div className="flex flex-wrap gap-2">
                   {alerts.birthdays.map((n: string, i: number) => (
                     <div key={i} className="px-4 py-3 rounded-2xl bg-white/90 border border-amber-200 text-rose-700 text-xs font-black shadow-sm flex items-center gap-2 animate-in zoom-in duration-500" style={{ animationDelay: `${i*100}ms` }}>
-                       <span className="text-base">🎂</span>
+                       <span className="text-base">ðŸŽ‚</span>
                        {n}
                     </div>
                   ))}
@@ -441,5 +451,6 @@ export default function DashboardPage() {
     </div>
   )
 }
+
 
 

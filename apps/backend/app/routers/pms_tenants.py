@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Header, UploadFile, File
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, delete
 from pathlib import Path
@@ -34,6 +34,8 @@ class VerifyUnlockPayload(BaseModel):
 
 router = APIRouter(prefix="/api/pms/tenants", tags=["pms-tenants"])
 logger = logging.getLogger(__name__)
+MAX_SESSIONS_PER_TENANT = 3
+SESSION_PRESENCE_MINUTES = 1
 
 DEFAULT_TENANT_PLANS = [
     {"name": "Inicio 15", "max_active_students": 15, "monthly_price": 12000, "annual_price": 115200, "is_custom": False},
@@ -64,6 +66,19 @@ async def list_tenants(
 ):
     res = await db.execute(select(Tenant).order_by(Tenant.created_at.desc()))
     tenants = res.scalars().all()
+    now_dt = datetime.utcnow()
+    presence_cutoff = now_dt - timedelta(minutes=SESSION_PRESENCE_MINUTES)
+    sessions_res = await db.execute(
+        select(models.UserSession.tenant_id, func.count(models.UserSession.id))
+        .where(
+            models.UserSession.tenant_id.is_not(None),
+            models.UserSession.revoked_at.is_(None),
+            models.UserSession.expires_at > now_dt,
+            models.UserSession.last_seen_at > presence_cutoff,
+        )
+        .group_by(models.UserSession.tenant_id)
+    )
+    sessions_map = {int(tid): int(cnt) for tid, cnt in sessions_res.all() if tid is not None}
     for t in tenants:
         t.plan = await db.get(TenantPlan, t.plan_id) if t.plan_id else None
         _resolve_tenant_plan_snapshot(t)
@@ -71,6 +86,8 @@ async def list_tenants(
             select(models.User.is_superuser).where(models.User.tenant_id == t.id).order_by(models.User.id)
         )
         setattr(t, "admin_is_superuser", bool(admin_flag) if admin_flag is not None else None)
+        setattr(t, "active_sessions", sessions_map.get(t.id, 0))
+        setattr(t, "max_sessions", int(getattr(t, "max_sessions", None) or MAX_SESSIONS_PER_TENANT))
     return tenants
 
 
@@ -191,6 +208,7 @@ async def create_tenant(
         plan_label_snapshot=selected_plan.name if selected_plan else None,
         plan_start_date=payload.plan_start_date or (date.today() if selected_plan else None),
         plan_renewal_date=payload.plan_renewal_date or ( _next_renewal_for_cycle(billing_cycle) if selected_plan else None ),
+        max_sessions=int(payload.max_sessions or MAX_SESSIONS_PER_TENANT),
         enrollment_fee_enabled=bool(payload.enrollment_fee_enabled),
         enrollment_fee_amount=payload.enrollment_fee_amount,
         enrollment_fee_apply_to=payload.enrollment_fee_apply_to or "new_only",
@@ -418,6 +436,8 @@ async def update_tenant(
         tenant.plan_renewal_date = data["plan_renewal_date"]
     if "plan_start_date" in data:
         tenant.plan_start_date = data["plan_start_date"]
+    if "max_sessions" in data and data["max_sessions"] is not None:
+        tenant.max_sessions = max(1, min(5, int(data["max_sessions"])))
     if "attendance_pin" in data:
         tenant.attendance_pin = data["attendance_pin"]
     if "enrollment_fee_enabled" in data:
@@ -468,6 +488,27 @@ async def delete_tenant(
 
     await db.execute(delete(models.User).where(models.User.tenant_id == tenant_id))
     await db.delete(tenant)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{tenant_id}/sessions/revoke-all", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_all_tenant_sessions(
+    tenant_id: int,
+    _: models.User = Depends(get_current_active_superuser),
+    db: AsyncSession = Depends(get_db_session),
+):
+    tenant = await db.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+    await db.execute(
+        models.UserSession.__table__.update()
+        .where(
+            models.UserSession.tenant_id == tenant_id,
+            models.UserSession.revoked_at.is_(None),
+        )
+        .values(revoked_at=datetime.utcnow())
+    )
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

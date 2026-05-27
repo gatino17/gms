@@ -32,6 +32,8 @@ class TenantOut(BaseModel):
     plan_label_snapshot: Optional[str] = None
     plan_start_date: Optional[date] = None
     plan_renewal_date: Optional[date] = None
+    active_sessions: Optional[int] = 0
+    max_sessions: Optional[int] = 3
     enrollment_fee_enabled: bool = False
     enrollment_fee_amount: Optional[Decimal] = None
     enrollment_fee_apply_to: Optional[str] = "new_only"
@@ -66,6 +68,7 @@ class TenantCreate(BaseModel):
     price_locked: Optional[Decimal] = None
     plan_start_date: Optional[date] = None
     plan_renewal_date: Optional[date] = None
+    max_sessions: Optional[int] = Field(default=3, ge=1, le=5)
     enrollment_fee_enabled: Optional[bool] = False
     enrollment_fee_amount: Optional[Decimal] = None
     enrollment_fee_apply_to: Optional[str] = "new_only"
@@ -98,6 +101,7 @@ class TenantUpdate(BaseModel):
     plan_label_snapshot: Optional[str] = None
     plan_start_date: Optional[date] = None
     plan_renewal_date: Optional[date] = None
+    max_sessions: Optional[int] = Field(default=None, ge=1, le=5)
     enrollment_fee_enabled: Optional[bool] = None
     enrollment_fee_amount: Optional[Decimal] = None
     enrollment_fee_apply_to: Optional[str] = None

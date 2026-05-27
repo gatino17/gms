@@ -14,6 +14,7 @@ import {
   HiOutlineChartBar,
   HiOutlineExclamationCircle,
   HiOutlinePlus,
+  HiOutlineSwitchHorizontal,
   HiOutlineCheckCircle,
   HiOutlinePhotograph
 } from 'react-icons/hi'
@@ -439,17 +440,13 @@ export default function CourseStatusPage() {
                              <div className="flex items-center gap-2">
                                 <button
                                    onClick={() => openTransferModal(row)}
-                                   className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all"
-                                >
-                                   Trasladar
-                                </button>
+                                   className={`${viewMode === 'summary' ? 'flex' : 'hidden md:flex'} items-center justify-center gap-2 ${viewMode === 'summary' ? 'w-10 h-10 p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all`} title="Trasladar alumnos"
+                                >{viewMode === 'summary' ? <HiOutlineSwitchHorizontal size={16} /> : 'Trasladar'}</button>
                                 <button 
                                    onClick={() => { setEnrollModalCourseId(row.course.id); loadAllStudents(); }} 
-                                   className="flex items-center gap-2 px-4 py-2.5 bg-fuchsia-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 shadow-lg shadow-fuchsia-200 transition-all active:scale-95"
+                                   className={`flex items-center justify-center gap-2 ${viewMode === 'summary' ? 'w-10 h-10 p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-fuchsia-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 shadow-lg shadow-fuchsia-200 transition-all active:scale-95`} title="Inscribir alumno"
                                 >
-                                   <HiOutlinePlus size={14} />
-                                   Inscribir
-                                </button>
+                                   <HiOutlinePlus size={14} />{viewMode === 'summary' ? null : 'Inscribir'}</button>
                                 {(viewMode === 'detailed' || viewMode === 'pending' || viewMode === 'gender') && (
                                    <button onClick={() => navigate(`/courses/${row.course.id}`)} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-fuchsia-600 hover:shadow-lg transition-all group/btn">
                                       <HiOutlineChevronRight size={24} className="group-hover/btn:translate-x-0.5 transition-transform" />
@@ -1091,6 +1088,8 @@ export default function CourseStatusPage() {
     </div>
   )
 }
+
+
 
 
 

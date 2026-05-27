@@ -1,6 +1,8 @@
 ﻿from __future__ import annotations
 
 
+from datetime import datetime
+
 from fastapi import Header, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -35,6 +37,22 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
         )
+    # Si el token viene con jti, validar que la sesión siga activa.
+    jti = payload.get("jti")
+    if jti:
+        session_res = await db.execute(
+            select(models.UserSession).where(models.UserSession.token_jti == str(jti))
+        )
+        session = session_res.scalars().first()
+        if (
+            not session
+            or session.revoked_at is not None
+            or session.expires_at <= datetime.utcnow()
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Sesion cerrada o expirada. Vuelve a iniciar sesion.",
+            )
     result = await db.execute(select(models.User).where(models.User.id == token_data.sub))
     user = result.scalars().first()
     if not user:

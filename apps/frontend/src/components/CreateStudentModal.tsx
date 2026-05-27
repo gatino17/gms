@@ -193,7 +193,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
               <div className="lg:col-span-8 space-y-8">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.first_name ? 'text-rose-600' : 'text-gray-400'}`}>Nombres</label>
+                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.first_name ? 'text-rose-600' : 'text-gray-400'}`}>Nombres <span className="text-rose-500">*</span></label>
                        <input 
                           value={form.first_name}
                           onChange={(e) => setForm(f => ({ ...f, first_name: e.target.value }))}
@@ -202,7 +202,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
                        />
                     </div>
                     <div className="space-y-2">
-                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.last_name ? 'text-rose-600' : 'text-gray-400'}`}>Apellidos</label>
+                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.last_name ? 'text-rose-600' : 'text-gray-400'}`}>Apellidos <span className="text-rose-500">*</span></label>
                        <input 
                           value={form.last_name}
                           onChange={(e) => setForm(f => ({ ...f, last_name: e.target.value }))}
@@ -220,7 +220,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
                        />
                     </div>
                     <div className="space-y-2">
-                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.phone ? 'text-rose-600' : 'text-gray-400'}`}>WhatsApp / Teléfono</label>
+                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.phone ? 'text-rose-600' : 'text-gray-400'}`}>WhatsApp / Teléfono <span className="text-rose-500">*</span></label>
                        <input 
                           value={form.phone}
                           onChange={(e) => setForm(f => ({ ...f, phone: normalizePhoneInput(e.target.value) }))}
@@ -230,7 +230,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
                        />
                     </div>
                     <div className="space-y-2">
-                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.gender ? 'text-rose-600' : 'text-gray-400'}`}>Género</label>
+                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.gender ? 'text-rose-600' : 'text-gray-400'}`}>Género <span className="text-rose-500">*</span></label>
                        <select 
                           value={form.gender}
                           onChange={(e) => setForm(f => ({ ...f, gender: e.target.value }))}

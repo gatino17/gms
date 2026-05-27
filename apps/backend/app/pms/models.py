@@ -34,6 +34,21 @@ class User(Base):
 
 
 
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    token_jti: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    user_agent: Mapped[Optional[str]] = mapped_column(String(255))
+    ip_address: Mapped[Optional[str]] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False, index=True)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP, nullable=True, index=True)
+
+
 class Tenant(Base):
     __tablename__ = "tenants"
 
@@ -60,6 +75,7 @@ class Tenant(Base):
     plan_label_snapshot: Mapped[Optional[str]] = mapped_column(String(120))
     plan_start_date: Mapped[Optional[date]] = mapped_column(Date)
     plan_renewal_date: Mapped[Optional[date]] = mapped_column(Date)
+    max_sessions: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     enrollment_fee_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     enrollment_fee_amount: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
     enrollment_fee_apply_to: Mapped[Optional[str]] = mapped_column(String(30), default="new_only")

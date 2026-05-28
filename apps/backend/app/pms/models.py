@@ -239,6 +239,23 @@ class Payment(Base):
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
+class WhatsAppMessageLog(Base):
+    __tablename__ = "whatsapp_message_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    student_id: Mapped[Optional[int]] = mapped_column(ForeignKey("students.id", ondelete="SET NULL"), nullable=True, index=True)
+    course_id: Mapped[Optional[int]] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"), nullable=True, index=True)
+    to_phone: Mapped[str] = mapped_column(String(40), nullable=False)
+    message_body: Mapped[Optional[str]] = mapped_column(Text())
+    sid: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    status: Mapped[Optional[str]] = mapped_column(String(40), index=True)
+    error_code: Mapped[Optional[str]] = mapped_column(String(40))
+    error_message: Mapped[Optional[str]] = mapped_column(Text())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
 class Rental(Base):
     __tablename__ = "rentals"
 

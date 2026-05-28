@@ -83,6 +83,8 @@ export default function CourseStatusPage() {
   const [transferResult, setTransferResult] = useState<{ ok: number; fail: number; errors: string[] } | null>(null)
   const [transferSelectedIds, setTransferSelectedIds] = useState<number[]>([])
   const [allCoursesCatalog, setAllCoursesCatalog] = useState<Array<{ id: number; name: string }>>([])
+  const [waTestLoadingByStudent, setWaTestLoadingByStudent] = useState<Record<string, boolean>>({})
+  const [waTestResultByStudent, setWaTestResultByStudent] = useState<Record<string, { ok: boolean; message: string }>>({})
   
   // Quick Create Student States
   const [showQuickCreate, setShowQuickCreate] = useState(false)
@@ -237,6 +239,15 @@ export default function CourseStatusPage() {
     }
   }
 
+
+  const waStatusColorClass = (message?: string) => {
+    if (!message) return 'text-gray-500'
+    const m = message.toLowerCase()
+    if (m.includes('entregado')) return 'text-emerald-600'
+    if (m.includes('enviado')) return 'text-amber-600'
+    if (m.includes('no entregado')) return 'text-rose-600'
+    return 'text-gray-500'
+  }
   const filteredData = useMemo(() => {
     return data.map(row => ({
       ...row,
@@ -336,6 +347,44 @@ export default function CourseStatusPage() {
       }
     } finally {
       setTransferring(false)
+    }
+  }
+  const waKey = (courseId: number, studentId: number) => `${courseId}-${studentId}`
+
+  const handleWhatsAppTest = async (studentId: number, courseId: number) => {
+    const stateKey = waKey(courseId, studentId)
+    setWaTestLoadingByStudent((prev) => ({ ...prev, [stateKey]: true }))
+    setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: false, message: '' } }))
+    try {
+      const res = await api.post('/api/pms/whatsapp/test', { student_id: studentId, course_id: courseId })
+      const sid = String(res?.data?.sid || '')
+      setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: true, message: 'Mensaje enviado' } }))
+      if (sid) {
+        const delays = [4000, 10000, 20000]
+        for (const delay of delays) {
+          setTimeout(async () => {
+            try {
+              const st = await api.get(`/api/pms/whatsapp/status/${sid}`)
+              const status = String(st?.data?.status || '').toLowerCase()
+              if (status === 'delivered' || status === 'read') {
+                setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: true, message: 'Entregado' } }))
+                return
+              }
+              if (status === 'failed' || status === 'undelivered') {
+                setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: false, message: 'No entregado' } }))
+                return
+              }
+            } catch {
+              // no-op
+            }
+          }, delay)
+        }
+      }
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || 'No se pudo enviar.'
+      setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: false, message: String(msg) } }))
+    } finally {
+      setWaTestLoadingByStudent((prev) => ({ ...prev, [stateKey]: false }))
     }
   }
   return (
@@ -529,17 +578,18 @@ export default function CourseStatusPage() {
                                                </td>
                                                <td className="block md:table-cell pr-8 md:pr-12 pl-8 py-4 md:py-6 text-right">
                                                   <div className="flex items-center justify-start md:justify-end gap-3">
-                                                     {(() => {
-                                                        const customPart = tenantInfo?.whatsapp_message || `Te saludamos de ${tenantInfo?.name || 'la academia'}.`
-                                                        const msg = `Hola ${s.first_name}, ${customPart} Esperamos que estés disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente para el curso ${row.course.name}. Nos vemos pronto.`
-                                                        const cleanPhone = s.phone?.replace(/\D/g, '') || ''
-                                                        return (
-                                                          <a href={cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : '#'} onClick={e => !cleanPhone && e.preventDefault()} target={cleanPhone ? "_blank" : undefined} className={`flex items-center justify-center gap-3 px-5 py-3 md:p-3 rounded-2xl transition-all flex-1 md:flex-none border ${cleanPhone ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-100' : 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50'}`} title={cleanPhone ? "Enviar WhatsApp" : "Sin número de teléfono"}>
-                                                            <HiOutlinePhone size={18} />
-                                                            <span className="md:hidden text-[11px] font-black uppercase tracking-widest">WhatsApp</span>
-                                                          </a>
-                                                        )
-                                                     })()}
+                                                      <button
+                                                        onClick={() => handleWhatsAppTest(s.id, row.course.id)}
+                                                        disabled={!!waTestLoadingByStudent[waKey(row.course.id, s.id)]}
+                                                        className="flex items-center justify-center gap-3 px-5 py-3 md:p-3 rounded-2xl transition-all flex-1 md:flex-none border bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-100 disabled:opacity-60"
+                                                        title="Enviar WhatsApp"
+                                                      >
+                                                        <HiOutlinePhone size={18} />
+                                                        <span className="md:hidden text-[11px] font-black uppercase tracking-widest">{waTestLoadingByStudent[waKey(row.course.id, s.id)] ? 'Enviando' : 'WhatsApp'}</span>
+                                                      </button>
+                                                      {waTestResultByStudent[waKey(row.course.id, s.id)]?.message && (
+                                                        <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
+                                                      )}
                                                      <button onClick={() => navigate(`/students/${s.id}`)} className="flex items-center justify-center gap-3 px-5 py-3 md:p-3 bg-gray-50 text-gray-400 border border-gray-100 hover:text-fuchsia-600 hover:bg-white hover:border-fuchsia-100 hover:shadow-lg hover:shadow-fuchsia-100 rounded-2xl transition-all flex-1 md:flex-none">
                                                        <span className="md:hidden text-[11px] font-black uppercase tracking-widest">Perfil</span>
                                                        <HiOutlineChevronRight size={18} />
@@ -605,23 +655,17 @@ export default function CourseStatusPage() {
                                                        <div className={`w-1.5 h-1.5 rounded-full ${s.payment_status === 'activo' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                                                        {s.payment_status === 'activo' ? 'Pagado' : 'Pendiente'}
                                                      </span>
-                                                     {(() => {
-                                                       const customPart = tenantInfo?.whatsapp_message || `Te saludamos de ${tenantInfo?.name || 'la academia'}.`
-                                                       const msg = `Hola ${s.first_name}, ${customPart} Esperamos que estés disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente para el curso ${row.course.name}. Nos vemos pronto.`
-                                                       const cleanPhone = s.phone?.replace(/\D/g, '') || ''
-                                                       return (
-                                                         <a
-                                                           href={cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : '#'}
-                                                           onClick={e => !cleanPhone && e.preventDefault()}
-                                                           target={cleanPhone ? "_blank" : undefined}
-                                                           rel={cleanPhone ? "noopener noreferrer" : undefined}
-                                                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all shrink-0 ${cleanPhone ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white' : 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50'}`}
-                                                           title={cleanPhone ? "Enviar WhatsApp" : "Sin número de teléfono"}
-                                                         >
-                                                           <HiOutlinePhone size={14} />
-                                                         </a>
-                                                       )
-                                                     })()}
+                                                     {waTestResultByStudent[waKey(row.course.id, s.id)]?.message && (
+  <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
+)}
+<button
+  onClick={() => handleWhatsAppTest(s.id, row.course.id)}
+  disabled={!!waTestLoadingByStudent[waKey(row.course.id, s.id)]}
+  className="inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all shrink-0 bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white disabled:opacity-60"
+  title="Enviar WhatsApp"
+>
+  <HiOutlinePhone size={14} />
+</button>
                                                      </div>
                                                    </div>
                                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
@@ -671,23 +715,17 @@ export default function CourseStatusPage() {
                                                        <div className={`w-1.5 h-1.5 rounded-full ${s.payment_status === 'activo' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                                                        {s.payment_status === 'activo' ? 'Pagado' : 'Pendiente'}
                                                      </span>
-                                                     {(() => {
-                                                       const customPart = tenantInfo?.whatsapp_message || `Te saludamos de ${tenantInfo?.name || 'la academia'}.`
-                                                       const msg = `Hola ${s.first_name}, ${customPart} Esperamos que estés disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente para el curso ${row.course.name}. Nos vemos pronto.`
-                                                       const cleanPhone = s.phone?.replace(/\D/g, '') || ''
-                                                       return (
-                                                         <a
-                                                           href={cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}` : '#'}
-                                                           onClick={e => !cleanPhone && e.preventDefault()}
-                                                           target={cleanPhone ? "_blank" : undefined}
-                                                           rel={cleanPhone ? "noopener noreferrer" : undefined}
-                                                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all shrink-0 ${cleanPhone ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white' : 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50'}`}
-                                                           title={cleanPhone ? "Enviar WhatsApp" : "Sin número de teléfono"}
-                                                         >
-                                                           <HiOutlinePhone size={14} />
-                                                         </a>
-                                                       )
-                                                     })()}
+                                                     {waTestResultByStudent[waKey(row.course.id, s.id)]?.message && (
+  <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
+)}
+<button
+  onClick={() => handleWhatsAppTest(s.id, row.course.id)}
+  disabled={!!waTestLoadingByStudent[waKey(row.course.id, s.id)]}
+  className="inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all shrink-0 bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white disabled:opacity-60"
+  title="Enviar WhatsApp"
+>
+  <HiOutlinePhone size={14} />
+</button>
                                                      </div>
                                                    </div>
                                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
@@ -1088,6 +1126,19 @@ export default function CourseStatusPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -9,7 +9,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./apps/backend/static:/app/static
+      - ./apps/backend/app/static:/app/app/static
 
   frontend:
     build:

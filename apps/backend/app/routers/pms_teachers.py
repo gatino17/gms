@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.pms.models import Teacher
+from app.pms.models import Teacher, Course, Payment
 from app.pms.deps import get_tenant_id, get_db_session
 from pydantic import BaseModel, EmailStr
 from typing import Optional
@@ -153,6 +153,19 @@ async def delete_teacher(
     obj = res.scalar_one_or_none()
     if not obj:
         raise HTTPException(status_code=404, detail="Profesor no encontrado")
+    teacher_name = (obj.name or "").strip()
+    if teacher_name:
+        await db.execute(
+            Payment.__table__.update()
+            .where(
+                Payment.tenant_id == tenant_id,
+                Payment.course_id.in_(
+                    select(Course.id).where(Course.tenant_id == tenant_id, Course.teacher_id == teacher_id)
+                ),
+                (Payment.teacher_name_snapshot.is_(None)) | (func.trim(Payment.teacher_name_snapshot) == ""),
+            )
+            .values(teacher_name_snapshot=teacher_name)
+        )
     await db.delete(obj)
     await db.commit()
     return None

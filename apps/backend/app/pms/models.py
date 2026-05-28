@@ -236,6 +236,7 @@ class Payment(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="SET NULL"), nullable=True, index=True)
     student_name: Mapped[Optional[str]] = mapped_column(String(160)) # Denormalized name for persistence
     course_id: Mapped[Optional[int]] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"), index=True)
+    teacher_name_snapshot: Mapped[Optional[str]] = mapped_column(String(160))
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     payment_date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False, index=True)
     method: Mapped[str] = mapped_column(String(30))  # cash, card, transfer

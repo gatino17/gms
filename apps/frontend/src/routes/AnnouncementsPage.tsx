@@ -155,9 +155,9 @@ export default function AnnouncementsPage() {
 
       {/* Modal Form - Portal-like behavior */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-4 overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-start md:items-center justify-center p-4 md:p-6 overflow-y-auto">
            <div className="fixed inset-0 bg-black/60 backdrop-blur-xl animate-in fade-in duration-500" onClick={()=>setShowModal(false)} />
-           <div className="relative w-full h-full md:h-auto md:max-w-lg bg-white rounded-none md:rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col border border-white/20">
+           <div className="relative w-full md:max-w-lg bg-white rounded-2xl md:rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col border border-white/20 max-h-[calc(100dvh-2rem)] md:max-h-[calc(100dvh-4rem)]">
               <div className="p-4 md:p-6 bg-gradient-to-br from-fuchsia-600 to-purple-600 text-white flex justify-between items-center shrink-0">
                  <div>
                     <h2 className="text-lg md:text-xl font-black">Nuevo Anuncio</h2>
@@ -168,7 +168,7 @@ export default function AnnouncementsPage() {
                  </button>
               </div>
 
-              <div className="p-5 md:p-6 space-y-5 overflow-y-auto flex-1 custom-scrollbar bg-gray-50/30">
+              <div className="p-5 md:p-6 space-y-5 overflow-y-auto flex-1 min-h-0 custom-scrollbar bg-gray-50/30">
                  <div className="space-y-4">
                     <div className="space-y-1.5">
                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">Título</label>

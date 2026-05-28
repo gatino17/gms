@@ -158,23 +158,23 @@ export default function CourseDetailPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="relative bg-white md:rounded-[40px] shadow-sm border-y md:border border-gray-100 overflow-hidden mx-0 md:mx-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr,400px]">
+      <div className="relative bg-white md:rounded-[32px] shadow-sm border-y md:border border-gray-100 overflow-hidden mx-0 md:mx-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr,300px] items-start">
           {/* Info */}
-          <div className="p-6 md:p-8 lg:p-12 space-y-6 md:space-y-8">
-            <div className="space-y-3 md:space-y-4 text-center md:text-left">
+          <div className="p-4 md:p-6 lg:p-7 space-y-4 md:space-y-5">
+            <div className="space-y-2.5 md:space-y-3 text-center md:text-left">
               <div className="flex flex-wrap justify-center md:justify-start gap-2">
                  <span className="px-2 md:px-3 py-1 bg-fuchsia-100 text-fuchsia-700 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded-full">{course.level || 'Sin Nivel'}</span>
                  <span className="px-2 md:px-3 py-1 bg-purple-100 text-purple-700 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded-full">{course.course_type || 'Regular'}</span>
               </div>
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 tracking-tight leading-tight">{course.name}</h1>
-              <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 md:gap-6 text-gray-500 font-bold text-sm md:text-base">
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 tracking-tight leading-tight">{course.name}</h1>
+              <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 md:gap-5 text-gray-500 font-bold text-xs md:text-sm">
                  <div className="flex items-center gap-2"><HiOutlineUserGroup className="text-fuchsia-500" /> {teacher.name || 'Sin Instructor'}</div>
                  <div className="flex items-center gap-2"><HiOutlineCalendar className="text-fuchsia-500" /> Sala: {room.name || 'Gral.'}</div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
 	               {[
                  { label: 'Alumnos', value: counts.total, icon: HiOutlineUserGroup, color: 'fuchsia' },
                  { label: 'Precio', value: fmtCLP(course.price || 0), icon: HiOutlineTicket, color: 'emerald' },
@@ -203,17 +203,17 @@ export default function CourseDetailPage() {
                  { label: 'Sesiones', value: `${sessionsPerWeek}/sem`, icon: HiOutlineClock, color: 'amber' },
                  { label: 'Estado', value: course.is_active !== false ? 'Abierta' : 'Cerrada', icon: HiOutlineStar, color: 'blue' },
                ].map((s, i) => (
-                 <div key={i} className="bg-gray-50/50 p-4 rounded-2xl md:rounded-3xl border border-gray-100 flex flex-col items-center md:items-start">
-                    <div className={`text-${s.color}-600 mb-2`}><s.icon size={18} /></div>
-                    <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
-                    <div className="text-base md:text-lg font-black text-gray-900 mt-1">{s.value}</div>
+                 <div key={i} className="bg-gray-50/50 p-3 rounded-2xl border border-gray-100 flex flex-col items-center md:items-start">
+                    <div className={`text-${s.color}-600 mb-1.5`}><s.icon size={16} /></div>
+                    <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
+                    <div className="text-sm md:text-base font-black text-gray-900 mt-0.5">{s.value}</div>
                  </div>
                ))}
             </div>
           </div>
 
           {/* Image */}
-          <div className="h-48 md:h-64 lg:h-auto bg-gray-100 relative order-first lg:order-last">
+          <div className="h-40 md:h-52 lg:h-[360px] bg-gray-100 relative order-first lg:order-last self-start">
              {course.image_url ? (
                <img src={toAbsoluteUrl(course.image_url)} className="w-full h-full object-cover" />
              ) : (
@@ -272,9 +272,9 @@ export default function CourseDetailPage() {
 
                 return (
                   <tr key={s.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors">
-                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6">
-                       <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 overflow-hidden ${isPaid ? 'bg-fuchsia-100 text-fuchsia-600' : 'bg-gray-100 text-gray-400'}`}>
+                    <td className="block md:table-cell px-6 md:px-8 py-3 md:py-4">
+                       <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 overflow-hidden bg-fuchsia-100 text-fuchsia-600">
                              {s.photo_url ? (
                                 <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" />
                              ) : (
@@ -282,20 +282,28 @@ export default function CourseDetailPage() {
                              )}
                           </div>
                           <div className="min-w-0">
-                             <div className="font-black text-gray-900 truncate">{s.first_name} {s.last_name}</div>
+                             <div className="font-black text-gray-900 truncate flex items-center gap-1">
+                               <span>{s.first_name} {s.last_name}</span>
+                               {(() => {
+                                 const g = (s.gender || '').toLowerCase()
+                                 if (g.startsWith('f') || g.startsWith('muj')) return <IoFemale className="text-pink-500 shrink-0" size={14} />
+                                 if ((g.startsWith('m') && !g.startsWith('muj')) || g.startsWith('h')) return <IoMale className="text-sky-500 shrink-0" size={14} />
+                                 return <HiOutlineUser className="text-gray-400 shrink-0" size={14} />
+                               })()}
+                             </div>
                              <div className="text-[9px] font-bold text-gray-400 uppercase">Alumno #{s.id}</div>
                           </div>
                        </div>
                     </td>
-                    <td className="block md:table-cell px-6 py-2 md:py-6 text-left md:text-center">
+                    <td className="block md:table-cell px-6 py-1.5 md:py-4 text-left md:text-center">
                        <span className={`inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                           {isPaid ? 'Al día' : 'Pendiente'}
                        </span>
                     </td>
-                    <td className="hidden md:table-cell px-6 py-6 text-center font-bold text-sm text-gray-600">
+                    <td className="hidden md:table-cell px-6 py-4 text-center font-bold text-sm text-gray-600">
                        {s.renewal_date ? ymdToCL(s.renewal_date) : '---'}
                     </td>
-                    <td className="block md:table-cell px-6 py-2 md:py-6 text-left md:text-center">
+                    <td className="block md:table-cell px-6 py-1.5 md:py-4 text-left md:text-center">
                        <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Asistencia Hoy</div>
                        {hasAtt ? (
                          <div className="inline-flex items-center gap-1.5 text-emerald-600 font-black text-[10px] uppercase">
@@ -305,7 +313,7 @@ export default function CourseDetailPage() {
                          <span className="text-gray-300 font-bold text-[10px] uppercase tracking-widest">Ausente</span>
                        )}
                     </td>
-                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6 text-left md:text-right">
+                    <td className="block md:table-cell px-6 md:px-8 py-3 md:py-4 text-left md:text-right">
                        <div className="flex items-center gap-2">
                           {!hasAtt && (
                             <button 

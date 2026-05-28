@@ -277,6 +277,7 @@ class PaymentBase(BaseModel):
     student_id: Optional[int] = None
     student_name: Optional[str] = None
     course_id: Optional[int] = None
+    teacher_name_snapshot: Optional[str] = None
     amount: Decimal
     payment_date: Optional[date] = None
     method: str

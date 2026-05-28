@@ -29,6 +29,7 @@ type Payment = {
   notes?: string | null
   payment_date: string
   student_name?: string | null
+  teacher_name_snapshot?: string | null
   period_start?: string | null
   period_end?: string | null
 }
@@ -158,7 +159,7 @@ export default function PaymentsTeachers() {
     return payments.map(p => {
       const c = p.course_id ? courses[p.course_id] : null
       const isRegistration = (p.type || '').toLowerCase() === 'registration'
-      const teacherName = isRegistration ? 'Matrículas' : (c?.teacher_name || historicTeacherFromReference(p.reference) || 'Sin profesor')
+      const teacherName = isRegistration ? 'Matrículas' : (c?.teacher_name || p.teacher_name_snapshot || historicTeacherFromReference(p.reference) || 'Sin profesor')
       const courseName = isRegistration ? 'Matrícula' : (c?.name || '-')
       const studentName = p.student_name || (p.student_id ? (students[p.student_id]?.name || '-') : '-')
       return { ...p, teacherName, courseName, studentName }

@@ -33,6 +33,7 @@ type Payment = {
   student_name?: string | null
   course_name?: string | null
   teacher_name?: string | null
+  teacher_name_snapshot?: string | null
   amount: number
   method: string
   type: string
@@ -307,7 +308,7 @@ export default function PaymentsPage() {
       const toProfessorBucket = (p: Payment) =>
         (p.type === 'registration'
           ? 'Matrículas'
-          : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || 'Sin asignar'))
+          : (p.teacher_name || p.teacher_name_snapshot || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || 'Sin asignar'))
 
       const courseWithSchedule = (p: Payment) => {
         if (p.type === 'registration') return 'Matrícula'
@@ -326,7 +327,7 @@ export default function PaymentsPage() {
       Fecha: toDDMMYYYY(p.payment_date),
       Alumno: p.student_name || students[p.student_id!]?.name || '-',
       Curso: courseWithSchedule(p),
-      Profesor: p.type === 'registration' ? '-' : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || '-'),
+      Profesor: p.type === 'registration' ? '-' : (p.teacher_name || p.teacher_name_snapshot || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || '-'),
       Periodo: findPeriod(p),
       Metodo: methodLabel(p.method),
       Tipo: typeLabel(p.type),
@@ -387,7 +388,7 @@ export default function PaymentsPage() {
           Fecha: toDDMMYYYY(p.payment_date),
           Alumno: p.student_name || students[p.student_id!]?.name || '-',
           Curso: courseWithSchedule(p),
-          Profesor: p.type === 'registration' ? '-' : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || '-'),
+          Profesor: p.type === 'registration' ? '-' : (p.teacher_name || p.teacher_name_snapshot || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || '-'),
           Periodo: findPeriod(p),
           Metodo: methodLabel(p.method),
           Tipo: typeLabel(p.type),
@@ -507,7 +508,7 @@ export default function PaymentsPage() {
       const name =
         (p.type || '').toLowerCase() === 'registration'
           ? 'Matrícula'
-          : (p.teacher_name || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || 'Sin asignar')
+          : (p.teacher_name || p.teacher_name_snapshot || (p.course_id && courses[p.course_id]?.teacher_name) || historicTeacherFromReference(p.reference) || 'Sin asignar')
       if (!map[name]) map[name] = { name, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
       
       const m = p.method

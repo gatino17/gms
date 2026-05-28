@@ -37,10 +37,12 @@ async def payments_by_teacher(
     d_from = parse_date(date_from)
     d_to = parse_date(date_to)
 
+    teacher_name_expr = func.coalesce(Teacher.name, Payment.teacher_name_snapshot, 'Sin profesor')
+
     base = (
         select(
             Course.teacher_id.label('teacher_id'),
-            func.coalesce(Teacher.name, 'Sin profesor').label('teacher_name'),
+            teacher_name_expr.label('teacher_name'),
             func.sum(Payment.amount).label('total'),
             func.sum(case((Payment.method == 'efectivo', Payment.amount), else_=0)).label('cash'),
             func.sum(case((or_(Payment.method == 'debito', Payment.method == 'credito', Payment.method == 'card'), Payment.amount), else_=0)).label('card'),
@@ -67,8 +69,8 @@ async def payments_by_teacher(
     if type:
         base = base.where(Payment.type == type)
 
-    grouped = base.group_by(Course.teacher_id, Teacher.name)
-    ordered = grouped.order_by(func.sum(Payment.amount).desc(), func.coalesce(Teacher.name, ''))
+    grouped = base.group_by(Course.teacher_id, Teacher.name, Payment.teacher_name_snapshot)
+    ordered = grouped.order_by(func.sum(Payment.amount).desc(), teacher_name_expr.asc())
     res = await db.execute(ordered.offset(offset).limit(limit))
     rows = res.all()
 
@@ -242,6 +244,16 @@ async def create_payment(
         s = res.scalar_one_or_none()
         if s:
             data['student_name'] = f"{s.first_name} {s.last_name}".strip()
+    if data.get('course_id') and not data.get('teacher_name_snapshot'):
+        course_res = await db.execute(
+            select(Teacher.name)
+            .select_from(Course)
+            .join(Teacher, Course.teacher_id == Teacher.id, isouter=True)
+            .where(Course.id == data['course_id'], Course.tenant_id == tenant_id)
+        )
+        teacher_name = course_res.scalar_one_or_none()
+        if teacher_name:
+            data['teacher_name_snapshot'] = teacher_name
             
     obj = Payment(tenant_id=tenant_id, **data)
     db.add(obj)

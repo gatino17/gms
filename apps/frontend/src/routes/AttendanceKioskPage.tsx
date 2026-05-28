@@ -40,6 +40,7 @@ type KioskCourse = {
 
 export default function AttendanceKioskPage() {
   const FEEDBACK_DURATION_MS = 4000
+  const COURSES_REFRESH_MS = 1000
   const navigate = useNavigate()
   const { tenantId } = useTenant()
 
@@ -127,13 +128,13 @@ export default function AttendanceKioskPage() {
     return () => clearInterval(id)
   }, [])
 
-  const loadTodayCourses = async () => {
+  const loadTodayCourses = async (silent = false) => {
     if (!tenantId) {
       setCourses([])
       setLoading(false)
       return
     }
-    setLoading(true)
+    if (!silent) setLoading(true)
     try {
       // JS: 0=Sunday..6=Saturday, backend: 0=Monday..6=Sunday
       const jsDay = new Date().getDay()
@@ -143,10 +144,15 @@ export default function AttendanceKioskPage() {
         headers: { 'X-Tenant-ID': tenantId },
       })
       setCourses(data)
+      setSelectedCourse((prev) => {
+        if (!prev) return prev
+        const updated = data.find((c) => c.course.id === prev.course.id)
+        return updated ?? prev
+      })
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -297,6 +303,23 @@ export default function AttendanceKioskPage() {
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [tenantId, selectedCourse?.course.id])
+
+  useEffect(() => {
+    if (!tenantId) return
+    const tick = () => loadTodayCourses(true)
+    const id = setInterval(tick, COURSES_REFRESH_MS)
+    const onFocus = () => tick()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') tick()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(id)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [tenantId])
 
   if (loading) {
     return (

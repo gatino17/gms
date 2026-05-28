@@ -111,7 +111,7 @@ export default function CreateTeacherModal({ onClose, onSuccess }: Props) {
 
       <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
         <div className="flex min-h-full items-start justify-center p-4 sm:p-8">
-          <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col border border-gray-100">
+          <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-4xl max-h-[calc(100dvh-2rem)] md:max-h-[calc(100dvh-4rem)] overflow-hidden flex flex-col border border-gray-100">
             <div className="px-6 py-5 md:px-8 md:py-6 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white flex items-center justify-between shrink-0">
               <div>
                 <h2 className="text-2xl font-black tracking-tight">Registro de Profesor</h2>
@@ -122,7 +122,7 @@ export default function CreateTeacherModal({ onClose, onSuccess }: Props) {
               </button>
             </div>
 
-            <div className="p-6 md:p-8 overflow-y-auto space-y-6 custom-scrollbar">
+            <div className="p-6 md:p-8 flex-1 min-h-0 overflow-y-auto space-y-6 custom-scrollbar">
               {error && (
                 <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-sm font-bold flex items-center gap-3">
                   <HiOutlineX className="shrink-0" /> {error}

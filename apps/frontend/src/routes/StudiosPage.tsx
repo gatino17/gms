@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
-import { HiOutlinePlus, HiOutlineEye, HiOutlineEyeOff, HiOutlineCurrencyDollar, HiOutlineUserGroup, HiOutlinePencilAlt } from 'react-icons/hi'
+import { HiOutlinePlus, HiOutlineEye, HiOutlineEyeOff, HiOutlineCurrencyDollar, HiOutlineUserGroup, HiOutlinePencilAlt, HiOutlinePhone } from 'react-icons/hi'
 
 type StudioForm = {
   name: string
@@ -63,6 +63,15 @@ type PlanForm = {
   annual_price: string
   is_active: boolean
   is_custom: boolean
+}
+
+type TwilioAdminConfig = {
+  account_sid: string
+  auth_token_configured: boolean
+  auth_token_masked?: string | null
+  whatsapp_from: string
+  enabled: boolean
+  source: string
 }
 
 type Studio = {
@@ -195,6 +204,20 @@ export default function StudiosPage() {
   const [showPlanForm, setShowPlanForm] = useState(false)
   const [deletingPlanId, setDeletingPlanId] = useState<number | null>(null)
   const [planDeleteTarget, setPlanDeleteTarget] = useState<TenantPlan | null>(null)
+  const [twilioForm, setTwilioForm] = useState({
+    account_sid: '',
+    auth_token: '',
+    whatsapp_from: 'whatsapp:+14155238886',
+    enabled: true,
+  })
+  const [twilioConfig, setTwilioConfig] = useState<TwilioAdminConfig | null>(null)
+  const [twilioTestPhone, setTwilioTestPhone] = useState('')
+  const [twilioTestBody, setTwilioTestBody] = useState('Prueba de WhatsApp desde configuracion de Studios.')
+  const [twilioSaving, setTwilioSaving] = useState(false)
+  const [twilioTesting, setTwilioTesting] = useState(false)
+  const [showTwilioToken, setShowTwilioToken] = useState(false)
+  const [twilioMessage, setTwilioMessage] = useState<string | null>(null)
+  const [twilioError, setTwilioError] = useState<string | null>(null)
 
   const currencyFormatter = new Intl.NumberFormat('es-CL')
   const formatMoney = (value?: string | number | null) => {
@@ -261,6 +284,22 @@ export default function StudiosPage() {
       setPlans(data)
     } catch {
       setPlans([])
+    }
+  }
+
+  const fetchTwilioConfig = async () => {
+    try {
+      const { data } = await api.get<TwilioAdminConfig>('/api/pms/whatsapp/admin-config')
+      setTwilioConfig(data)
+      setTwilioForm((prev) => ({
+        ...prev,
+        account_sid: data.account_sid || '',
+        auth_token: '',
+        whatsapp_from: data.whatsapp_from || prev.whatsapp_from,
+        enabled: !!data.enabled,
+      }))
+    } catch {
+      setTwilioConfig(null)
     }
   }
 
@@ -345,6 +384,7 @@ export default function StudiosPage() {
   useEffect(() => {
     fetchStudios()
     fetchPlans()
+    fetchTwilioConfig()
   }, [])
 
   useEffect(() => {
@@ -360,6 +400,49 @@ export default function StudiosPage() {
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])
+
+  const handleSaveTwilioConfig = async (event: FormEvent) => {
+    event.preventDefault()
+    setTwilioSaving(true)
+    setTwilioMessage(null)
+    setTwilioError(null)
+    try {
+      await api.put('/api/pms/whatsapp/admin-config', {
+        account_sid: twilioForm.account_sid.trim(),
+        auth_token: twilioForm.auth_token.trim(),
+        whatsapp_from: twilioForm.whatsapp_from.trim(),
+        enabled: twilioForm.enabled,
+      })
+      setTwilioMessage('Configuracion Twilio guardada correctamente.')
+      setTwilioForm((prev) => ({ ...prev, auth_token: '' }))
+      await fetchTwilioConfig()
+    } catch (err: any) {
+      setTwilioError(err?.response?.data?.detail || err?.message || 'No se pudo guardar la configuracion Twilio.')
+    } finally {
+      setTwilioSaving(false)
+    }
+  }
+
+  const handleTwilioTest = async () => {
+    if (!twilioTestPhone.trim()) {
+      setTwilioError('Debes ingresar un numero para la prueba.')
+      return
+    }
+    setTwilioTesting(true)
+    setTwilioMessage(null)
+    setTwilioError(null)
+    try {
+      const { data } = await api.post('/api/pms/whatsapp/admin-test', {
+        to_phone: twilioTestPhone.trim(),
+        body: twilioTestBody.trim() || undefined,
+      })
+      setTwilioMessage(data?.message || `Prueba enviada. SID: ${data?.sid || '-'}`)
+    } catch (err: any) {
+      setTwilioError(err?.response?.data?.detail || err?.message || 'No se pudo enviar la prueba.')
+    } finally {
+      setTwilioTesting(false)
+    }
+  }
 
   useEffect(() => {
     if (editTarget) {
@@ -752,6 +835,122 @@ export default function StudiosPage() {
           </div>
         </div>
       )}
+
+      <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base md:text-lg font-black text-gray-900">Configuracion Twilio-WhatsApp</h2>
+            <p className="text-gray-400 text-xs md:text-sm font-medium">Configura SID, token y numero origen sin editar archivos del servidor.</p>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Origen</div>
+            <div className="text-xs font-black text-fuchsia-600">{twilioConfig?.source === 'database' ? 'Studios' : 'ENV'}</div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveTwilioConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account SID</label>
+            <input
+              value={twilioForm.account_sid}
+              onChange={(e) => setTwilioForm((p) => ({ ...p, account_sid: e.target.value }))}
+              className="w-full px-5 py-3 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 outline-none font-bold text-gray-700"
+              placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Auth Token</label>
+            <div className="flex items-center gap-2">
+              <input
+                type={showTwilioToken ? 'text' : 'password'}
+                value={twilioForm.auth_token}
+                onChange={(e) => setTwilioForm((p) => ({ ...p, auth_token: e.target.value }))}
+                className="flex-1 px-5 py-3 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 outline-none font-bold text-gray-700"
+                placeholder={twilioConfig?.auth_token_configured ? 'Token configurado (ingresa uno nuevo para reemplazar)' : 'Ingresa token'}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowTwilioToken((v) => !v)}
+                className="px-3 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-600 hover:bg-gray-200"
+              >
+                {showTwilioToken ? 'Ocultar' : 'Ver'}
+              </button>
+            </div>
+            {twilioConfig?.auth_token_configured && !twilioForm.auth_token && (
+              <p className="text-[10px] font-bold text-gray-500">
+                Token ya configurado. Por seguridad no se muestra; ingresa uno nuevo si deseas reemplazarlo.
+              </p>
+            )}
+            {showTwilioToken && !twilioForm.auth_token && twilioConfig?.auth_token_masked && (
+              <p className="text-[10px] font-bold text-fuchsia-600">
+                Token actual (enmascarado): {twilioConfig.auth_token_masked}
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Numero Origen</label>
+            <input
+              value={twilioForm.whatsapp_from}
+              onChange={(e) => setTwilioForm((p) => ({ ...p, whatsapp_from: e.target.value }))}
+              className="w-full px-5 py-3 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 outline-none font-bold text-gray-700"
+              placeholder="whatsapp:+14155238886"
+              required
+            />
+          </div>
+          <label className="md:col-span-2 inline-flex items-center gap-2 text-xs font-black text-gray-600 uppercase tracking-widest">
+            <input
+              type="checkbox"
+              checked={twilioForm.enabled}
+              onChange={(e) => setTwilioForm((p) => ({ ...p, enabled: e.target.checked }))}
+              className="w-4 h-4"
+            />
+            Canal activo
+          </label>
+
+          <div className="md:col-span-2 flex justify-end">
+            <button
+              type="submit"
+              disabled={twilioSaving}
+              className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 shadow-lg shadow-fuchsia-200 hover:shadow-xl transition-all disabled:opacity-60"
+            >
+              {twilioSaving ? 'Guardando...' : 'Guardar Twilio'}
+            </button>
+          </div>
+        </form>
+
+        <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 space-y-3">
+          <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Prueba Rapida</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <input
+              value={twilioTestPhone}
+              onChange={(e) => setTwilioTestPhone(e.target.value)}
+              className="md:col-span-1 px-4 py-3 rounded-xl bg-white border border-gray-200 outline-none font-bold text-gray-700"
+              placeholder="+569XXXXXXXX"
+            />
+            <input
+              value={twilioTestBody}
+              onChange={(e) => setTwilioTestBody(e.target.value)}
+              className="md:col-span-2 px-4 py-3 rounded-xl bg-white border border-gray-200 outline-none font-bold text-gray-700"
+              placeholder="Mensaje de prueba"
+            />
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleTwilioTest}
+              disabled={twilioTesting}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-60"
+            >
+              <HiOutlinePhone className="h-4 w-4" />
+              {twilioTesting ? 'Enviando...' : 'Probar envio'}
+            </button>
+          </div>
+        </div>
+        {twilioMessage && <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">{twilioMessage}</div>}
+        {twilioError && <div className="text-[10px] font-black uppercase tracking-widest text-rose-600">{twilioError}</div>}
+      </div>
 
       <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-6">
         <div>

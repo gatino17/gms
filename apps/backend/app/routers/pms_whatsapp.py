@@ -9,10 +9,11 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 import base64
 import json
+import asyncio
 
 from app.core.config import settings
-from app.pms.deps import get_db_session, get_tenant_id
-from app.pms.models import Tenant, Student, Course, WhatsAppMessageLog
+from app.pms.deps import get_db_session, get_tenant_id, get_current_active_superuser
+from app.pms.models import Tenant, Student, Course, WhatsAppMessageLog, AppSetting
 
 
 router = APIRouter(prefix="/api/pms/whatsapp", tags=["pms-whatsapp"])
@@ -22,6 +23,67 @@ DAY_NAMES = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "dom
 class WhatsAppTestIn(BaseModel):
     student_id: int
     course_id: int
+
+
+class TwilioAdminConfigIn(BaseModel):
+    account_sid: str
+    auth_token: str
+    whatsapp_from: str
+    enabled: bool = True
+
+
+class TwilioAdminConfigOut(BaseModel):
+    account_sid: str
+    auth_token_configured: bool
+    auth_token_masked: str | None = None
+    whatsapp_from: str
+    enabled: bool
+    source: str
+
+
+class TwilioAdminTestIn(BaseModel):
+    to_phone: str
+    body: str | None = None
+
+
+def _mask_secret(value: str) -> str:
+    if not value:
+        return ""
+    if len(value) <= 8:
+        return "*" * len(value)
+    return f"{value[:4]}{'*' * (len(value) - 8)}{value[-4:]}"
+
+
+async def _get_app_setting(db: AsyncSession, key: str) -> str:
+    row = (await db.execute(select(AppSetting).where(AppSetting.key == key))).scalars().first()
+    return (row.value or "").strip() if row else ""
+
+
+async def _set_app_setting(db: AsyncSession, key: str, value: str) -> None:
+    row = (await db.execute(select(AppSetting).where(AppSetting.key == key))).scalars().first()
+    if row:
+        row.value = value
+    else:
+        db.add(AppSetting(key=key, value=value))
+
+
+async def _resolve_twilio_config(db: AsyncSession) -> tuple[str, str, str, bool, str]:
+    sid_db = await _get_app_setting(db, "twilio_account_sid")
+    token_db = await _get_app_setting(db, "twilio_auth_token")
+    from_db = await _get_app_setting(db, "twilio_whatsapp_from")
+    enabled_raw = await _get_app_setting(db, "twilio_enabled")
+    enabled_db = enabled_raw.lower() in ("1", "true", "yes", "on")
+
+    if sid_db and token_db and from_db:
+        return sid_db, token_db, from_db, enabled_db if enabled_raw else True, "database"
+
+    return (
+        settings.twilio_account_sid.strip(),
+        settings.twilio_auth_token.strip(),
+        settings.twilio_whatsapp_from.strip(),
+        True,
+        "env",
+    )
 
 
 def _normalize_phone(phone: str | None) -> str:
@@ -63,20 +125,20 @@ def _build_message(student_name: str, course: Course, tenant_name: str, custom_p
         f"Nos vemos pronto ✨."
     )
 
-def _twilio_send_whatsapp(to_phone: str, message: str) -> dict:
-    if not settings.twilio_account_sid or not settings.twilio_auth_token:
+def _twilio_send_whatsapp(to_phone: str, message: str, account_sid: str, auth_token: str, whatsapp_from: str) -> dict:
+    if not account_sid or not auth_token or not whatsapp_from:
         raise HTTPException(status_code=400, detail="Twilio no configurado en el servidor.")
 
     form = urlencode(
         {
-            "From": settings.twilio_whatsapp_from,
+            "From": whatsapp_from,
             "To": to_phone,
             "Body": message,
         }
     ).encode("utf-8")
 
-    url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.twilio_account_sid}/Messages.json"
-    auth_raw = f"{settings.twilio_account_sid}:{settings.twilio_auth_token}".encode("utf-8")
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+    auth_raw = f"{account_sid}:{auth_token}".encode("utf-8")
     auth_b64 = base64.b64encode(auth_raw).decode("ascii")
     req = Request(url, data=form, method="POST")
     req.add_header("Authorization", f"Basic {auth_b64}")
@@ -97,12 +159,12 @@ def _twilio_send_whatsapp(to_phone: str, message: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Error enviando WhatsApp: {e}")
 
 
-def _twilio_get_message_status(sid: str) -> dict:
-    if not settings.twilio_account_sid or not settings.twilio_auth_token:
+def _twilio_get_message_status(sid: str, account_sid: str, auth_token: str) -> dict:
+    if not account_sid or not auth_token:
         raise HTTPException(status_code=400, detail="Twilio no configurado en el servidor.")
 
-    url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.twilio_account_sid}/Messages/{sid}.json"
-    auth_raw = f"{settings.twilio_account_sid}:{settings.twilio_auth_token}".encode("utf-8")
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages/{sid}.json"
+    auth_raw = f"{account_sid}:{auth_token}".encode("utf-8")
     auth_b64 = base64.b64encode(auth_raw).decode("ascii")
     req = Request(url, method="GET")
     req.add_header("Authorization", f"Basic {auth_b64}")
@@ -152,13 +214,23 @@ async def whatsapp_test_send(
     if not to_phone:
         raise HTTPException(status_code=400, detail="El alumno no tiene telÃ©fono vÃ¡lido para WhatsApp.")
 
+    account_sid, auth_token, whatsapp_from, enabled, _ = await _resolve_twilio_config(db)
+    if not enabled:
+        raise HTTPException(status_code=400, detail="Twilio esta desactivado en configuracion.")
+
     msg = _build_message(
         student_name=student.first_name,
         course=course,
         tenant_name=tenant.name or "la academia",
         custom_part=tenant.whatsapp_message,
     )
-    twilio_payload = _twilio_send_whatsapp(to_phone=to_phone, message=msg)
+    twilio_payload = _twilio_send_whatsapp(
+        to_phone=to_phone,
+        message=msg,
+        account_sid=account_sid,
+        auth_token=auth_token,
+        whatsapp_from=whatsapp_from,
+    )
     log = WhatsAppMessageLog(
         tenant_id=tenant_id,
         student_id=student.id,
@@ -199,7 +271,8 @@ async def whatsapp_status(
     if not log:
         raise HTTPException(status_code=404, detail="Mensaje no encontrado.")
 
-    twilio_payload = _twilio_get_message_status(sid)
+    account_sid, auth_token, _, _, _ = await _resolve_twilio_config(db)
+    twilio_payload = _twilio_get_message_status(sid, account_sid=account_sid, auth_token=auth_token)
     log.status = twilio_payload.get("status")
     log.error_code = twilio_payload.get("error_code")
     log.error_message = twilio_payload.get("error_message")
@@ -232,6 +305,106 @@ async def whatsapp_status_callback(
         log.error_message = ErrorMessage or log.error_message
         await db.commit()
     return {"ok": True}
+
+
+@router.get("/admin-config", response_model=TwilioAdminConfigOut)
+async def get_twilio_admin_config(
+    _: object = Depends(get_current_active_superuser),
+    db: AsyncSession = Depends(get_db_session),
+):
+    sid, token, from_phone, enabled, source = await _resolve_twilio_config(db)
+    return TwilioAdminConfigOut(
+        account_sid=sid,
+        auth_token_configured=bool(token),
+        auth_token_masked=_mask_secret(token) if token else None,
+        whatsapp_from=from_phone,
+        enabled=enabled,
+        source=source,
+    )
+
+
+@router.put("/admin-config", response_model=TwilioAdminConfigOut)
+async def set_twilio_admin_config(
+    payload: TwilioAdminConfigIn,
+    _: object = Depends(get_current_active_superuser),
+    db: AsyncSession = Depends(get_db_session),
+):
+    sid = (payload.account_sid or "").strip()
+    token = (payload.auth_token or "").strip()
+    from_phone = (payload.whatsapp_from or "").strip()
+    if not sid or not token or not from_phone:
+        raise HTTPException(status_code=400, detail="SID, token y whatsapp_from son obligatorios.")
+    if not from_phone.startswith("whatsapp:+"):
+        raise HTTPException(status_code=400, detail="El numero origen debe iniciar con 'whatsapp:+'.")
+
+    await _set_app_setting(db, "twilio_account_sid", sid)
+    await _set_app_setting(db, "twilio_auth_token", token)
+    await _set_app_setting(db, "twilio_whatsapp_from", from_phone)
+    await _set_app_setting(db, "twilio_enabled", "true" if payload.enabled else "false")
+    await db.commit()
+
+    return TwilioAdminConfigOut(
+        account_sid=sid,
+        auth_token_configured=True,
+        auth_token_masked=_mask_secret(token),
+        whatsapp_from=from_phone,
+        enabled=payload.enabled,
+        source="database",
+    )
+
+
+@router.post("/admin-test")
+async def twilio_admin_test(
+    payload: TwilioAdminTestIn,
+    _: object = Depends(get_current_active_superuser),
+    db: AsyncSession = Depends(get_db_session),
+):
+    account_sid, auth_token, whatsapp_from, enabled, _ = await _resolve_twilio_config(db)
+    if not enabled:
+        raise HTTPException(status_code=400, detail="Twilio esta desactivado en configuracion.")
+    to_phone = _normalize_phone(payload.to_phone)
+    if not to_phone:
+        raise HTTPException(status_code=400, detail="Numero destino invalido.")
+    body = (payload.body or "Prueba de WhatsApp desde la configuracion de Studios.").strip()
+    sent = _twilio_send_whatsapp(
+        to_phone=to_phone,
+        message=body,
+        account_sid=account_sid,
+        auth_token=auth_token,
+        whatsapp_from=whatsapp_from,
+    )
+    sid = sent.get("sid")
+    initial_status = (sent.get("status") or "").lower()
+    final_status = initial_status
+    error_code = sent.get("error_code")
+    error_message = sent.get("error_message")
+
+    if sid:
+        # Small polling window to provide clearer sandbox feedback (join / no join)
+        for _ in range(3):
+            await asyncio.sleep(1.5)
+            st = _twilio_get_message_status(sid, account_sid=account_sid, auth_token=auth_token)
+            final_status = (st.get("status") or final_status or "").lower()
+            error_code = st.get("error_code") or error_code
+            error_message = st.get("error_message") or error_message
+            if final_status in ("delivered", "read", "failed", "undelivered"):
+                break
+
+    if final_status in ("delivered", "read"):
+        message = f"Prueba enviada y entregada. SID: {sid}"
+    elif final_status in ("failed", "undelivered"):
+        message = f"Prueba enviada. SID: {sid}. No entregado (sandbox): el numero probablemente no hizo join."
+    else:
+        message = f"Prueba enviada. SID: {sid}. Estado actual: {final_status or 'pendiente'} (si no hizo join, no se entregara)."
+
+    return {
+        "ok": True,
+        "sid": sid,
+        "status": final_status or initial_status,
+        "error_code": error_code,
+        "error_message": error_message,
+        "message": message,
+    }
 
 
 

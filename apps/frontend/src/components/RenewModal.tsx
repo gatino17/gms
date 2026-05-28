@@ -495,7 +495,7 @@ export default function RenewModal({
       <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
         <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
           {/* Modal Container */}
-          <div className="relative w-full max-w-3xl bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 border border-gray-100">
+          <div className="relative w-full max-w-3xl max-h-[calc(100dvh-2rem)] md:max-h-[calc(100dvh-4rem)] bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 border border-gray-100">
             {/* Header (Gradient) */}
             <div className="bg-gradient-to-br from-fuchsia-600 to-purple-700 px-6 py-5 sm:px-8 sm:py-6 flex-shrink-0 flex items-start justify-between">
           <div className="text-white">

@@ -136,11 +136,8 @@ export default function AttendanceKioskPage() {
     }
     if (!silent) setLoading(true)
     try {
-      // JS: 0=Sunday..6=Saturday, backend: 0=Monday..6=Sunday
-      const jsDay = new Date().getDay()
-      const dayOfWeek = (jsDay + 6) % 7
       const { data } = await api.get<KioskCourse[]>('/api/pms/course_status', {
-        params: { day_of_week: dayOfWeek },
+        params: { use_today: true },
         headers: { 'X-Tenant-ID': tenantId },
       })
       setCourses(data)
@@ -584,7 +581,7 @@ export default function AttendanceKioskPage() {
               <div className="w-20 h-20 bg-fuchsia-500/10 text-fuchsia-400 rounded-3xl flex items-center justify-center mx-auto mb-6">
                 <HiOutlineLockClosed size={40} />
               </div>
-              <h3 className="text-2xl font-black text-white">Salir del Kiosko</h3>
+              <h3 className="text-2xl font-black text-white">Salir del Modo Asistencia</h3>
               <p className="text-zinc-400 text-sm mt-2">
                 Ingresa el PIN de seguridad o tu contrase{'\u00f1'}a de administrador para volver al panel.
               </p>

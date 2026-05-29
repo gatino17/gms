@@ -3,7 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, func
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+from zoneinfo import ZoneInfo
 
 from app.pms.models import Course, Enrollment, Student, Teacher, Attendance, Payment
 from app.pms.deps import get_tenant_id, get_db_session
@@ -23,6 +24,7 @@ async def course_status(
     teacher_q: str | None = Query(default=None),
     only_active: bool = Query(default=True),
     day_of_week: int | None = Query(default=None, ge=0, le=6),
+    use_today: bool = Query(default=False),
 ):
     # Subquery for attendance count per (student, course) within THEIR enrollment dates
     att_subquery = (
@@ -101,14 +103,18 @@ async def course_status(
     if course_id: stmt = stmt.where(Course.id == course_id)
     if student_q:
         stmt = stmt.where(or_(Student.first_name.ilike(f"%{student_q}%"), Student.last_name.ilike(f"%{student_q}%")))
-    if day_of_week is not None:
+    effective_day = day_of_week
+    if effective_day is None and use_today:
+        effective_day = datetime.now(ZoneInfo("America/Santiago")).weekday()
+
+    if effective_day is not None:
         stmt = stmt.where(
             or_(
-                Course.day_of_week == day_of_week,
-                Course.day_of_week_2 == day_of_week,
-                Course.day_of_week_3 == day_of_week,
-                Course.day_of_week_4 == day_of_week,
-                Course.day_of_week_5 == day_of_week,
+                Course.day_of_week == effective_day,
+                Course.day_of_week_2 == effective_day,
+                Course.day_of_week_3 == effective_day,
+                Course.day_of_week_4 == effective_day,
+                Course.day_of_week_5 == effective_day,
             )
         )
     if teacher_q:

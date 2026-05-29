@@ -3,7 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, case
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+from zoneinfo import ZoneInfo
 from typing import Any
 
 from app.pms.models import Course, Enrollment, Student, Payment, Attendance, Teacher
@@ -16,7 +17,8 @@ async def get_summary(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session)
 ) -> Any:
-    today = date.today()
+    cl_now = datetime.now(ZoneInfo("America/Santiago"))
+    today = cl_now.date()
     month_start = today.replace(day=1)
     soon_end_date = today + timedelta(days=7)
     dow = today.weekday()

@@ -262,6 +262,8 @@ class WhatsAppMessageLog(Base):
     message_body: Mapped[Optional[str]] = mapped_column(Text())
     sid: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     status: Mapped[Optional[str]] = mapped_column(String(40), index=True)
+    price_usd: Mapped[Optional[float]] = mapped_column(Numeric(10, 5), nullable=True)
+    price_unit: Mapped[Optional[str]] = mapped_column(String(10))
     error_code: Mapped[Optional[str]] = mapped_column(String(40))
     error_message: Mapped[Optional[str]] = mapped_column(Text())
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)

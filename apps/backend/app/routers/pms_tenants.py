@@ -8,7 +8,7 @@ from sqlalchemy import select, func, and_, delete
 from pathlib import Path
 import secrets
 
-from app.pms.models import Tenant, TenantPlan
+from app.pms.models import Tenant, TenantPlan, AppSetting, WhatsAppMessageLog
 from app.pms.deps import (
     get_tenant_id,
     get_db_session,
@@ -66,6 +66,26 @@ async def list_tenants(
 ):
     res = await db.execute(select(Tenant).order_by(Tenant.created_at.desc()))
     tenants = res.scalars().all()
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    twilio_budget_raw = await db.scalar(select(AppSetting.value).where(AppSetting.key == "twilio_budget_usd"))
+    try:
+        twilio_budget = float((twilio_budget_raw or "").strip()) if twilio_budget_raw else 20.0
+    except Exception:
+        twilio_budget = 20.0
+
+    wa_res = await db.execute(
+        select(
+            WhatsAppMessageLog.tenant_id,
+            func.coalesce(func.sum(func.abs(WhatsAppMessageLog.price_usd)), 0),
+        )
+        .where(
+            WhatsAppMessageLog.created_at >= month_start,
+            WhatsAppMessageLog.price_usd.is_not(None),
+        )
+        .group_by(WhatsAppMessageLog.tenant_id)
+    )
+    wa_map = {int(tid): float(total or 0) for tid, total in wa_res.all() if tid is not None}
+
     now_dt = datetime.utcnow()
     presence_cutoff = now_dt - timedelta(minutes=SESSION_PRESENCE_MINUTES)
     sessions_res = await db.execute(
@@ -88,6 +108,8 @@ async def list_tenants(
         setattr(t, "admin_is_superuser", bool(admin_flag) if admin_flag is not None else None)
         setattr(t, "active_sessions", sessions_map.get(t.id, 0))
         setattr(t, "max_sessions", int(getattr(t, "max_sessions", None) or MAX_SESSIONS_PER_TENANT))
+        setattr(t, "whatsapp_consumption_usd", wa_map.get(t.id, 0.0))
+        setattr(t, "whatsapp_budget_usd", twilio_budget)
     return tenants
 
 

@@ -69,9 +69,23 @@ type TwilioAdminConfig = {
   account_sid: string
   auth_token_configured: boolean
   auth_token_masked?: string | null
+  api_key_sid?: string | null
+  api_key_configured?: boolean
+  api_key_masked?: string | null
+  auth_mode?: 'api_key' | 'auth_token' | 'unknown'
   whatsapp_from: string
   enabled: boolean
   source: string
+}
+type TwilioBalance = {
+  balance_usd: number
+  currency: string
+  budget_usd: number
+  threshold_usd: number
+  remaining_usd: number
+  remaining_percent: number
+  level: 'ok' | 'warning' | 'critical'
+  checked_at: string
 }
 
 type Studio = {
@@ -101,6 +115,8 @@ type Studio = {
   plan_renewal_date?: string | null
   active_sessions?: number | null
   max_sessions?: number | null
+  whatsapp_consumption_usd?: number | null
+  whatsapp_budget_usd?: number | null
 }
 
 const defaultForm: StudioForm = {
@@ -207,6 +223,8 @@ export default function StudiosPage() {
   const [twilioForm, setTwilioForm] = useState({
     account_sid: '',
     auth_token: '',
+    api_key_sid: '',
+    api_key_secret: '',
     whatsapp_from: 'whatsapp:+14155238886',
     enabled: true,
   })
@@ -218,6 +236,8 @@ export default function StudiosPage() {
   const [showTwilioToken, setShowTwilioToken] = useState(false)
   const [twilioMessage, setTwilioMessage] = useState<string | null>(null)
   const [twilioError, setTwilioError] = useState<string | null>(null)
+  const [twilioBalance, setTwilioBalance] = useState<TwilioBalance | null>(null)
+  const [twilioBalanceError, setTwilioBalanceError] = useState<string | null>(null)
 
   const currencyFormatter = new Intl.NumberFormat('es-CL')
   const formatMoney = (value?: string | number | null) => {
@@ -225,6 +245,14 @@ export default function StudiosPage() {
     const num = Number(value)
     if (Number.isNaN(num)) return '-'
     return `$${currencyFormatter.format(Math.round(num))}`
+  }
+  const formatUsd = (value?: number | null) => {
+    if (value == null || Number.isNaN(Number(value))) return '-'
+    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(Number(value))
+  }
+  const formatUsdUsage = (value?: number | null) => {
+    if (value == null || Number.isNaN(Number(value))) return '$0.000'
+    return `$${Number(value).toFixed(3)}`
   }
 
   const planAccent = (max: number) => {
@@ -295,11 +323,23 @@ export default function StudiosPage() {
         ...prev,
         account_sid: data.account_sid || '',
         auth_token: '',
+        api_key_sid: data.api_key_sid || '',
+        api_key_secret: '',
         whatsapp_from: data.whatsapp_from || prev.whatsapp_from,
         enabled: !!data.enabled,
       }))
     } catch {
       setTwilioConfig(null)
+    }
+  }
+  const fetchTwilioBalance = async () => {
+    setTwilioBalanceError(null)
+    try {
+      const { data } = await api.get<TwilioBalance>('/api/pms/whatsapp/admin-balance')
+      setTwilioBalance(data)
+    } catch (err: any) {
+      setTwilioBalance(null)
+      setTwilioBalanceError(err?.response?.data?.detail || null)
     }
   }
 
@@ -385,18 +425,26 @@ export default function StudiosPage() {
     fetchStudios()
     fetchPlans()
     fetchTwilioConfig()
+    fetchTwilioBalance()
   }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
       fetchStudios(true)
     }, 15000)
+    const twilioTimer = setInterval(() => {
+      fetchTwilioBalance()
+    }, 30000)
     const onVisible = () => {
-      if (!document.hidden) fetchStudios(true)
+      if (!document.hidden) {
+        fetchStudios(true)
+        fetchTwilioBalance()
+      }
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       clearInterval(timer)
+      clearInterval(twilioTimer)
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])
@@ -410,12 +458,15 @@ export default function StudiosPage() {
       await api.put('/api/pms/whatsapp/admin-config', {
         account_sid: twilioForm.account_sid.trim(),
         auth_token: twilioForm.auth_token.trim(),
+        api_key_sid: twilioForm.api_key_sid.trim(),
+        api_key_secret: twilioForm.api_key_secret.trim(),
         whatsapp_from: twilioForm.whatsapp_from.trim(),
         enabled: twilioForm.enabled,
       })
       setTwilioMessage('Configuracion Twilio guardada correctamente.')
-      setTwilioForm((prev) => ({ ...prev, auth_token: '' }))
+      setTwilioForm((prev) => ({ ...prev, auth_token: '', api_key_secret: '' }))
       await fetchTwilioConfig()
+      await fetchTwilioBalance()
     } catch (err: any) {
       setTwilioError(err?.response?.data?.detail || err?.message || 'No se pudo guardar la configuracion Twilio.')
     } finally {
@@ -845,7 +896,54 @@ export default function StudiosPage() {
           <div className="text-right">
             <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Origen</div>
             <div className="text-xs font-black text-fuchsia-600">{twilioConfig?.source === 'database' ? 'Studios' : 'ENV'}</div>
+            <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-gray-400">Modo activo</div>
+            <div className={`text-xs font-black ${
+              twilioConfig?.auth_mode === 'api_key'
+                ? 'text-emerald-600'
+                : twilioConfig?.auth_mode === 'auth_token'
+                  ? 'text-amber-600'
+                  : 'text-gray-500'
+            }`}>
+              {twilioConfig?.auth_mode === 'api_key'
+                ? 'API Key'
+                : twilioConfig?.auth_mode === 'auth_token'
+                  ? 'Auth Token'
+                  : 'Sin configurar'}
+            </div>
           </div>
+        </div>
+
+        <div className="rounded-3xl border border-gray-100 bg-gradient-to-r from-gray-50 to-white p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Saldo Twilio</p>
+              <p className={`text-sm md:text-base font-black ${twilioBalance?.level === 'critical' ? 'text-rose-600' : twilioBalance?.level === 'warning' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {twilioBalance ? `Te quedan ${formatUsd(twilioBalance.remaining_usd)} de ${formatUsd(twilioBalance.budget_usd)}` : 'Sin datos de saldo'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={fetchTwilioBalance}
+              className="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >
+              Actualizar
+            </button>
+          </div>
+          <div className="mt-3 h-2 rounded-full bg-gray-200 overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${twilioBalance?.level === 'critical' ? 'bg-rose-500' : twilioBalance?.level === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`}
+              style={{ width: `${Math.max(0, Math.min(100, twilioBalance?.remaining_percent ?? 0))}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[10px] font-bold">
+            <span className="text-gray-500">Umbral alerta: {twilioBalance ? formatUsd(twilioBalance.threshold_usd) : '-'}</span>
+            <span className={`${twilioBalance?.level === 'critical' ? 'text-rose-600' : twilioBalance?.level === 'warning' ? 'text-amber-600' : 'text-emerald-600'}`}>
+              {twilioBalance?.level === 'critical' ? 'Saldo critico' : twilioBalance?.level === 'warning' ? 'Saldo bajo' : 'Saldo estable'}
+            </span>
+          </div>
+          {twilioBalanceError && (
+            <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-rose-500">{twilioBalanceError}</div>
+          )}
         </div>
 
         <form onSubmit={handleSaveTwilioConfig} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -868,7 +966,6 @@ export default function StudiosPage() {
                 onChange={(e) => setTwilioForm((p) => ({ ...p, auth_token: e.target.value }))}
                 className="flex-1 px-5 py-3 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 outline-none font-bold text-gray-700"
                 placeholder={twilioConfig?.auth_token_configured ? 'Token configurado (ingresa uno nuevo para reemplazar)' : 'Ingresa token'}
-                required
               />
               <button
                 type="button"
@@ -887,6 +984,31 @@ export default function StudiosPage() {
               <p className="text-[10px] font-bold text-fuchsia-600">
                 Token actual (enmascarado): {twilioConfig.auth_token_masked}
               </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">API Key SID (SK...)</label>
+            <input
+              value={twilioForm.api_key_sid}
+              onChange={(e) => setTwilioForm((p) => ({ ...p, api_key_sid: e.target.value }))}
+              className="w-full px-5 py-3 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 outline-none font-bold text-gray-700"
+              placeholder="SKxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            />
+            {twilioConfig?.api_key_configured && !twilioForm.api_key_sid && (
+              <p className="text-[10px] font-bold text-gray-500">API Key SID ya configurado en servidor.</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">API Key Secret</label>
+            <input
+              type="password"
+              value={twilioForm.api_key_secret}
+              onChange={(e) => setTwilioForm((p) => ({ ...p, api_key_secret: e.target.value }))}
+              className="w-full px-5 py-3 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 outline-none font-bold text-gray-700"
+              placeholder={twilioConfig?.api_key_configured ? 'Secret configurado (ingresa uno nuevo para reemplazar)' : 'Ingresa API key secret'}
+            />
+            {twilioConfig?.api_key_configured && !twilioForm.api_key_secret && twilioConfig?.api_key_masked && (
+              <p className="text-[10px] font-bold text-fuchsia-600">Secret actual (enmascarado): {twilioConfig.api_key_masked}</p>
             )}
           </div>
           <div className="space-y-2">
@@ -1295,6 +1417,7 @@ export default function StudiosPage() {
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ubicacion</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Plan contratado</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sesiones</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Consumo WhatsApp</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Logo</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Acciones</th>
                   </tr>
@@ -1350,6 +1473,18 @@ export default function StudiosPage() {
                       }`}>
                         {studio.active_sessions || 0}/{studio.max_sessions || 3}
                       </span>
+                    </td>
+                    <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="text-xs font-black text-gray-800">
+                        {formatUsdUsage(studio.whatsapp_consumption_usd || 0)} / {formatUsd(studio.whatsapp_budget_usd || 20)}
+                      </div>
+                      <div className={`text-[10px] font-black uppercase tracking-widest ${
+                        (studio.whatsapp_consumption_usd || 0) >= ((studio.whatsapp_budget_usd || 20) - 5)
+                          ? 'text-rose-600'
+                          : 'text-emerald-600'
+                      }`}>
+                        {(studio.whatsapp_consumption_usd || 0) >= ((studio.whatsapp_budget_usd || 20) - 5) ? 'Alerta' : 'OK'}
+                      </div>
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle text-center">
                         <div className="flex justify-center">

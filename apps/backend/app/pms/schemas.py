@@ -34,6 +34,8 @@ class TenantOut(BaseModel):
     plan_renewal_date: Optional[date] = None
     active_sessions: Optional[int] = 0
     max_sessions: Optional[int] = 3
+    whatsapp_consumption_usd: Optional[Decimal] = None
+    whatsapp_budget_usd: Optional[Decimal] = None
     enrollment_fee_enabled: bool = False
     enrollment_fee_amount: Optional[Decimal] = None
     enrollment_fee_apply_to: Optional[str] = "new_only"

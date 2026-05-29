@@ -124,8 +124,17 @@ async def update_student(
     obj = res.scalar_one_or_none()
     if not obj:
         raise HTTPException(status_code=404, detail="Alumno no encontrado")
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    prev_is_active = bool(obj.is_active)
+    incoming = payload.model_dump(exclude_unset=True)
+    for k, v in incoming.items():
         setattr(obj, k, v)
+    if "is_active" in incoming:
+        new_is_active = bool(incoming.get("is_active"))
+        if prev_is_active and not new_is_active:
+            obj.inactive_at = datetime.utcnow()
+        if new_is_active:
+            obj.inactive_at = None
+            obj.inactive_note = None
     await db.flush()
     await db.refresh(obj)
     await db.commit()
@@ -324,6 +333,8 @@ async def student_portal_summary(
             "notes": getattr(student, "notes", None),
             "photo_url": student.photo_url,
             "is_active": bool(getattr(student, "is_active", False)),
+            "inactive_note": getattr(student, "inactive_note", None),
+            "inactive_at": student.inactive_at.isoformat() if getattr(student, "inactive_at", None) else None,
             "tenant_id": student.tenant_id,
             "emergency_contact": getattr(student, "emergency_contact", None),
             "emergency_phone": getattr(student, "emergency_phone", None),

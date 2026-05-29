@@ -145,6 +145,8 @@ class StudentBase(BaseModel):
     joined_at: Optional[date] = None
     birthdate: Optional[date] = None
     is_active: Optional[bool] = True
+    inactive_note: Optional[str] = None
+    inactive_at: Optional[datetime] = None
 
 
 class StudentCreate(StudentBase):

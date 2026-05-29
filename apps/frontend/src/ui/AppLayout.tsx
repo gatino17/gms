@@ -315,6 +315,7 @@ export default function AppLayout() {
               <span className="text-slate-900 font-bold tracking-tight">
                 {(() => {
                   if (pathname === '/') return 'Dashboard Overview'
+                  if (pathname === '/payments-teachers') return 'Detalle Profesores'
                   const allNav = [...navTop, ...navBottom]
                   const match = allNav.find(n => n.to === pathname)
                   if (match) return match.label

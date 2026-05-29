@@ -29,7 +29,8 @@ type PortalData = {
     id:number; first_name:string; last_name:string; email?:string|null; 
     joined_at?:string|null; photo_url?:string|null; is_active?:boolean; 
     tenant_id?:number; phone?:string|null; gender?:string|null; 
-    birthdate?:string|null; notes?:string|null; 
+    birthdate?:string|null; notes?:string|null;
+    inactive_note?: string | null; inactive_at?: string | null;
     emergency_contact?:string|null; emergency_phone?:string|null 
   }
   enrollments: {
@@ -406,6 +407,11 @@ export default function StudentDetailPage() {
                        <span className="text-gray-300">|</span>
                        <span className="text-gray-400 font-bold text-xs">#{student.id}</span>
                     </div>
+                    {!student.is_active && student.inactive_note && (
+                      <div className="mt-3 px-4 py-2 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-xs font-bold">
+                        Observación: {student.inactive_note}
+                      </div>
+                    )}
                  </div>
 
                  <div className="mt-10 space-y-3 text-left">

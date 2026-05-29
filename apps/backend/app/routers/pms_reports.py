@@ -154,11 +154,24 @@ async def student_report_pdf(
     add_text(230, 712, f"Email: {student.email or '-'}", size=10, gray=0.20)
     add_text(40, 694, f"Genero: {student.gender or '-'}", size=10, gray=0.20)
     add_text(230, 694, f"Miembro desde: {_fmt_date(student.joined_at)}", size=10, gray=0.20)
+    add_text(40, 676, f"Estado: {'Activo' if bool(getattr(student, 'is_active', True)) else 'Inactivo'}", size=10, gray=0.20)
+    inactive_at_value = getattr(student, "inactive_at", None)
+    inactive_date = inactive_at_value.date() if inactive_at_value else None
+    add_text(
+        230,
+        676,
+        f"Fecha inactividad: {_fmt_date(inactive_date) if not bool(getattr(student, 'is_active', True)) else '-'}",
+        size=10,
+        gray=0.20,
+    )
 
-    # Card 2: Matricula
+    # Card 2: Matricula / observacion de inactivacion
     add_text(40, 630, "MATRICULA", bold=True, size=11, gray=0.26)
     add_text(40, 612, f"Estado: {enrollment_status}", bold=True, size=11, gray=0.14)
     add_text(40, 594, enrollment_detail, size=10, gray=0.22)
+    inactive_note = getattr(student, "inactive_note", None)
+    if inactive_note and not bool(getattr(student, "is_active", True)):
+        add_text(40, 576, f"Observacion inactivacion: {inactive_note}", size=9, gray=0.20)
 
     # Detail section
     add_text(40, 532, "CURSOS ACTIVOS / HISTORICOS", bold=True, size=11, gray=0.26)

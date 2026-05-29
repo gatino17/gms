@@ -24,6 +24,7 @@ type Student = {
   birthdate?: string | null
   notes?: string | null
   is_active?: boolean
+  inactive_note?: string | null
 }
 
 type Props = {
@@ -44,7 +45,8 @@ export default function EditStudentModal({ student, onClose, onSuccess }: Props)
     gender: student.gender || '',
     birthdate: student.birthdate || '',
     notes: student.notes || '',
-    is_active: student.is_active ?? true
+    is_active: student.is_active ?? true,
+    inactive_note: student.inactive_note || '',
   })
 
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -149,6 +151,18 @@ export default function EditStudentModal({ student, onClose, onSuccess }: Props)
                           <HiOutlineCheckCircle size={18} />
                        </div>
                     </button>
+                    {!form.is_active && (
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black text-rose-500 uppercase tracking-widest px-2">Observación de inactivación</label>
+                          <textarea
+                             value={form.inactive_note}
+                             onChange={(e) => setForm(f => ({ ...f, inactive_note: e.target.value }))}
+                             rows={3}
+                             placeholder="Ej: Pausa temporal por viaje, lesión o motivos personales..."
+                             className="w-full px-4 py-3 bg-rose-50 border-2 border-rose-100 focus:border-rose-300 focus:bg-white rounded-2xl font-bold text-gray-700 transition-all outline-none resize-none"
+                          />
+                       </div>
+                    )}
                  </div>
               </div>
 

@@ -418,7 +418,7 @@ export default function DashboardPage() {
                 <div className="flex flex-wrap gap-2">
                   {alerts.birthdays.map((n: string, i: number) => (
                     <div key={i} className="px-4 py-3 rounded-2xl bg-white/90 border border-amber-200 text-rose-700 text-xs font-black shadow-sm flex items-center gap-2 animate-in zoom-in duration-500" style={{ animationDelay: `${i*100}ms` }}>
-                       <span className="text-base">ðŸŽ‚</span>
+                       <FaBirthdayCake className="text-rose-500 shrink-0" size={14} />
                        {n}
                     </div>
                   ))}

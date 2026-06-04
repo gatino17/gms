@@ -74,6 +74,7 @@ type TwilioAdminConfig = {
   api_key_masked?: string | null
   auth_mode?: 'api_key' | 'auth_token' | 'unknown'
   whatsapp_from: string
+  template_sid?: string | null
   enabled: boolean
   source: string
 }
@@ -183,6 +184,25 @@ const computeRenewalFromStart = (startDate: string, cycle: 'monthly' | 'annual')
 }
 
 export default function StudiosPage() {
+  const whatsappTemplateOptions = [
+    {
+      sid: 'HXc48c3cc85e952f4801808ddaff9a809e',
+      name: 'payment_reminder_es',
+      label: 'Opcion 1',
+      status: 'Utility / Approved',
+      preview:
+        'Hola [Nombre Alumno], te recordamos que tienes un pago pendiente del curso [Nombre Curso] de los dias [Dia y Hora] en [Nombre Estudio]. Si ya realizaste el pago, puedes ignorar este mensaje.',
+    },
+    {
+      sid: 'HXd52821f338d579d0463bcb380207db70',
+      name: 'copy_payment_reminder_option2_es',
+      label: 'Opcion 2',
+      status: 'Utility / Approved',
+      preview:
+        'Hola [Nombre Alumno] ✨ Desde [Nombre Estudio] queremos recordarte de forma cordial que tienes un pago pendiente del curso [Nombre Curso] de los dias [Dia y Hora]. Si ya realizaste el pago, puedes ignorar este mensaje.',
+    },
+  ] as const
+
   const [form, setForm] = useState<StudioForm>(defaultForm)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
@@ -226,6 +246,7 @@ export default function StudiosPage() {
     api_key_sid: '',
     api_key_secret: '',
     whatsapp_from: 'whatsapp:+14155238886',
+    template_sid: 'HXc48c3cc85e952f4801808ddaff9a809e',
     enabled: true,
   })
   const [twilioConfig, setTwilioConfig] = useState<TwilioAdminConfig | null>(null)
@@ -259,6 +280,8 @@ export default function StudiosPage() {
     if (value == null || Number.isNaN(Number(value))) return '$0.000'
     return `$${Number(value).toFixed(3)}`
   }
+  const activeTemplate =
+    whatsappTemplateOptions.find((option) => option.sid === twilioForm.template_sid) || whatsappTemplateOptions[0]
 
   const planAccent = (max: number) => {
     if (max <= 20) return 'from-emerald-500/25 to-emerald-400/10 border-emerald-300/40 text-emerald-100'
@@ -331,6 +354,7 @@ export default function StudiosPage() {
         api_key_sid: data.api_key_sid || '',
         api_key_secret: '',
         whatsapp_from: data.whatsapp_from || prev.whatsapp_from,
+        template_sid: data.template_sid || prev.template_sid,
         enabled: !!data.enabled,
       }))
     } catch {
@@ -466,6 +490,7 @@ export default function StudiosPage() {
         api_key_sid: twilioForm.api_key_sid.trim(),
         api_key_secret: twilioForm.api_key_secret.trim(),
         whatsapp_from: twilioForm.whatsapp_from.trim(),
+        template_sid: twilioForm.template_sid,
         enabled: twilioForm.enabled,
       })
       setTwilioMessage('Configuracion Twilio guardada correctamente.')
@@ -1031,6 +1056,23 @@ export default function StudiosPage() {
               required
             />
           </div>
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Plantilla activa de WhatsApp</label>
+            <select
+              value={twilioForm.template_sid}
+              onChange={(e) => setTwilioForm((p) => ({ ...p, template_sid: e.target.value }))}
+              className="w-full px-5 py-3 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 outline-none font-bold text-gray-700"
+            >
+              {whatsappTemplateOptions.map((option) => (
+                <option key={option.sid} value={option.sid}>
+                  {option.label} - {option.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] font-bold text-gray-500">
+              El sistema usara esta plantilla aprobada para el boton de WhatsApp individual, el boton Pendientes y la prueba rapida.
+            </p>
+          </div>
           <label className="md:col-span-2 inline-flex items-center gap-2 text-xs font-black text-gray-600 uppercase tracking-widest">
             <input
               type="checkbox"
@@ -1056,9 +1098,10 @@ export default function StudiosPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Plantilla activa de WhatsApp</div>
-              <div className="text-sm font-black text-gray-800">payment_reminder_es</div>
+              <div className="text-sm font-black text-gray-800">{activeTemplate.name}</div>
+              <div className="text-[10px] font-bold text-gray-500 mt-1">SID: {activeTemplate.sid}</div>
             </div>
-            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600">Utility / Approved</span>
+            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600">{activeTemplate.status}</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="bg-white rounded-xl border border-indigo-100 p-4">
@@ -1070,12 +1113,16 @@ export default function StudiosPage() {
               <div className="text-sm font-black text-gray-800">Cobro manual por alumno o curso</div>
             </div>
             <div className="bg-white rounded-xl border border-indigo-100 p-4">
+              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Seleccion actual</div>
+              <div className="text-sm font-black text-gray-800">{activeTemplate.label}</div>
+            </div>
+            <div className="bg-white rounded-xl border border-indigo-100 p-4">
               <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Variables</div>
               <div className="text-sm font-black text-gray-800">Alumno, curso, dia/hora y estudio</div>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-indigo-100 p-4 text-xs text-gray-600 leading-relaxed">
-            Hola <strong>[Nombre Alumno]</strong>, te recordamos que tienes un pago pendiente del curso <strong>[Nombre Curso]</strong> de los dias <strong>[Dia y Hora]</strong> en <strong>[Nombre Estudio]</strong>. Si ya realizaste el pago, puedes ignorar este mensaje.
+            {activeTemplate.preview}
           </div>
         </div>
 

@@ -14,6 +14,23 @@ import {
   HiOutlineUserGroup
 } from 'react-icons/hi'
 
+const whatsappTemplateOptions = [
+  {
+    sid: 'HXc48c3cc85e952f4801808ddaff9a809e',
+    name: 'payment_reminder_es',
+    label: 'Opcion 1',
+    preview:
+      'Hola [Nombre Alumno], te recordamos que tienes un pago pendiente del curso [Nombre Curso] de los dias [Dia y Hora] en [Nombre Estudio]. Si ya realizaste el pago, puedes ignorar este mensaje.',
+  },
+  {
+    sid: 'HXd52821f338d579d0463bcb380207db70',
+    name: 'copy_payment_reminder_option2_es',
+    label: 'Opcion 2',
+    preview:
+      'Hola [Nombre Alumno] ✨ Desde [Nombre Estudio] queremos recordarte de forma cordial que tienes un pago pendiente del curso [Nombre Curso] de los dias [Dia y Hora]. Si ya realizaste el pago, puedes ignorar este mensaje.',
+  },
+] as const
+
 type TenantSettings = {
   id: number
   name: string
@@ -81,6 +98,14 @@ export default function SettingsPage() {
   const [roomsLoading, setRoomsLoading] = useState(false)
   const [roomsError, setRoomsError] = useState<string | null>(null)
   const [isSavingMsg, setIsSavingMsg] = useState(false)
+  const [activeTemplateSid, setActiveTemplateSid] = useState<string>(whatsappTemplateOptions[0].sid)
+
+  const activeTemplate =
+    whatsappTemplateOptions.find((option) => option.sid === activeTemplateSid) || whatsappTemplateOptions[0]
+  const activeTemplatePreview = activeTemplate.preview.replaceAll(
+    '[Nombre Estudio]',
+    settings.name || 'Tu Estudio'
+  )
 
   useEffect(() => {
     const load = async () => {
@@ -105,6 +130,14 @@ export default function SettingsPage() {
           ...data,
           logo_url: data.logo_url ?? '',
         }))
+        try {
+          const { data: twilioData } = await api.get('/api/pms/whatsapp/active-template')
+          if (twilioData?.template_sid) {
+            setActiveTemplateSid(twilioData.template_sid)
+          }
+        } catch {
+          setActiveTemplateSid(whatsappTemplateOptions[0].sid)
+        }
         await loadRooms(resolvedTenantId)
       } catch (e: any) {
         setError(e?.message || 'No se pudo cargar la configuración.')
@@ -354,11 +387,16 @@ export default function SettingsPage() {
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Mensaje utilizado en cobros por WhatsApp</label>
 
             <div className="p-6 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 space-y-3">
-               <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Previsualizacion del template</div>
-               <div className="bg-white p-4 rounded-xl text-xs text-gray-600 leading-relaxed shadow-sm border border-indigo-50">
-                  Hola <strong>[Nombre Alumno]</strong>, te recordamos que tienes un pago pendiente del curso <strong>[Nombre Curso]</strong> de los dias <strong>[Dia y Hora]</strong> en <strong>{settings.name || 'Tu Estudio'}</strong>. Si ya realizaste el pago, puedes ignorar este mensaje.
+               <div className="flex items-center justify-between gap-3">
+                  <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Previsualizacion del template</div>
+                  <span className="px-2.5 py-1 rounded-full bg-white border border-indigo-100 text-[9px] font-black uppercase tracking-widest text-indigo-600">
+                    {activeTemplate.label} · {activeTemplate.name}
+                  </span>
                </div>
-            </div>
+               <div className="bg-white p-4 rounded-xl text-xs text-gray-600 leading-relaxed shadow-sm border border-indigo-50">
+                  {activeTemplatePreview}
+                </div>
+             </div>
           </div>
 
           <div className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">

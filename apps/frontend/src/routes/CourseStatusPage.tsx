@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+ï»¿import { useEffect, useState, useMemo, useRef } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
 import { 
@@ -124,7 +124,7 @@ export default function CourseStatusPage() {
         const coursesRes = await api.get('/api/pms/courses', { params: { limit: 500 } })
         setAllCoursesCatalog((coursesRes.data?.items || coursesRes.data || []).map((c: any) => ({ id: c.id, name: c.name })))
       } catch {
-        // Mantener último catálogo cargado para no vaciar el selector destino
+        // Mantener ï¿½ltimo catï¿½logo cargado para no vaciar el selector destino
       }
     } catch (e: any) {
       setError('Error al cargar datos')
@@ -1162,10 +1162,11 @@ export default function CourseStatusPage() {
       )}
 
       {waBulkConfirmCourse && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-950/45 backdrop-blur-sm" onClick={() => setWaBulkConfirmCourse(null)} />
-          <div className="relative w-full max-w-xl rounded-[28px] border border-gray-100 bg-white shadow-2xl shadow-gray-900/20 overflow-hidden">
-            <div className="px-6 md:px-8 py-6 border-b border-gray-100 bg-rose-50/40">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setWaBulkConfirmCourse(null)} />
+          <div className="relative w-full max-w-xl">
+            <div className="w-full max-w-xl rounded-[28px] border border-gray-100 bg-white shadow-2xl shadow-gray-900/20 overflow-hidden">
+              <div className="px-6 md:px-8 py-6 border-b border-gray-100 bg-rose-50/40">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-rose-500">Confirmar envio</div>
@@ -1179,7 +1180,7 @@ export default function CourseStatusPage() {
                   onClick={() => setWaBulkConfirmCourse(null)}
                   className="w-10 h-10 rounded-2xl bg-white border border-gray-100 text-gray-400 hover:text-gray-700 hover:border-gray-200 transition-all"
                 >
-                  ×
+                  X
                 </button>
               </div>
             </div>
@@ -1212,6 +1213,7 @@ export default function CourseStatusPage() {
               </button>
             </div>
           </div>
+        </div>
         </div>
       )}
       {/* Modal de RenovaciÃ³n */}

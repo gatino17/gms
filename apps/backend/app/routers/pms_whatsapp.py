@@ -13,7 +13,7 @@ import asyncio
 from datetime import datetime, timezone
 
 from app.core.config import settings
-from app.pms.deps import get_db_session, get_tenant_id, get_current_active_superuser
+from app.pms.deps import get_db_session, get_tenant_id, get_current_active_superuser, get_current_user
 from app.pms.models import Tenant, Student, Course, WhatsAppMessageLog, AppSetting
 
 
@@ -33,6 +33,7 @@ class TwilioAdminConfigIn(BaseModel):
     api_key_sid: str | None = None
     api_key_secret: str | None = None
     whatsapp_from: str
+    template_sid: str | None = None
     enabled: bool = True
 
 
@@ -45,8 +46,13 @@ class TwilioAdminConfigOut(BaseModel):
     api_key_masked: str | None = None
     auth_mode: str = "unknown"
     whatsapp_from: str
+    template_sid: str | None = None
     enabled: bool
     source: str
+
+
+class TwilioActiveTemplateOut(BaseModel):
+    template_sid: str
 
 
 class TwilioAdminTestIn(BaseModel):
@@ -506,6 +512,7 @@ async def get_twilio_admin_config(
     db: AsyncSession = Depends(get_db_session),
 ):
     sid, token, api_key_sid, api_key_secret, from_phone, enabled, source = await _resolve_twilio_config(db)
+    template_sid = await _resolve_twilio_template_sid(db)
     return TwilioAdminConfigOut(
         account_sid=sid,
         auth_token_configured=bool(token),
@@ -515,9 +522,19 @@ async def get_twilio_admin_config(
         api_key_masked=_mask_secret(api_key_secret) if api_key_secret else None,
         auth_mode="api_key" if (api_key_sid and api_key_secret) else ("auth_token" if token else "unknown"),
         whatsapp_from=from_phone,
+        template_sid=template_sid,
         enabled=enabled,
         source=source,
     )
+
+
+@router.get("/active-template", response_model=TwilioActiveTemplateOut)
+async def get_twilio_active_template(
+    _: object = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    template_sid = await _resolve_twilio_template_sid(db)
+    return TwilioActiveTemplateOut(template_sid=template_sid)
 
 
 @router.put("/admin-config", response_model=TwilioAdminConfigOut)
@@ -533,6 +550,7 @@ async def set_twilio_admin_config(
     api_key_sid = (payload.api_key_sid or "").strip()
     api_key_secret = (payload.api_key_secret or "").strip()
     from_phone = (payload.whatsapp_from or "").strip()
+    template_sid = (payload.template_sid or "").strip()
     if not sid or not from_phone:
         raise HTTPException(status_code=400, detail="SID y whatsapp_from son obligatorios.")
 
@@ -548,6 +566,8 @@ async def set_twilio_admin_config(
         raise HTTPException(status_code=400, detail="Debes configurar Auth Token o API Key SID+Secret.")
     if not from_phone.startswith("whatsapp:+"):
         raise HTTPException(status_code=400, detail="El numero origen debe iniciar con 'whatsapp:+'.")
+    if not template_sid:
+        template_sid = DEFAULT_WHATSAPP_TEMPLATE_SID
 
     await _set_app_setting(db, "twilio_account_sid", sid)
     if effective_token:
@@ -557,6 +577,7 @@ async def set_twilio_admin_config(
     if effective_api_key_secret:
         await _set_app_setting(db, "twilio_api_key_secret", effective_api_key_secret)
     await _set_app_setting(db, "twilio_whatsapp_from", from_phone)
+    await _set_app_setting(db, "twilio_whatsapp_template_sid", template_sid)
     await _set_app_setting(db, "twilio_enabled", "true" if payload.enabled else "false")
     await db.commit()
 
@@ -569,6 +590,7 @@ async def set_twilio_admin_config(
         api_key_masked=_mask_secret(effective_api_key_secret) if effective_api_key_secret else None,
         auth_mode="api_key" if (effective_api_key_sid and effective_api_key_secret) else ("auth_token" if effective_token else "unknown"),
         whatsapp_from=from_phone,
+        template_sid=template_sid,
         enabled=payload.enabled,
         source="database",
     )

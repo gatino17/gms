@@ -346,40 +346,24 @@ export default function SettingsPage() {
 
         <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-6">
           <div className="flex items-center justify-between px-2">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Plantilla de Mensaje WhatsApp</span>
-            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Personalizable</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vista previa del mensaje aprobado</span>
+            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Referencial</span>
           </div>
-          
-          <div className="space-y-4">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Texto Personalizado (Identidad)</label>
-            <textarea 
-              className="w-full min-h-[100px] p-6 rounded-2xl border-2 border-transparent focus:border-indigo-100 focus:bg-white bg-white text-gray-700 text-sm font-medium leading-relaxed shadow-inner outline-none transition-all resize-none"
-              placeholder="Ej: te escribimos de Puerto Montt Salsa."
-              value={settings.whatsapp_message || ''}
-              onChange={(e) => setSettings(s => ({ ...s, whatsapp_message: e.target.value }))}
-            />
-            
-            <div className="p-6 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 space-y-3">
-               <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Previsualización del mensaje</div>
-               <div className="bg-white p-4 rounded-xl text-xs text-gray-600 leading-relaxed shadow-sm italic border border-indigo-50">
-                  Hola [Nombre Alumno], <span className="text-indigo-600 font-bold">{settings.whatsapp_message || `Te saludamos de ${settings.name || 'Puerto Montt Salsa'}.`}</span> Esperamos que estes disfrutando mucho tus clases. Te recordamos que tienes un pago pendiente del curso <strong>[Nombre Curso]</strong> de los dias <strong>[Dia y Hora]</strong>. Nos vemos pronto.
-               </div>
-            </div>
 
-            <div className="flex justify-end">
-              <button
-                onClick={handleSaveWhatsapp}
-                disabled={isSavingMsg}
-                className="px-8 py-3.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
-              >
-                {isSavingMsg ? 'Guardando...' : 'Guardar Configuración'}
-              </button>
+          <div className="space-y-4">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Mensaje utilizado en cobros por WhatsApp</label>
+
+            <div className="p-6 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 space-y-3">
+               <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Previsualizacion del template</div>
+               <div className="bg-white p-4 rounded-xl text-xs text-gray-600 leading-relaxed shadow-sm border border-indigo-50">
+                  Hola <strong>[Nombre Alumno]</strong>, te recordamos que tienes un pago pendiente del curso <strong>[Nombre Curso]</strong> de los dias <strong>[Dia y Hora]</strong> en <strong>{settings.name || 'Tu Estudio'}</strong>. Si ya realizaste el pago, puedes ignorar este mensaje.
+               </div>
             </div>
           </div>
 
           <div className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
-               💡 El sistema añadirá automáticamente el saludo inicial y los detalles del curso/deuda. Solo debes configurar la frase de identidad de tu estudio.
+               Esta vista es solo referencial. La configuracion tecnica de la plantilla activa de WhatsApp se administra en Studios junto a Twilio.
              </p>
           </div>
         </div>

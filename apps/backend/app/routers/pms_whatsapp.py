@@ -19,6 +19,7 @@ from app.pms.models import Tenant, Student, Course, WhatsAppMessageLog, AppSetti
 
 router = APIRouter(prefix="/api/pms/whatsapp", tags=["pms-whatsapp"])
 DAY_NAMES = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+DEFAULT_WHATSAPP_TEMPLATE_SID = "HXc48c3cc85e952f4801808ddaff9a809e"
 
 
 class WhatsAppTestIn(BaseModel):
@@ -116,6 +117,15 @@ async def _resolve_twilio_config(db: AsyncSession) -> tuple[str, str, str, str, 
     )
 
 
+async def _resolve_twilio_template_sid(db: AsyncSession) -> str:
+    template_db = await _get_app_setting(db, "twilio_whatsapp_template_sid")
+    if template_db:
+        return template_db
+    if settings.twilio_whatsapp_template_sid.strip():
+        return settings.twilio_whatsapp_template_sid.strip()
+    return DEFAULT_WHATSAPP_TEMPLATE_SID
+
+
 def _twilio_auth_b64(account_sid: str, auth_token: str, api_key_sid: str, api_key_secret: str) -> str:
     # Prefer API Key auth when available, fallback to auth token.
     if api_key_sid and api_key_secret:
@@ -154,6 +164,11 @@ def _course_schedule_text(course: Course) -> str:
     return "horario por confirmar"
 
 
+def _is_twilio_sandbox_sender(whatsapp_from: str) -> bool:
+    normalized = (whatsapp_from or "").strip().lower()
+    return normalized == "whatsapp:+14155238886"
+
+
 def _build_message(student_name: str, course: Course, tenant_name: str, custom_part: str | None) -> str:
     custom = (custom_part or f"Te saludamos de {tenant_name}.").strip()
     course_name = (course.name or "curso").strip()
@@ -165,6 +180,15 @@ def _build_message(student_name: str, course: Course, tenant_name: str, custom_p
         f"de los dias *{schedule}* 📌🕒. "
         f"Nos vemos pronto ✨."
     )
+
+
+def _build_template_variables(student_name: str, course_name: str, schedule: str, tenant_name: str) -> dict[str, str]:
+    return {
+        "1": student_name.strip() or "Alumno",
+        "2": course_name.strip() or "curso",
+        "3": schedule.strip() or "horario por confirmar",
+        "4": tenant_name.strip() or "la academia",
+    }
 
 def _twilio_send_whatsapp(
     to_phone: str,
@@ -205,6 +229,49 @@ def _twilio_send_whatsapp(
         raise HTTPException(status_code=400, detail=f"Twilio error: {detail}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error enviando WhatsApp: {e}")
+
+
+def _twilio_send_whatsapp_template(
+    to_phone: str,
+    content_sid: str,
+    content_variables: dict[str, str],
+    account_sid: str,
+    auth_token: str,
+    api_key_sid: str,
+    api_key_secret: str,
+    whatsapp_from: str,
+) -> dict:
+    if not account_sid or not whatsapp_from or not content_sid:
+        raise HTTPException(status_code=400, detail="Twilio template no configurado en el servidor.")
+
+    form = urlencode(
+        {
+            "From": whatsapp_from,
+            "To": to_phone,
+            "ContentSid": content_sid,
+            "ContentVariables": json.dumps(content_variables, ensure_ascii=False),
+        }
+    ).encode("utf-8")
+
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+    auth_b64 = _twilio_auth_b64(account_sid, auth_token, api_key_sid, api_key_secret)
+    req = Request(url, data=form, method="POST")
+    req.add_header("Authorization", f"Basic {auth_b64}")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+
+    try:
+        with urlopen(req, timeout=20) as res:
+            payload = json.loads(res.read().decode("utf-8"))
+            return payload
+    except HTTPError as e:
+        try:
+            err = json.loads(e.read().decode("utf-8"))
+            detail = err.get("message") or err
+        except Exception:
+            detail = str(e)
+        raise HTTPException(status_code=400, detail=f"Twilio error: {detail}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error enviando plantilla WhatsApp: {e}")
 
 
 def _twilio_get_message_status(
@@ -307,15 +374,24 @@ async def whatsapp_test_send(
     if not enabled:
         raise HTTPException(status_code=400, detail="Twilio esta desactivado en configuracion.")
 
+    template_sid = await _resolve_twilio_template_sid(db)
+    schedule = _course_schedule_text(course)
+    template_variables = _build_template_variables(
+        student_name=student.first_name,
+        course_name=course.name or "curso",
+        schedule=schedule,
+        tenant_name=tenant.name or "la academia",
+    )
     msg = _build_message(
         student_name=student.first_name,
         course=course,
         tenant_name=tenant.name or "la academia",
         custom_part=tenant.whatsapp_message,
     )
-    twilio_payload = _twilio_send_whatsapp(
+    twilio_payload = _twilio_send_whatsapp_template(
         to_phone=to_phone,
-        message=msg,
+        content_sid=template_sid,
+        content_variables=template_variables,
         account_sid=account_sid,
         auth_token=auth_token,
         api_key_sid=api_key_sid,
@@ -339,7 +415,7 @@ async def whatsapp_test_send(
     await db.commit()
     return {
         "ok": True,
-        "mode": "sandbox",
+        "mode": "sandbox" if _is_twilio_sandbox_sender(whatsapp_from) else "production",
         "to": to_phone,
         "sid": twilio_payload.get("sid"),
         "status": twilio_payload.get("status"),
@@ -450,6 +526,8 @@ async def set_twilio_admin_config(
     _: object = Depends(get_current_active_superuser),
     db: AsyncSession = Depends(get_db_session),
 ):
+    current_sid, current_token, current_api_key_sid, current_api_key_secret, _, _, _ = await _resolve_twilio_config(db)
+
     sid = (payload.account_sid or "").strip()
     token = (payload.auth_token or "").strip()
     api_key_sid = (payload.api_key_sid or "").strip()
@@ -457,30 +535,39 @@ async def set_twilio_admin_config(
     from_phone = (payload.whatsapp_from or "").strip()
     if not sid or not from_phone:
         raise HTTPException(status_code=400, detail="SID y whatsapp_from son obligatorios.")
-    if not ((api_key_sid and api_key_secret) or token):
+
+    # Preserve existing credentials when the user is only updating non-secret fields
+    # from the admin UI and leaves secret inputs blank.
+    effective_token = token or current_token
+    effective_api_key_sid = api_key_sid or current_api_key_sid
+    effective_api_key_secret = api_key_secret or (
+        current_api_key_secret if effective_api_key_sid == current_api_key_sid else ""
+    )
+
+    if not ((effective_api_key_sid and effective_api_key_secret) or effective_token):
         raise HTTPException(status_code=400, detail="Debes configurar Auth Token o API Key SID+Secret.")
     if not from_phone.startswith("whatsapp:+"):
         raise HTTPException(status_code=400, detail="El numero origen debe iniciar con 'whatsapp:+'.")
 
     await _set_app_setting(db, "twilio_account_sid", sid)
-    if token:
-        await _set_app_setting(db, "twilio_auth_token", token)
-    if api_key_sid:
-        await _set_app_setting(db, "twilio_api_key_sid", api_key_sid)
-    if api_key_secret:
-        await _set_app_setting(db, "twilio_api_key_secret", api_key_secret)
+    if effective_token:
+        await _set_app_setting(db, "twilio_auth_token", effective_token)
+    if effective_api_key_sid:
+        await _set_app_setting(db, "twilio_api_key_sid", effective_api_key_sid)
+    if effective_api_key_secret:
+        await _set_app_setting(db, "twilio_api_key_secret", effective_api_key_secret)
     await _set_app_setting(db, "twilio_whatsapp_from", from_phone)
     await _set_app_setting(db, "twilio_enabled", "true" if payload.enabled else "false")
     await db.commit()
 
     return TwilioAdminConfigOut(
         account_sid=sid,
-        auth_token_configured=bool(token),
-        auth_token_masked=_mask_secret(token) if token else None,
-        api_key_sid=api_key_sid or None,
-        api_key_configured=bool(api_key_sid and api_key_secret),
-        api_key_masked=_mask_secret(api_key_secret) if api_key_secret else None,
-        auth_mode="api_key" if (api_key_sid and api_key_secret) else ("auth_token" if token else "unknown"),
+        auth_token_configured=bool(effective_token),
+        auth_token_masked=_mask_secret(effective_token) if effective_token else None,
+        api_key_sid=effective_api_key_sid or None,
+        api_key_configured=bool(effective_api_key_sid and effective_api_key_secret),
+        api_key_masked=_mask_secret(effective_api_key_secret) if effective_api_key_secret else None,
+        auth_mode="api_key" if (effective_api_key_sid and effective_api_key_secret) else ("auth_token" if effective_token else "unknown"),
         whatsapp_from=from_phone,
         enabled=payload.enabled,
         source="database",
@@ -499,10 +586,17 @@ async def twilio_admin_test(
     to_phone = _normalize_phone(payload.to_phone)
     if not to_phone:
         raise HTTPException(status_code=400, detail="Numero destino invalido.")
-    body = (payload.body or "Prueba de WhatsApp desde la configuracion de Studios.").strip()
-    sent = _twilio_send_whatsapp(
+    template_sid = await _resolve_twilio_template_sid(db)
+    test_label = (payload.body or "Prueba rapida").strip()
+    sent = _twilio_send_whatsapp_template(
         to_phone=to_phone,
-        message=body,
+        content_sid=template_sid,
+        content_variables=_build_template_variables(
+            student_name="Alejandro",
+            course_name=test_label,
+            schedule="hoy 19:00 hrs",
+            tenant_name="PMS Studio",
+        ),
         account_sid=account_sid,
         auth_token=auth_token,
         api_key_sid=api_key_sid,
@@ -510,6 +604,7 @@ async def twilio_admin_test(
         whatsapp_from=whatsapp_from,
     )
     sid = sent.get("sid")
+    is_sandbox = _is_twilio_sandbox_sender(whatsapp_from)
     initial_status = (sent.get("status") or "").lower()
     final_status = initial_status
     error_code = sent.get("error_code")
@@ -529,11 +624,17 @@ async def twilio_admin_test(
                 break
 
     if final_status in ("delivered", "read"):
-        message = f"Prueba enviada y entregada. SID: {sid}"
+        message = f"Prueba plantilla enviada y entregada. SID: {sid}"
     elif final_status in ("failed", "undelivered"):
-        message = f"Prueba enviada. SID: {sid}. No entregado (sandbox): el numero probablemente no hizo join."
+        if is_sandbox:
+            message = f"Prueba enviada. SID: {sid}. No entregado (sandbox): el numero probablemente no hizo join."
+        else:
+            message = f"Prueba plantilla enviada. SID: {sid}. No entregado. Revisa el estado del numero destino o los registros de Twilio."
     else:
-        message = f"Prueba enviada. SID: {sid}. Estado actual: {final_status or 'pendiente'} (si no hizo join, no se entregara)."
+        if is_sandbox:
+            message = f"Prueba enviada. SID: {sid}. Estado actual: {final_status or 'pendiente'} (si no hizo join, no se entregara)."
+        else:
+            message = f"Prueba plantilla enviada. SID: {sid}. Estado actual: {final_status or 'pendiente'}."
 
     return {
         "ok": True,
@@ -577,11 +678,11 @@ async def get_twilio_admin_balance(
         level = "ok"
 
     return TwilioBalanceOut(
-        balance_usd=round(balance_usd, 2),
+        balance_usd=round(balance_usd, 4),
         currency=currency,
-        budget_usd=round(budget_usd, 2),
-        threshold_usd=round(threshold_usd, 2),
-        remaining_usd=round(remaining_usd, 2),
+        budget_usd=round(budget_usd, 4),
+        threshold_usd=round(threshold_usd, 4),
+        remaining_usd=round(remaining_usd, 4),
         remaining_percent=round(remaining_percent, 1),
         level=level,
         checked_at=datetime.now(timezone.utc).isoformat(),

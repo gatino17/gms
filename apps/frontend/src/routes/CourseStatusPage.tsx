@@ -12,7 +12,7 @@ import {
   HiOutlineViewGrid, 
   HiOutlineViewList,
   HiOutlineChartBar,
-  HiOutlineExclamationCircle,
+  HiOutlinePaperAirplane,
   HiOutlinePlus,
   HiOutlineSwitchHorizontal,
   HiOutlineCheckCircle,
@@ -85,6 +85,9 @@ export default function CourseStatusPage() {
   const [allCoursesCatalog, setAllCoursesCatalog] = useState<Array<{ id: number; name: string }>>([])
   const [waTestLoadingByStudent, setWaTestLoadingByStudent] = useState<Record<string, boolean>>({})
   const [waTestResultByStudent, setWaTestResultByStudent] = useState<Record<string, { ok: boolean; message: string }>>({})
+  const [waBulkLoadingByCourse, setWaBulkLoadingByCourse] = useState<Record<number, boolean>>({})
+  const [waBulkResultByCourse, setWaBulkResultByCourse] = useState<Record<number, string>>({})
+  const [waBulkConfirmCourse, setWaBulkConfirmCourse] = useState<CourseRow | null>(null)
   
   // Quick Create Student States
   const [showQuickCreate, setShowQuickCreate] = useState(false)
@@ -350,7 +353,26 @@ export default function CourseStatusPage() {
     }
   }
   const waKey = (courseId: number, studentId: number) => `${courseId}-${studentId}`
-
+  const pollWhatsAppDeliveryStatus = (sid: string, stateKey: string) => {
+    const delays = [4000, 10000, 20000, 35000]
+    for (const delay of delays) {
+      setTimeout(async () => {
+        try {
+          const st = await api.get(`/api/pms/whatsapp/status/${sid}`)
+          const status = String(st?.data?.status || '').toLowerCase()
+          if (status === 'delivered' || status === 'read') {
+            setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: true, message: 'Entregado' } }))
+            return
+          }
+          if (status === 'failed' || status === 'undelivered') {
+            setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: false, message: 'No entregado' } }))
+          }
+        } catch {
+          // no-op
+        }
+      }, delay)
+    }
+  }
   const handleWhatsAppTest = async (studentId: number, courseId: number) => {
     const stateKey = waKey(courseId, studentId)
     setWaTestLoadingByStudent((prev) => ({ ...prev, [stateKey]: true }))
@@ -359,32 +381,51 @@ export default function CourseStatusPage() {
       const res = await api.post('/api/pms/whatsapp/test', { student_id: studentId, course_id: courseId })
       const sid = String(res?.data?.sid || '')
       setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: true, message: 'Mensaje enviado' } }))
-      if (sid) {
-        const delays = [4000, 10000, 20000]
-        for (const delay of delays) {
-          setTimeout(async () => {
-            try {
-              const st = await api.get(`/api/pms/whatsapp/status/${sid}`)
-              const status = String(st?.data?.status || '').toLowerCase()
-              if (status === 'delivered' || status === 'read') {
-                setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: true, message: 'Entregado' } }))
-                return
-              }
-              if (status === 'failed' || status === 'undelivered') {
-                setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: false, message: 'No entregado' } }))
-                return
-              }
-            } catch {
-              // no-op
-            }
-          }, delay)
-        }
-      }
+      if (sid) pollWhatsAppDeliveryStatus(sid, stateKey)
     } catch (e: any) {
       const msg = e?.response?.data?.detail || e?.message || 'No se pudo enviar.'
       setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: false, message: String(msg) } }))
     } finally {
       setWaTestLoadingByStudent((prev) => ({ ...prev, [stateKey]: false }))
+    }
+  }
+  const openBulkWhatsAppModal = (row: CourseRow) => {
+    const pendingStudents = row.students.filter((s) => s.payment_status !== 'activo')
+    if (pendingStudents.length === 0) {
+      setWaBulkResultByCourse((prev) => ({ ...prev, [row.course.id]: 'Sin alumnos pendientes' }))
+      return
+    }
+    setWaBulkConfirmCourse(row)
+  }
+  const handleWhatsAppBulkByCourse = async (row: CourseRow) => {
+    const courseId = row.course.id
+    const pendingStudents = row.students.filter((s) => s.payment_status !== 'activo')
+    if (pendingStudents.length === 0) {
+      setWaBulkResultByCourse((prev) => ({ ...prev, [courseId]: 'Sin alumnos pendientes' }))
+      return
+    }
+    setWaBulkConfirmCourse(null)
+    setWaBulkLoadingByCourse((prev) => ({ ...prev, [courseId]: true }))
+    setWaBulkResultByCourse((prev) => ({ ...prev, [courseId]: '' }))
+    let ok = 0
+    let fail = 0
+    try {
+      for (const s of pendingStudents) {
+        try {
+          const res = await api.post('/api/pms/whatsapp/test', { student_id: s.id, course_id: courseId })
+          const sid = String(res?.data?.sid || '')
+          const stateKey = waKey(courseId, s.id)
+          setWaTestResultByStudent((prev) => ({ ...prev, [stateKey]: { ok: true, message: 'Mensaje enviado' } }))
+          if (sid) pollWhatsAppDeliveryStatus(sid, stateKey)
+          ok += 1
+        } catch {
+          fail += 1
+        }
+      }
+      const summary = fail > 0 ? ('Envios: ' + ok + ' ok | ' + fail + ' con problema') : ('Envios completados: ' + ok)
+      setWaBulkResultByCourse((prev) => ({ ...prev, [courseId]: summary }))
+    } finally {
+      setWaBulkLoadingByCourse((prev) => ({ ...prev, [courseId]: false }))
     }
   }
   return (
@@ -491,6 +532,13 @@ export default function CourseStatusPage() {
                                    onClick={() => openTransferModal(row)}
                                    className={`${viewMode === 'summary' ? 'flex' : 'hidden md:flex'} items-center justify-center gap-2 ${viewMode === 'summary' ? 'w-10 h-10 p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all`} title="Trasladar alumnos"
                                 >{viewMode === 'summary' ? <HiOutlineSwitchHorizontal size={16} /> : 'Trasladar'}</button>
+                                <button
+                                   onClick={() => openBulkWhatsAppModal(row)}
+                                   disabled={!!waBulkLoadingByCourse[row.course.id]}
+                                   className={`${viewMode === 'summary' ? 'flex' : 'hidden md:flex'} items-center justify-center gap-2 ${viewMode === 'summary' ? 'w-10 h-10 p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-rose-50 text-rose-700 text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all disabled:opacity-60`} title="Enviar mensaje"
+                                >
+                                  <HiOutlineMail size={14} />{viewMode === 'summary' ? null : (waBulkLoadingByCourse[row.course.id] ? 'Enviando...' : 'Pendientes')}
+                                </button>
                                 <button 
                                    onClick={() => { setEnrollModalCourseId(row.course.id); loadAllStudents(); }} 
                                    className={`flex items-center justify-center gap-2 ${viewMode === 'summary' ? 'w-10 h-10 p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-fuchsia-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 shadow-lg shadow-fuchsia-200 transition-all active:scale-95`} title="Inscribir alumno"
@@ -503,7 +551,11 @@ export default function CourseStatusPage() {
                                 )}
                              </div>
                           </div>
-
+                          {!!waBulkResultByCourse[row.course.id] && (
+                             <div className={`px-6 md:px-8 pb-3 text-[10px] font-black uppercase tracking-widest ${waBulkResultByCourse[row.course.id].includes('problema') ? 'text-amber-600' : 'text-emerald-600'}`}>
+                               {waBulkResultByCourse[row.course.id]}
+                             </div>
+                          )}
                           {/* Detailed/Compact Table */}
                           {(viewMode === 'detailed' || viewMode === 'pending') && (
                              <div className="overflow-x-auto no-scrollbar">
@@ -1109,6 +1161,59 @@ export default function CourseStatusPage() {
         </div>
       )}
 
+      {waBulkConfirmCourse && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-950/45 backdrop-blur-sm" onClick={() => setWaBulkConfirmCourse(null)} />
+          <div className="relative w-full max-w-xl rounded-[28px] border border-gray-100 bg-white shadow-2xl shadow-gray-900/20 overflow-hidden">
+            <div className="px-6 md:px-8 py-6 border-b border-gray-100 bg-rose-50/40">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-rose-500">Confirmar envio</div>
+                  <h3 className="mt-2 text-xl font-black text-gray-900">Cobro por curso</h3>
+                  <p className="mt-2 text-sm font-medium text-gray-500">
+                    Se enviara WhatsApp a los alumnos pendientes del curso <span className="font-black text-gray-800">{waBulkConfirmCourse.course.name}</span>.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWaBulkConfirmCourse(null)}
+                  className="w-10 h-10 rounded-2xl bg-white border border-gray-100 text-gray-400 hover:text-gray-700 hover:border-gray-200 transition-all"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="px-6 md:px-8 py-6 space-y-4">
+              <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
+                <div className="text-[10px] font-black uppercase tracking-widest text-rose-500">Resumen</div>
+                <div className="mt-2 text-sm font-bold text-gray-700">
+                  Alumnos pendientes: {waBulkConfirmCourse.students.filter((s) => s.payment_status !== 'activo').length}
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  Los mensajes se enviaran en cola, uno por uno, usando la plantilla aprobada de WhatsApp.
+                </div>
+              </div>
+            </div>
+            <div className="px-6 md:px-8 py-5 border-t border-gray-100 bg-gray-50/60 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setWaBulkConfirmCourse(null)}
+                className="px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleWhatsAppBulkByCourse(waBulkConfirmCourse)}
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-200"
+              >
+                <HiOutlineMail size={14} />
+                Enviar pendientes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Modal de RenovaciÃ³n */}
       {renewModalData && (
         <RenewModal

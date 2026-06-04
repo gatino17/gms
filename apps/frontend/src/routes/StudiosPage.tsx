@@ -248,7 +248,12 @@ export default function StudiosPage() {
   }
   const formatUsd = (value?: number | null) => {
     if (value == null || Number.isNaN(Number(value))) return '-'
-    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(Number(value))
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 4,
+    }).format(Number(value))
   }
   const formatUsdUsage = (value?: number | null) => {
     if (value == null || Number.isNaN(Number(value))) return '$0.000'
@@ -941,6 +946,11 @@ export default function StudiosPage() {
               {twilioBalance?.level === 'critical' ? 'Saldo critico' : twilioBalance?.level === 'warning' ? 'Saldo bajo' : 'Saldo estable'}
             </span>
           </div>
+          {twilioBalance && (
+            <div className="mt-1 text-[10px] font-bold text-gray-500">
+              Saldo real consultado: {formatUsd(twilioBalance.balance_usd)}
+            </div>
+          )}
           {twilioBalanceError && (
             <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-rose-500">{twilioBalanceError}</div>
           )}
@@ -1041,6 +1051,33 @@ export default function StudiosPage() {
             </button>
           </div>
         </form>
+
+        <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Plantilla activa de WhatsApp</div>
+              <div className="text-sm font-black text-gray-800">payment_reminder_es</div>
+            </div>
+            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600">Utility / Approved</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="bg-white rounded-xl border border-indigo-100 p-4">
+              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Canal</div>
+              <div className="text-sm font-black text-gray-800">Twilio + WhatsApp</div>
+            </div>
+            <div className="bg-white rounded-xl border border-indigo-100 p-4">
+              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Uso</div>
+              <div className="text-sm font-black text-gray-800">Cobro manual por alumno o curso</div>
+            </div>
+            <div className="bg-white rounded-xl border border-indigo-100 p-4">
+              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Variables</div>
+              <div className="text-sm font-black text-gray-800">Alumno, curso, dia/hora y estudio</div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-indigo-100 p-4 text-xs text-gray-600 leading-relaxed">
+            Hola <strong>[Nombre Alumno]</strong>, te recordamos que tienes un pago pendiente del curso <strong>[Nombre Curso]</strong> de los dias <strong>[Dia y Hora]</strong> en <strong>[Nombre Estudio]</strong>. Si ya realizaste el pago, puedes ignorar este mensaje.
+          </div>
+        </div>
 
         <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 space-y-3">
           <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Prueba Rapida</div>

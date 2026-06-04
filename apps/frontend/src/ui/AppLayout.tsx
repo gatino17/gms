@@ -372,6 +372,15 @@ export default function AppLayout() {
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="hidden lg:inline-flex items-center justify-center w-10 h-10 rounded-xl border border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all"
+              title="Cerrar sesión"
+            >
+              <HiOutlineLogout className="text-lg" />
+            </button>
           </div>
         </header>
 

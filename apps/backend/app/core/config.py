@@ -29,6 +29,7 @@ class Settings(BaseModel):
     twilio_api_key_sid: str = os.getenv("TWILIO_API_KEY_SID", "")
     twilio_api_key_secret: str = os.getenv("TWILIO_API_KEY_SECRET", "")
     twilio_whatsapp_from: str = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+    twilio_whatsapp_template_sid: str = os.getenv("TWILIO_WHATSAPP_TEMPLATE_SID", "")
 
 
 settings = Settings()

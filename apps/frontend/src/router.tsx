@@ -19,8 +19,13 @@ import { PrivateRoute } from './components/PrivateRoute'
 import { RequireSuperuser } from './components/RequireSuperuser'
 import { LoginPage } from './routes/LoginPage'
 import AttendanceKioskPage from './routes/AttendanceKioskPage'
+import LandingPage from './routes/LandingPage'
 
 export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <LandingPage />,
+  },
   {
     path: '/login',
     element: <LoginPage />,
@@ -29,10 +34,9 @@ export const router = createBrowserRouter([
     element: <PrivateRoute />,
     children: [
       {
-        path: '/',
         element: <AppLayout />,
         children: [
-          { index: true, element: <DashboardPage /> },
+          { path: '/dashboard', element: <DashboardPage /> },
           { path: 'students', element: <StudentsPage /> },
           { path: 'students/:id', element: <StudentDetailPage /> },
           { path: 'students/:id/renew', element: <StudentRenewPage /> },

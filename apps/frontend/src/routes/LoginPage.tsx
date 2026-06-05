@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineArrowRight, HiOutlineShieldCheck } from 'react-icons/hi';
@@ -13,7 +13,7 @@ export const LoginPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const from = location.state?.from?.pathname || '/';
+    const from = location.state?.from?.pathname || '/dashboard';
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -64,6 +64,11 @@ export const LoginPage: React.FC = () => {
                            <HiOutlineShieldCheck size={44} />
                         </div>
                         <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Bienvenido</h2>
+                        <div className="mt-4">
+                            <Link to="/" className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-fuchsia-600 transition-colors">
+                                Volver al inicio
+                            </Link>
+                        </div>
                         <p className="text-gray-400 font-medium px-4">Ingresa tus credenciales para acceder al sistema de gestión.</p>
                     </div>
 

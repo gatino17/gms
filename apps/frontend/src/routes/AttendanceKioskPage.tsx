@@ -240,7 +240,7 @@ export default function AttendanceKioskPage() {
         { code: exitPin },
         { headers: { 'X-Tenant-ID': tenantId } }
       )
-      navigate('/')
+      navigate('/dashboard')
     } catch (err: any) {
       setExitError(err.response?.data?.detail || 'PIN o clave incorrectos')
     } finally {

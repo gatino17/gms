@@ -111,7 +111,7 @@ export default function AppLayout() {
   }, [user?.is_superuser, tenantId, user, setTenantId])
 
   const navTop = [
-    { to: '/', label: 'Dashboard', icon: <HiOutlineHome /> },
+    { to: '/dashboard', label: 'Dashboard', icon: <HiOutlineHome /> },
     { to: '/students', label: 'Alumnos', icon: <HiOutlineUserGroup /> },
     { to: '/course-status', label: 'Estado cursos', icon: <HiOutlineViewList /> },
     { to: '/courses', label: 'Cursos', icon: <HiOutlineBookOpen /> },
@@ -314,7 +314,7 @@ export default function AppLayout() {
               <span className="text-slate-300 text-lg">/</span>
               <span className="text-slate-900 font-bold tracking-tight">
                 {(() => {
-                  if (pathname === '/') return 'Dashboard Overview'
+                  if (pathname === '/dashboard') return 'Dashboard Overview'
                   if (pathname === '/payments-teachers') return 'Detalle Profesores'
                   const allNav = [...navTop, ...navBottom]
                   const match = allNav.find(n => n.to === pathname)

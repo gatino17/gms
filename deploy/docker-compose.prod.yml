@@ -1,0 +1,24 @@
+services:
+  gms-backend:
+    build:
+      context: ../apps/backend
+    container_name: gms-backend
+    restart: always
+    env_file:
+      - ../apps/backend/.env
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - ../apps/backend/app/static:/app/app/static
+
+  gms-frontend:
+    build:
+      context: ../apps/frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://api.gmsoluciondigital.com}
+    container_name: gms-frontend
+    restart: always
+    ports:
+      - "127.0.0.1:3001:80"
+    depends_on:
+      - gms-backend

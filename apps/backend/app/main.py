@@ -32,20 +32,22 @@ local_dev_origins = [
     "http://127.0.0.1:5174",
 ]
 
-# If origins is '*' or empty, provide defaults including the production IP
+# If origins is '*' or empty, provide safe local defaults.
 if not origins or "*" in origins:
-    origins = [
-        "http://206.189.191.143",
-        "http://206.189.191.143:8000",
-    ]
+    origins = local_dev_origins.copy()
 
-# Always allow common local dev origins in addition to configured origins.
-for dev_origin in local_dev_origins:
-    if dev_origin not in origins:
-        origins.append(dev_origin)
+# Always allow common local dev origins in development.
+if settings.environment.lower() == "development":
+    for dev_origin in local_dev_origins:
+        if dev_origin not in origins:
+            origins.append(dev_origin)
 
-# Support local dev ports beyond the explicit list.
-allow_origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+# Support local dev ports beyond the explicit list only in development.
+allow_origin_regex = (
+    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+    if settings.environment.lower() == "development"
+    else None
+)
 
 app.add_middleware(
     CORSMiddleware,

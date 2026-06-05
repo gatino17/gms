@@ -50,7 +50,7 @@ export default function LandingPage() {
   return (
     <div id="top" className="min-h-screen bg-[#06060a] text-white overflow-x-hidden">
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(236,72,153,0.22),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.16),_transparent_28%),linear-gradient(180deg,_#08080f_0%,_#0d0d16_45%,_#050509_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(236,72,153,0.3),_transparent_34%),radial-gradient(circle_at_70%_20%,_rgba(255,255,255,0.08),_transparent_22%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.18),_transparent_28%),linear-gradient(180deg,_#08080f_0%,_#0f0d16_45%,_#050509_100%)]" />
         <div className="absolute inset-0 opacity-[0.08] bg-[linear-gradient(to_right,transparent_0,transparent_39px,rgba(255,255,255,0.12)_40px),linear-gradient(to_bottom,transparent_0,transparent_39px,rgba(255,255,255,0.12)_40px)] bg-[size:40px_40px]" />
       </div>
 
@@ -63,8 +63,10 @@ export default function LandingPage() {
               className="w-14 h-14 rounded-2xl object-cover border border-white/10 shadow-[0_24px_50px_-20px_rgba(236,72,153,0.55)]"
             />
             <div>
-              <p className="text-lg font-black tracking-tight text-white">GMS Soluciones Digitales</p>
-              <p className="text-[10px] uppercase tracking-[0.35em] font-bold text-white/45">Digitalizacion para emprendimientos</p>
+              <p className="text-lg font-black tracking-tight bg-gradient-to-r from-white via-fuchsia-100 to-slate-200 bg-clip-text text-transparent">
+                GMS Soluciones Digitales
+              </p>
+              <p className="text-[10px] uppercase tracking-[0.35em] font-bold text-white/55">Digitalizacion para emprendimientos</p>
             </div>
           </div>
 
@@ -89,13 +91,13 @@ export default function LandingPage() {
       <main className="relative z-10">
         <section className="max-w-7xl mx-auto px-6 lg:px-10 pt-8 lg:pt-16 pb-20 lg:pb-24 grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center">
           <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 text-[11px] font-black uppercase tracking-[0.28em] text-fuchsia-200">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-fuchsia-300/30 bg-fuchsia-500/12 text-[11px] font-black uppercase tracking-[0.28em] text-fuchsia-100 shadow-[0_0_40px_-18px_rgba(236,72,153,0.8)]">
               <HiOutlineChartBar className="text-sm" />
               GMS soluciones digitales
             </div>
 
             <div className="space-y-5">
-              <h1 className="max-w-5xl text-5xl lg:text-7xl font-black tracking-tight leading-[0.94] text-white">
+              <h1 className="max-w-5xl text-4xl lg:text-6xl font-black tracking-tight leading-[0.96] text-white">
                 Digitalizamos emprendimientos con sistemas web para procesos reales.
               </h1>
               <p className="max-w-3xl text-base lg:text-lg leading-8 text-white/68 font-medium">
@@ -107,10 +109,10 @@ export default function LandingPage() {
               {modules.map((module) => (
                 <div
                   key={module.label}
-                  className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl p-5 shadow-[0_24px_50px_-30px_rgba(15,23,42,0.8)]"
-                >
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-fuchsia-200/80">{module.label}</p>
-                  <p className="mt-4 text-xl lg:text-2xl font-black tracking-tight text-white">{module.value}</p>
+                className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl p-5 shadow-[0_24px_50px_-30px_rgba(15,23,42,0.8)]"
+              >
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-fuchsia-100/85">{module.label}</p>
+                  <p className="mt-4 text-xl lg:text-2xl font-black tracking-tight bg-gradient-to-r from-white via-fuchsia-100 to-slate-300 bg-clip-text text-transparent">{module.value}</p>
                   <p className="mt-3 text-xs lg:text-sm leading-6 text-white/55">{module.detail}</p>
                 </div>
               ))}
@@ -135,11 +137,11 @@ export default function LandingPage() {
 
           <div className="relative">
             <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-fuchsia-500/25 blur-3xl" />
-            <div className="relative rounded-[40px] border border-white/10 bg-white/[0.04] backdrop-blur-2xl p-6 lg:p-8 shadow-[0_40px_90px_-40px_rgba(236,72,153,0.45)]">
-              <div className="rounded-[32px] border border-white/10 bg-[#0f1018] p-6 lg:p-7">
+            <div className="relative rounded-[40px] border border-fuchsia-300/15 bg-white/[0.05] backdrop-blur-2xl p-6 lg:p-8 shadow-[0_40px_90px_-40px_rgba(236,72,153,0.45)]">
+              <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(19,19,29,0.98)_0%,rgba(13,14,21,0.98)_100%)] p-6 lg:p-7">
                 <div className="flex items-start justify-between gap-6">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.35em] text-fuchsia-200/80">Modulo destacado</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.35em] text-fuchsia-100/80">Modulo destacado</p>
                     <h2 className="mt-3 text-2xl lg:text-3xl font-black tracking-tight text-white">Studios</h2>
                     <p className="mt-3 text-sm leading-6 text-white/58 max-w-sm">
                       Ya contamos con un modulo operativo para estudios y academias: baile, karate, natacion y otros formatos con control diario.
@@ -155,7 +157,7 @@ export default function LandingPage() {
                 <div className="mt-8 grid gap-4">
                   {capabilities.map((capability, idx) => (
                     <div key={capability} className="rounded-[24px] border border-white/8 bg-white/[0.03] px-5 py-4 flex items-start gap-4">
-                      <div className="w-9 h-9 rounded-2xl bg-fuchsia-500/12 border border-fuchsia-400/15 text-fuchsia-200 flex items-center justify-center text-sm font-black">
+                      <div className="w-9 h-9 rounded-2xl bg-fuchsia-500/15 border border-fuchsia-300/20 text-fuchsia-100 flex items-center justify-center text-sm font-black shadow-[0_0_30px_-18px_rgba(236,72,153,0.9)]">
                         0{idx + 1}
                       </div>
                       <p className="text-sm leading-6 text-white/68 font-medium">{capability}</p>
@@ -165,19 +167,19 @@ export default function LandingPage() {
 
                 <div className="mt-8 grid grid-cols-3 gap-3">
                   <div className="rounded-[22px] bg-white/[0.03] border border-white/8 p-4">
-                    <div className="w-11 h-11 rounded-2xl bg-fuchsia-500/12 text-fuchsia-200 flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-2xl bg-fuchsia-500/14 text-fuchsia-100 flex items-center justify-center shadow-[0_0_30px_-18px_rgba(236,72,153,0.8)]">
                       <HiOutlineUserGroup className="text-xl" />
                     </div>
                     <p className="mt-4 text-sm font-black text-white">Alumnos y clientes</p>
                   </div>
                   <div className="rounded-[22px] bg-white/[0.03] border border-white/8 p-4">
-                    <div className="w-11 h-11 rounded-2xl bg-cyan-500/12 text-cyan-200 flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-2xl bg-slate-200/10 text-slate-100 flex items-center justify-center shadow-[0_0_30px_-18px_rgba(255,255,255,0.35)]">
                       <HiOutlineCalendar className="text-xl" />
                     </div>
                     <p className="mt-4 text-sm font-black text-white">Agenda y asistencia</p>
                   </div>
                   <div className="rounded-[22px] bg-white/[0.03] border border-white/8 p-4">
-                    <div className="w-11 h-11 rounded-2xl bg-emerald-500/12 text-emerald-200 flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-2xl bg-fuchsia-500/10 text-slate-100 flex items-center justify-center shadow-[0_0_30px_-18px_rgba(236,72,153,0.55)]">
                       <HiOutlineCurrencyDollar className="text-xl" />
                     </div>
                     <p className="mt-4 text-sm font-black text-white">Cobranza y pagos</p>
@@ -191,7 +193,7 @@ export default function LandingPage() {
         <section id="soluciones" className="max-w-7xl mx-auto px-6 lg:px-10 pb-20">
           <div className="flex items-end justify-between gap-6 flex-wrap">
             <div className="max-w-3xl">
-              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-fuchsia-200/80">Que podemos digitalizar</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-fuchsia-100/80">Que podemos digitalizar</p>
               <h2 className="mt-4 text-2xl lg:text-4xl font-black tracking-tight text-white">
                 Soluciones listas y desarrollos a medida para distintos rubros.
               </h2>
@@ -205,20 +207,20 @@ export default function LandingPage() {
             {sectors.map((sector) => (
               <div
                 key={sector.title}
-                className="rounded-[30px] border border-white/10 bg-white/[0.04] backdrop-blur-xl p-7 shadow-[0_26px_70px_-40px_rgba(15,23,42,0.85)]"
+                className="group rounded-[30px] border border-white/10 bg-white/[0.05] backdrop-blur-xl p-7 shadow-[0_26px_70px_-40px_rgba(15,23,42,0.85)] transition-all duration-300 hover:-translate-y-1 hover:border-fuchsia-300/45 hover:bg-fuchsia-500/[0.09] hover:shadow-[0_30px_80px_-38px_rgba(217,70,239,0.6)]"
               >
-                <div className="w-12 h-12 rounded-2xl bg-white/8 text-fuchsia-200 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-white/8 text-fuchsia-100 flex items-center justify-center transition-colors duration-300 group-hover:bg-fuchsia-500/18 group-hover:text-white shadow-[0_0_30px_-18px_rgba(236,72,153,0.75)]">
                   {sector.icon}
                 </div>
-                <h3 className="mt-6 text-xl lg:text-2xl font-black tracking-tight text-white">{sector.title}</h3>
-                <p className="mt-4 text-sm lg:text-base leading-7 text-white/58 font-medium">{sector.text}</p>
+                <h3 className="mt-6 text-xl lg:text-2xl font-black tracking-tight text-white transition-colors duration-300 group-hover:text-fuchsia-100">{sector.title}</h3>
+                <p className="mt-4 text-sm lg:text-base leading-7 text-white/58 font-medium transition-colors duration-300 group-hover:text-white/80">{sector.text}</p>
               </div>
             ))}
           </div>
         </section>
 
         <section className="max-w-7xl mx-auto px-6 lg:px-10 pb-24">
-          <div className="rounded-[40px] border border-fuchsia-400/20 bg-gradient-to-br from-fuchsia-500/15 via-white/[0.05] to-cyan-500/12 p-8 lg:p-14 shadow-[0_40px_120px_-50px_rgba(217,70,239,0.55)]">
+          <div className="rounded-[40px] border border-fuchsia-300/25 bg-gradient-to-br from-fuchsia-500/18 via-white/[0.05] to-slate-100/[0.06] p-8 lg:p-14 shadow-[0_40px_120px_-50px_rgba(217,70,239,0.55)]">
             <div className="grid lg:grid-cols-[0.85fr_1.15fr] gap-10 items-start">
               <div id="contacto">
                 <p className="text-[11px] font-black uppercase tracking-[0.28em] text-fuchsia-200/80">Hablemos de tu proceso</p>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import {
@@ -14,6 +15,7 @@ import {
   HiOutlineTrash,
   HiOutlineCheckCircle,
   HiOutlineXCircle,
+  HiOutlineX,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
   HiOutlinePlus
@@ -37,6 +39,11 @@ type Student = {
   enrollment_count?: number
 }
 
+type TenantPlanInfo = {
+  max_active_students?: number | null
+  plan_name?: string | null
+}
+
 function ymdToCL(ymd?: string | null): string { 
   if (!ymd) return '-'; 
   const [y,m,d] = ymd.split('-').map(Number); 
@@ -53,10 +60,12 @@ export default function StudentsPage() {
   const [q, setQ] = useState('')
   const [stats, setStats] = useState({ total_active: 0, total_inactive: 0, female: 0, male: 0, new_this_week: 0 })
   const [enrollmentFeeByStudent, setEnrollmentFeeByStudent] = useState<Record<number, boolean>>({})
+  const [tenantPlanInfo, setTenantPlanInfo] = useState<TenantPlanInfo>({})
   
   const [showCreate, setShowCreate] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [showPlanLimitModal, setShowPlanLimitModal] = useState(false)
 
   const [showEnroll, setShowEnroll] = useState(false)
   const [showPay, setShowPay] = useState(false)
@@ -72,6 +81,16 @@ export default function StudentsPage() {
       const studentsRes = await api.get('/api/pms/students', { params: { q, limit: 1000 } })
       setData(studentsRes.data.items)
       setStats(studentsRes.data.stats)
+
+      try {
+        const tenantRes = await api.get<TenantPlanInfo>('/api/pms/tenants/me')
+        setTenantPlanInfo({
+          max_active_students: tenantRes.data?.max_active_students ?? null,
+          plan_name: tenantRes.data?.plan_name ?? null,
+        })
+      } catch {
+        setTenantPlanInfo({})
+      }
 
       // Optional load: if payments fails, students list must still render.
       try {
@@ -103,6 +122,28 @@ export default function StudentsPage() {
   }, [data, page, pageSize])
 
   const totalPages = Math.ceil(data.length / pageSize)
+  const maxActiveStudents = tenantPlanInfo.max_active_students ?? null
+  const activeStudentsLabel = maxActiveStudents
+    ? `${stats.total_active}/${maxActiveStudents} activos`
+    : `${stats.total_active} activos`
+  const capacityPercent = maxActiveStudents ? stats.total_active / Math.max(maxActiveStudents, 1) : 0
+  const capacityTone =
+    !maxActiveStudents
+      ? 'bg-gray-100 text-gray-500 border-gray-200'
+      : capacityPercent >= 1
+        ? 'bg-rose-50 text-rose-600 border-rose-200'
+        : capacityPercent >= 0.8
+          ? 'bg-amber-50 text-amber-700 border-amber-200'
+          : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  const hasReachedCapacity = Boolean(maxActiveStudents && stats.total_active >= maxActiveStudents)
+
+  const handleOpenCreate = () => {
+    if (hasReachedCapacity) {
+      setShowPlanLimitModal(true)
+      return
+    }
+    setShowCreate(true)
+  }
 
   const handleDelete = async (id: number) => {
     if (confirm('¿Eliminar alumno permanentemente?')) {
@@ -119,9 +160,19 @@ export default function StudentsPage() {
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Comunidad</span>
            <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight leading-none">Alumnos</h1>
            <p className="text-gray-500 font-medium text-xs md:text-sm">Gestión centralizada de tu academia.</p>
+           <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+             <span className={`inline-flex px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${capacityTone}`}>
+               {activeStudentsLabel}
+             </span>
+             {tenantPlanInfo.plan_name && maxActiveStudents ? (
+               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                 Plan {tenantPlanInfo.plan_name}
+               </span>
+             ) : null}
+           </div>
         </div>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={handleOpenCreate}
           className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black text-sm rounded-xl shadow-xl shadow-fuchsia-100 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
         >
           <HiOutlineUserAdd size={18} /> Registrar Alumno
@@ -372,6 +423,51 @@ export default function StudentsPage() {
           onClose={() => { setShowEdit(false); setSelectedStudent(null) }}
           onSuccess={() => { setShowEdit(false); setSelectedStudent(null); load() }}
         />
+      )}
+
+      {showPlanLimitModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
+            onClick={() => setShowPlanLimitModal(false)}
+          />
+          <div className="relative w-full max-w-lg rounded-[28px] border border-gray-100 bg-white shadow-2xl overflow-hidden">
+            <div className="px-6 md:px-8 py-6 bg-rose-50/50 border-b border-gray-100 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-rose-500">Limite alcanzado</p>
+                <h3 className="mt-2 text-2xl font-black text-gray-900 tracking-tight">No puedes registrar mas alumnos</h3>
+              </div>
+              <button
+                onClick={() => setShowPlanLimitModal(false)}
+                className="w-10 h-10 rounded-2xl border border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-all"
+              >
+                <HiOutlineX size={18} className="mx-auto" />
+              </button>
+            </div>
+            <div className="px-6 md:px-8 py-6 space-y-4">
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Tu estudio ya alcanzo el cupo de <span className="font-black text-gray-900">{activeStudentsLabel}</span>.
+                {tenantPlanInfo.plan_name ? (
+                  <>
+                    {' '}Este limite corresponde al plan <span className="font-black text-gray-900">{tenantPlanInfo.plan_name}</span>.
+                  </>
+                ) : null}
+              </p>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Para seguir inscribiendo alumnos, cambia el plan del tenant desde <span className="font-black text-gray-700">Studios</span>.
+              </p>
+            </div>
+            <div className="px-6 md:px-8 py-5 border-t border-gray-100 bg-gray-50/80 flex justify-end">
+              <button
+                onClick={() => setShowPlanLimitModal(false)}
+                className="px-5 py-3 rounded-2xl bg-gray-900 text-white text-xs font-black uppercase tracking-widest hover:bg-black transition-all"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )

@@ -11,7 +11,7 @@ from datetime import datetime
 
 from app.core import security
 
-from app.pms.models import Student, Tenant
+from app.pms.models import Student, Tenant, TenantPlan
 from app.pms.models import Course, Enrollment, Attendance, Payment, Teacher
 from app.pms.schemas import StudentOut, StudentCreate, StudentUpdate, StudentListResponse, StudentStats
 from app.pms.deps import get_tenant_id, get_db_session, get_current_student
@@ -20,6 +20,48 @@ router = APIRouter(prefix="/api/pms/students", tags=["pms-students"])
 
 # Almacen simple en memoria para codigos de portal (en un entorno real usar DB + email)
 _portal_codes: dict[tuple[str, int | None], dict[str, object]] = {}
+
+
+async def _ensure_student_plan_capacity(db: AsyncSession, tenant_id: int) -> None:
+    tenant = await db.get(Tenant, tenant_id)
+    if not tenant or not tenant.plan_id:
+        return
+
+    plan = await db.get(TenantPlan, tenant.plan_id)
+    if not plan or not plan.max_active_students or plan.max_active_students <= 0:
+        return
+
+    active_students = await db.scalar(
+        select(func.count()).select_from(Student).where(
+            Student.tenant_id == tenant_id,
+            Student.is_active == True,
+        )
+    ) or 0
+
+    if active_students < plan.max_active_students:
+        return
+
+    next_plan = (
+        await db.execute(
+            select(TenantPlan)
+            .where(
+                TenantPlan.is_active == True,
+                TenantPlan.max_active_students > plan.max_active_students,
+            )
+            .order_by(TenantPlan.max_active_students.asc(), TenantPlan.id.asc())
+            .limit(1)
+        )
+    ).scalars().first()
+
+    detail = (
+        f"Has alcanzado el limite de {plan.max_active_students} alumnos activos de tu plan {plan.name}."
+    )
+    if next_plan:
+        detail += f" Puedes cambiarte al plan {next_plan.name} ({next_plan.max_active_students} alumnos) desde Studios."
+    else:
+        detail += " Puedes cambiar de plan desde Studios para seguir inscribiendo alumnos."
+
+    raise HTTPException(status_code=400, detail=detail)
 
 
 @router.get("/", response_model=StudentListResponse)
@@ -103,6 +145,8 @@ async def create_student(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
+    if payload.is_active is not False:
+        await _ensure_student_plan_capacity(db, tenant_id)
     obj = Student(tenant_id=tenant_id, **payload.model_dump(exclude_unset=True))
     db.add(obj)
     await db.flush()
@@ -133,6 +177,8 @@ async def update_student(
         if prev_is_active and not new_is_active:
             obj.inactive_at = datetime.utcnow()
         if new_is_active:
+            if not prev_is_active:
+                await _ensure_student_plan_capacity(db, tenant_id)
             obj.inactive_at = None
             obj.inactive_note = None
     await db.flush()

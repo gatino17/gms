@@ -96,10 +96,10 @@ export default function LandingPage() {
 
             <div className="space-y-5">
               <h1 className="max-w-5xl text-5xl lg:text-7xl font-black tracking-tight leading-[0.94] text-white">
-                Digitalizamos tu emprendimiento con sistemas web pensados para procesos reales.
+                Digitalizamos emprendimientos con sistemas web para procesos reales.
               </h1>
-              <p className="max-w-3xl text-base lg:text-xl leading-8 text-white/68 font-medium">
-                Si hoy trabajas con papel, planillas o tareas manuales, en GMS Soluciones Digitales te ayudamos a ordenar y mejorar tu operacion con sistemas web utiles para tu negocio.
+              <p className="max-w-3xl text-base lg:text-lg leading-8 text-white/68 font-medium">
+                Si hoy trabajas con papel, planillas o tareas manuales, te ayudamos a ordenar y mejorar tu operacion con sistemas web utiles para tu negocio.
               </p>
             </div>
 
@@ -110,8 +110,8 @@ export default function LandingPage() {
                   className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl p-5 shadow-[0_24px_50px_-30px_rgba(15,23,42,0.8)]"
                 >
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-fuchsia-200/80">{module.label}</p>
-                  <p className="mt-4 text-2xl font-black tracking-tight text-white">{module.value}</p>
-                  <p className="mt-3 text-sm leading-6 text-white/55">{module.detail}</p>
+                  <p className="mt-4 text-xl lg:text-2xl font-black tracking-tight text-white">{module.value}</p>
+                  <p className="mt-3 text-xs lg:text-sm leading-6 text-white/55">{module.detail}</p>
                 </div>
               ))}
             </div>
@@ -140,8 +140,8 @@ export default function LandingPage() {
                 <div className="flex items-start justify-between gap-6">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.35em] text-fuchsia-200/80">Modulo destacado</p>
-                    <h2 className="mt-3 text-3xl font-black tracking-tight text-white">Studios</h2>
-                    <p className="mt-3 text-sm leading-7 text-white/58 max-w-sm">
+                    <h2 className="mt-3 text-2xl lg:text-3xl font-black tracking-tight text-white">Studios</h2>
+                    <p className="mt-3 text-sm leading-6 text-white/58 max-w-sm">
                       Ya contamos con un modulo operativo para estudios y academias: baile, karate, natacion y otros formatos con control diario.
                     </p>
                   </div>
@@ -158,7 +158,7 @@ export default function LandingPage() {
                       <div className="w-9 h-9 rounded-2xl bg-fuchsia-500/12 border border-fuchsia-400/15 text-fuchsia-200 flex items-center justify-center text-sm font-black">
                         0{idx + 1}
                       </div>
-                      <p className="text-sm leading-7 text-white/68 font-medium">{capability}</p>
+                      <p className="text-sm leading-6 text-white/68 font-medium">{capability}</p>
                     </div>
                   ))}
                 </div>
@@ -192,11 +192,11 @@ export default function LandingPage() {
           <div className="flex items-end justify-between gap-6 flex-wrap">
             <div className="max-w-3xl">
               <p className="text-[11px] font-black uppercase tracking-[0.28em] text-fuchsia-200/80">Que podemos digitalizar</p>
-              <h2 className="mt-4 text-3xl lg:text-5xl font-black tracking-tight text-white">
-                Modulos probados y soluciones personalizadas para distintos rubros.
+              <h2 className="mt-4 text-2xl lg:text-4xl font-black tracking-tight text-white">
+                Soluciones listas y desarrollos a medida para distintos rubros.
               </h2>
             </div>
-            <p className="max-w-xl text-sm lg:text-base leading-8 text-white/58 font-medium">
+            <p className="max-w-xl text-sm lg:text-base leading-7 text-white/58 font-medium">
               No todo emprendimiento necesita la misma herramienta. Partimos por la operacion real del negocio y desde ahi definimos la solucion correcta.
             </p>
           </div>
@@ -210,8 +210,8 @@ export default function LandingPage() {
                 <div className="w-12 h-12 rounded-2xl bg-white/8 text-fuchsia-200 flex items-center justify-center">
                   {sector.icon}
                 </div>
-                <h3 className="mt-6 text-2xl font-black tracking-tight text-white">{sector.title}</h3>
-                <p className="mt-4 text-sm lg:text-base leading-8 text-white/58 font-medium">{sector.text}</p>
+                <h3 className="mt-6 text-xl lg:text-2xl font-black tracking-tight text-white">{sector.title}</h3>
+                <p className="mt-4 text-sm lg:text-base leading-7 text-white/58 font-medium">{sector.text}</p>
               </div>
             ))}
           </div>
@@ -222,10 +222,10 @@ export default function LandingPage() {
             <div className="grid lg:grid-cols-[0.85fr_1.15fr] gap-10 items-start">
               <div id="contacto">
                 <p className="text-[11px] font-black uppercase tracking-[0.28em] text-fuchsia-200/80">Hablemos de tu proceso</p>
-                <h2 className="mt-4 text-3xl lg:text-5xl font-black tracking-tight text-white">
-                  Si tu operacion aun depende de papel, podemos ayudarte a modernizarla.
+                <h2 className="mt-4 text-2xl lg:text-4xl font-black tracking-tight text-white">
+                  Si tu operacion aun depende de papel, podemos modernizarla.
                 </h2>
-                <p className="mt-5 text-sm lg:text-base leading-8 text-white/60 font-medium">
+                <p className="mt-5 text-sm lg:text-base leading-7 text-white/60 font-medium">
                   Ya tenemos un modulo para studios y academias, y tambien desarrollamos soluciones personalizadas para APR de aguas, boutique y otros modelos de gestion.
                 </p>
                 <div className="mt-8 rounded-[24px] border border-white/10 bg-black/20 p-5">
@@ -245,18 +245,18 @@ export default function LandingPage() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                   <p className="text-[10px] uppercase tracking-[0.3em] font-black text-white/40">Paso 1</p>
-                  <p className="mt-4 text-lg font-black text-white">Reunion y diagnostico</p>
-                  <p className="mt-3 text-sm leading-7 text-white/58">Revisamos como trabajas hoy, que procesos te frenan y donde conviene digitalizar primero.</p>
+                  <p className="mt-4 text-base lg:text-lg font-black text-white">Reunion y diagnostico</p>
+                  <p className="mt-3 text-sm leading-6 text-white/58">Revisamos como trabajas hoy y que conviene digitalizar primero.</p>
                 </div>
                 <div className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                   <p className="text-[10px] uppercase tracking-[0.3em] font-black text-white/40">Paso 2</p>
-                  <p className="mt-4 text-lg font-black text-white">Propuesta concreta</p>
-                  <p className="mt-3 text-sm leading-7 text-white/58">Definimos si conviene usar un modulo existente, adaptarlo o construir una solucion a medida.</p>
+                  <p className="mt-4 text-base lg:text-lg font-black text-white">Propuesta concreta</p>
+                  <p className="mt-3 text-sm leading-6 text-white/58">Definimos si conviene usar un modulo existente, adaptarlo o construir una solucion a medida.</p>
                 </div>
                 <div className="rounded-[28px] border border-white/10 bg-black/20 p-6 sm:col-span-2">
                   <p className="text-[10px] uppercase tracking-[0.3em] font-black text-fuchsia-200/75">Resultado esperado</p>
-                  <p className="mt-4 text-3xl lg:text-4xl font-black tracking-tight text-white">Menos desorden. Mejor seguimiento. Una operacion mucho mas profesional.</p>
-                  <p className="mt-4 max-w-2xl text-sm lg:text-base leading-7 text-white/58 font-medium">
+                  <p className="mt-4 text-2xl lg:text-3xl font-black tracking-tight text-white">Menos desorden. Mejor seguimiento. Una operacion mas profesional.</p>
+                  <p className="mt-4 max-w-2xl text-sm lg:text-base leading-6 text-white/58 font-medium">
                     Llevamos tu operacion a un sistema claro, medible y listo para crecer.
                   </p>
                   <div className="mt-5 flex flex-wrap gap-2">

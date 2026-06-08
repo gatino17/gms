@@ -156,16 +156,16 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen flex bg-slate-50 font-sans antialiased text-slate-900">
       {/* Sidebar */}
-      <aside className={`${collapsed ? 'w-20' : 'w-72'} bg-slate-900 border-r border-slate-800 transition-all duration-300 flex flex-col z-30 shadow-2xl overflow-x-hidden`}>
+      <aside className={`${collapsed ? 'w-16 md:w-20' : 'w-56 md:w-72'} bg-slate-900 border-r border-slate-800 transition-all duration-300 flex flex-col z-30 shadow-2xl overflow-x-hidden`}>
         {/* Logo Section */}
-        <div className={`h-16 flex items-center border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-xl sticky top-0 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
+        <div className={`h-16 flex items-center border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-xl sticky top-0 ${collapsed ? 'justify-center px-0' : 'px-4 md:px-6'}`}>
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-fuchsia-600 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-fuchsia-500/20 ring-1 ring-white/10">
-              <span className="text-white font-bold text-xl tracking-tight">P</span>
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-gradient-to-br from-fuchsia-600 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-fuchsia-500/20 ring-1 ring-white/10">
+              <span className="text-white font-bold text-lg md:text-xl tracking-tight">P</span>
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="text-white font-bold text-lg leading-tight tracking-tight">PMS Studio</span>
+                <span className="text-white font-bold text-base md:text-lg leading-tight tracking-tight">PMS Studio</span>
                 <span className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] leading-none mt-0.5">Management</span>
               </div>
             )}
@@ -173,7 +173,7 @@ export default function AppLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar scrollbar-hide">
+        <nav className="flex-1 px-2 md:px-4 py-4 md:py-6 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar scrollbar-hide">
           <div className={`text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-4 flex items-center ${collapsed ? 'justify-center' : ''}`}>
             {collapsed ? '—' : 'Menú Principal'}
           </div>
@@ -184,12 +184,12 @@ export default function AppLayout() {
               <Link
                 key={n.to}
                 to={n.to}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative
+                className={`flex items-center gap-3 px-2.5 md:px-3 py-2.5 md:py-3 rounded-xl transition-all duration-200 group relative
                   ${isActive 
                     ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-xl shadow-fuchsia-600/20' 
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
               >
-                <span className={`text-xl transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-fuchsia-400'}`}>
+                <span className={`text-lg md:text-xl transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-fuchsia-400'}`}>
                   {n.icon}
                 </span>
                 {!collapsed && <span className="font-semibold text-sm tracking-tight">{n.label}</span>}
@@ -217,12 +217,12 @@ export default function AppLayout() {
               <Link
                 key={n.to}
                 to={n.to}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative
+                className={`flex items-center gap-3 px-2.5 md:px-3 py-2.5 md:py-3 rounded-xl transition-all duration-200 group relative
                   ${isActive 
                     ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-xl shadow-fuchsia-600/20' 
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
               >
-                <span className={`text-xl transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-fuchsia-400'}`}>
+                <span className={`text-lg md:text-xl transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-fuchsia-400'}`}>
                   {n.icon}
                 </span>
                 {!collapsed && <span className="font-semibold text-sm tracking-tight">{n.label}</span>}
@@ -237,13 +237,13 @@ export default function AppLayout() {
         </nav>
 
         {/* User Quick Switch / Footer */}
-        <div className="p-4 border-t border-slate-800/50 bg-slate-900/50">
+        <div className="p-2 md:p-4 border-t border-slate-800/50 bg-slate-900/50">
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-3 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all group"
+            className="w-full flex items-center gap-3 px-2.5 md:px-3 py-2.5 md:py-3 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all group"
           >
-            <span className="text-xl group-hover:scale-110 group-hover:-rotate-12 transition-transform"><HiOutlineLogout /></span>
+            <span className="text-lg md:text-xl group-hover:scale-110 group-hover:-rotate-12 transition-transform"><HiOutlineLogout /></span>
             {!collapsed && <span className="font-bold text-sm tracking-tight">Cerrar Sesión</span>}
           </button>
         </div>

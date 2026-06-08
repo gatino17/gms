@@ -65,6 +65,7 @@ async def _ensure_student_plan_capacity(db: AsyncSession, tenant_id: int) -> Non
 
 
 @router.get("/", response_model=StudentListResponse)
+@router.get("", response_model=StudentListResponse)
 async def list_students(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
@@ -140,6 +141,7 @@ async def get_student(
 
 
 @router.post("/", response_model=StudentOut, status_code=201)
+@router.post("", response_model=StudentOut, status_code=201)
 async def create_student(
     payload: StudentCreate,
     tenant_id: int = Depends(get_tenant_id),

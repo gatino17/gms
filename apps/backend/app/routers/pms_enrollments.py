@@ -35,6 +35,7 @@ router = APIRouter(prefix="/api/pms/enrollments", tags=["pms-enrollments"])
 
 
 @router.get("/", response_model=list[EnrollmentOut])
+@router.get("", response_model=list[EnrollmentOut])
 async def list_enrollments(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
@@ -54,6 +55,7 @@ async def list_enrollments(
 
 
 @router.post("/", response_model=EnrollmentOut, status_code=201)
+@router.post("", response_model=EnrollmentOut, status_code=201)
 async def create_enrollment(
     payload: EnrollmentCreate,
     tenant_id: int = Depends(get_tenant_id),

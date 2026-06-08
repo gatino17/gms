@@ -93,6 +93,7 @@ async def payments_by_teacher(
 
 
 @router.get("/", response_model=PaymentListResponse)
+@router.get("", response_model=PaymentListResponse)
 async def list_payments(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
@@ -233,6 +234,7 @@ async def get_payment(
 
 
 @router.post("/", response_model=PaymentOut, status_code=201)
+@router.post("", response_model=PaymentOut, status_code=201)
 async def create_payment(
     payload: PaymentCreate,
     tenant_id: int = Depends(get_tenant_id),

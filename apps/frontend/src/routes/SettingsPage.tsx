@@ -288,73 +288,73 @@ export default function SettingsPage() {
   const logoSrc = toAbsoluteUrl(settings.logo_url)
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10 pb-20 animate-in fade-in duration-700">
+    <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 pb-20 animate-in fade-in duration-700 px-3 md:px-0">
       {/* Header */}
-      <div className="space-y-2">
+      <div className="space-y-2 px-1 md:px-0">
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Configuración</span>
           <div className="h-1 w-1 rounded-full bg-gray-300" />
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Panel de Control</span>
         </div>
-        <h1 className="text-4xl font-black text-gray-900 tracking-tight">Ajustes del Estudio</h1>
-        <p className="text-gray-500 font-medium">Gestiona la identidad de tu academia y la infraestructura física.</p>
+        <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Ajustes del Estudio</h1>
+        <p className="text-sm md:text-base text-gray-500 font-medium">Gestiona la identidad de tu academia y la infraestructura física.</p>
       </div>
 
       {/* Profile Card */}
-      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm overflow-hidden relative group">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm overflow-hidden relative group">
         <div className="absolute top-0 right-0 w-64 h-64 bg-fuchsia-500/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-fuchsia-500/10 transition-all duration-700" />
         
-        <div className="p-10 relative flex flex-col md:flex-row gap-10 items-center">
+        <div className="p-6 md:p-10 relative flex flex-col md:flex-row gap-6 md:gap-10 items-center">
           <div className="relative group/logo">
-             <div className="h-40 w-40 rounded-[40px] bg-gray-50 border-4 border-white shadow-2xl flex items-center justify-center overflow-hidden transition-transform duration-500 group-hover/logo:scale-105">
+             <div className="h-28 w-28 md:h-40 md:w-40 rounded-[28px] md:rounded-[40px] bg-gray-50 border-4 border-white shadow-2xl flex items-center justify-center overflow-hidden transition-transform duration-500 group-hover/logo:scale-105">
                 {logoSrc ? (
                   <img src={logoSrc} alt="Logo" className="h-full w-full object-cover" />
                 ) : (
                   <HiOutlineSparkles className="text-gray-200" size={60} />
                 )}
              </div>
-             <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center text-fuchsia-600 border border-fuchsia-50">
-                <HiOutlineCog size={24} />
+             <div className="absolute -bottom-2 -right-2 w-10 h-10 md:w-12 md:h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center text-fuchsia-600 border border-fuchsia-50">
+                <HiOutlineCog size={20} />
              </div>
           </div>
 
-          <div className="flex-1 space-y-6 text-center md:text-left">
+          <div className="flex-1 space-y-4 md:space-y-6 text-center md:text-left">
             <div>
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight">{settings.name || 'Estudio sin nombre'}</h2>
+              <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{settings.name || 'Estudio sin nombre'}</h2>
               <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mt-1">{settings.city || 'Ciudad'}, {settings.country || 'País'}</p>
             </div>
 
-            <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 md:gap-3 justify-center md:justify-start w-full">
                {settings.phone && (
-                 <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl text-xs font-black text-gray-600 uppercase tracking-widest">
+                 <div className="w-full sm:w-auto flex items-center justify-center md:justify-start gap-2 px-3 py-2 bg-gray-50 rounded-xl text-[11px] md:text-xs font-black text-gray-600 uppercase tracking-[0.14em] break-all text-center md:text-left">
                    <HiOutlinePhone className="text-fuchsia-500" /> {settings.phone}
                  </div>
                )}
                {settings.contact_email && (
-                 <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl text-xs font-black text-gray-600 uppercase tracking-widest">
+                 <div className="w-full sm:w-auto flex items-center justify-center md:justify-start gap-2 px-3 py-2 bg-gray-50 rounded-xl text-[11px] md:text-xs font-black text-gray-600 uppercase tracking-[0.14em] break-all text-center md:text-left">
                    <HiOutlineMail className="text-fuchsia-500" /> {settings.contact_email}
                  </div>
                )}
                {settings.instagram_url && (
-                 <div className="flex items-center gap-2 px-4 py-2 bg-pink-50 rounded-xl text-xs font-black text-pink-600 uppercase tracking-widest border border-pink-100">
+                 <div className="w-full sm:w-auto flex items-center justify-center md:justify-start gap-2 px-3 py-2 bg-pink-50 rounded-xl text-[11px] md:text-xs font-black text-pink-600 uppercase tracking-[0.14em] break-all text-center md:text-left border border-pink-100">
                     Instagram: {settings.instagram_url}
                  </div>
                )}
                {settings.tiktok_url && (
-                 <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl text-xs font-black text-gray-600 uppercase tracking-widest border border-gray-100">
+                 <div className="w-full sm:w-auto flex items-center justify-center md:justify-start gap-2 px-3 py-2 bg-gray-50 rounded-xl text-[11px] md:text-xs font-black text-gray-600 uppercase tracking-[0.14em] break-all text-center md:text-left border border-gray-100">
                     TikTok: {settings.tiktok_url}
                  </div>
                )}
             </div>
             
             <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-50/50 p-5 rounded-3xl border border-gray-100 group-hover:bg-white transition-colors">
+              <div className="bg-gray-50/50 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 group-hover:bg-white transition-colors">
                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Dirección Física</div>
                  <div className="text-sm font-black text-gray-700 flex items-center gap-2">
                    <HiOutlineLocationMarker className="text-fuchsia-400" /> {settings.address || '--'}
                  </div>
               </div>
-              <div className="bg-gray-50/50 p-5 rounded-3xl border border-gray-100 group-hover:bg-white transition-colors">
+              <div className="bg-gray-50/50 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 group-hover:bg-white transition-colors">
                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tipo de Moneda</div>
                  <div className="text-sm font-black text-gray-700 flex items-center gap-2">
                    <HiOutlineCog className="text-fuchsia-400" /> {settings.currency || 'CLP'}
@@ -366,19 +366,19 @@ export default function SettingsPage() {
       </div>
 
       {/* Communication Card */}
-      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-8">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
              <HiOutlineChatAlt2 className="text-2xl" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Mensaje WhatsApp</h2>
+            <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Mensaje WhatsApp</h2>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Mensajería Automática</p>
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-6">
-          <div className="flex items-center justify-between px-2">
+        <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between px-1 md:px-2 gap-2">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vista previa del mensaje aprobado</span>
             <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Referencial</span>
           </div>
@@ -386,14 +386,12 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Mensaje utilizado en cobros por WhatsApp</label>
 
-            <div className="p-6 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 space-y-3">
-               <div className="flex items-center justify-between gap-3">
+            <div className="p-4 md:p-6 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 space-y-3">
+               <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-3">
                   <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Previsualizacion del template</div>
-                  <span className="px-2.5 py-1 rounded-full bg-white border border-indigo-100 text-[9px] font-black uppercase tracking-widest text-indigo-600">
-                    {activeTemplate.label} · {activeTemplate.name}
-                  </span>
+                  <span className="px-2.5 py-1 rounded-full bg-white border border-indigo-100 text-[9px] font-black uppercase tracking-widest text-indigo-600 w-fit max-w-full"><span className="md:hidden">{activeTemplate.label}</span><span className="hidden md:inline">{activeTemplate.label} � {activeTemplate.name}</span></span>
                </div>
-               <div className="bg-white p-4 rounded-xl text-xs text-gray-600 leading-relaxed shadow-sm border border-indigo-50">
+               <div className="bg-white p-4 rounded-xl text-[11px] md:text-xs text-gray-600 leading-relaxed shadow-sm border border-indigo-50">
                   {activeTemplatePreview}
                 </div>
              </div>
@@ -408,19 +406,19 @@ export default function SettingsPage() {
       </div>
 
       {/* Global Config Section (Currency) */}
-      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-8">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
              <HiOutlineCog className="text-2xl" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Moneda y Región</h2>
+            <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Moneda y Región</h2>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Configuración Financiera</p>
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-6">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+        <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8 items-end">
               <div className="space-y-3">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de Moneda</label>
                  <select 
@@ -447,18 +445,18 @@ export default function SettingsPage() {
       </div>
 
       {/* Enrollment Fee Section */}
-      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-8">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
              <HiOutlineCog className="text-2xl" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Matrícula</h2>
+            <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Matrícula</h2>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Reglas de cobro inicial</p>
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-6">
+        <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
           <label className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100">
             <input
               type="checkbox"
@@ -473,7 +471,7 @@ export default function SettingsPage() {
           </label>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
+            <div className="space-y-2 px-1 md:px-0">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Monto matrícula</label>
               <input
                 type="number"
@@ -486,7 +484,7 @@ export default function SettingsPage() {
                 disabled={!settings.enrollment_fee_enabled}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 px-1 md:px-0">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Aplicar a</label>
               <select
                 value={settings.enrollment_fee_apply_to || 'new_only'}
@@ -498,7 +496,7 @@ export default function SettingsPage() {
                 <option value="new_and_reentry">Nuevos y reingresos</option>
               </select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 px-1 md:px-0">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de matrícula</label>
               <select
                 value={settings.enrollment_fee_kind || 'incorporation'}
@@ -510,7 +508,7 @@ export default function SettingsPage() {
                 <option value="annual">Anual</option>
               </select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 px-1 md:px-0">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Renovación de matrícula</label>
               <select
                 value={settings.enrollment_fee_renewal || 'never'}
@@ -550,20 +548,20 @@ export default function SettingsPage() {
         </div>
       </div>
       {/* Social Media Section */}
-      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-8">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center">
              <HiOutlineSparkles className="text-2xl" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Redes Sociales</h2>
+            <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Redes Sociales</h2>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Presencia Digital</p>
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-8">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2">
+        <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-8">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
+              <div className="space-y-2 px-1 md:px-0">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Instagram (@usuario)</label>
                  <input 
                     className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-pink-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm"
@@ -572,7 +570,7 @@ export default function SettingsPage() {
                     onChange={(e) => setSettings(s => ({ ...s, instagram_url: e.target.value }))}
                  />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 px-1 md:px-0">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">TikTok (@usuario)</label>
                  <input 
                     className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-pink-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm"
@@ -581,7 +579,7 @@ export default function SettingsPage() {
                     onChange={(e) => setSettings(s => ({ ...s, tiktok_url: e.target.value }))}
                  />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 px-1 md:px-0">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Facebook (URL)</label>
                  <input 
                     className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-pink-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm"
@@ -590,7 +588,7 @@ export default function SettingsPage() {
                     onChange={(e) => setSettings(s => ({ ...s, facebook_url: e.target.value }))}
                  />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 px-1 md:px-0">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Sitio Web (URL)</label>
                  <input 
                     className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-pink-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm"
@@ -613,19 +611,19 @@ export default function SettingsPage() {
       </div>
 
       {/* Attendance Mode Section */}
-      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-8">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
              <HiOutlineUserGroup className="text-2xl" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Modo Asistencia</h2>
+            <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Modo Asistencia</h2>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Auto-registro de alumnos</p>
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-8 rounded-[32px] border border-gray-100 space-y-6">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+        <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8 items-end">
               <div className="space-y-3">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">PIN de Seguridad (4 dígitos)</label>
                  <input 
@@ -659,14 +657,14 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-[48px] border border-gray-100 shadow-sm p-10 space-y-10">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                <HiOutlineOfficeBuilding className="text-2xl" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-gray-900 tracking-tight">Infraestructura</h2>
+              <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Infraestructura</h2>
               <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Gestión de Salas y Espacios</p>
             </div>
           </div>
@@ -681,7 +679,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-2">
+          <div className="space-y-2 px-1 md:px-0">
              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Nombre de Sala</label>
              <input
                className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl font-bold text-gray-700 outline-none transition-all"
@@ -690,7 +688,7 @@ export default function SettingsPage() {
                onChange={(e) => setRoomName(e.target.value)}
              />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 px-1 md:px-0">
              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Ubicación / Piso</label>
              <input
                className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl font-bold text-gray-700 outline-none transition-all"
@@ -699,7 +697,7 @@ export default function SettingsPage() {
                onChange={(e) => setRoomLocation(e.target.value)}
              />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 px-1 md:px-0">
              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Capacidad Máxima</label>
              <input
                className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl font-bold text-gray-700 outline-none transition-all"
@@ -753,5 +751,9 @@ export default function SettingsPage() {
     </div>
   )
 }
+
+
+
+
 
 

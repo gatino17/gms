@@ -245,7 +245,10 @@ export default function PaymentsTeachers() {
             <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Finanzas</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Pagos Profesores</h1>
-          <p className="text-gray-500 font-medium text-sm md:text-base">Ingresos y participación por docente.</p>
+          <p className="text-gray-500 font-medium text-sm md:text-base">
+            <span className="md:hidden">Ingresos por docente.</span>
+            <span className="hidden md:inline">Ingresos y participación por docente.</span>
+          </p>
         </div>
       </div>
 

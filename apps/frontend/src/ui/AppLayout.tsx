@@ -156,7 +156,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen flex bg-slate-50 font-sans antialiased text-slate-900">
       {/* Sidebar */}
-      <aside className={`${collapsed ? 'w-16 md:w-20' : 'w-56 md:w-72'} bg-slate-900 border-r border-slate-800 transition-all duration-300 flex flex-col z-30 shadow-2xl overflow-x-hidden`}>
+      <aside className={`${collapsed ? 'w-14 md:w-20' : 'w-56 md:w-72'} bg-slate-900 border-r border-slate-800 transition-all duration-300 flex flex-col z-30 shadow-2xl overflow-x-hidden`}>
         {/* Logo Section */}
         <div className={`h-16 flex items-center border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-xl sticky top-0 ${collapsed ? 'justify-center px-0' : 'px-4 md:px-6'}`}>
           <div className="flex items-center gap-3 overflow-hidden">
@@ -173,7 +173,7 @@ export default function AppLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 md:px-4 py-4 md:py-6 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar scrollbar-hide">
+        <nav className={`flex-1 py-4 md:py-6 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar scrollbar-hide ${collapsed ? 'px-1.5 md:px-3' : 'px-2 md:px-4'}`}>
           <div className={`text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-4 flex items-center ${collapsed ? 'justify-center' : ''}`}>
             {collapsed ? '—' : 'Menú Principal'}
           </div>
@@ -184,7 +184,7 @@ export default function AppLayout() {
               <Link
                 key={n.to}
                 to={n.to}
-                className={`flex items-center gap-3 px-2.5 md:px-3 py-2.5 md:py-3 rounded-xl transition-all duration-200 group relative
+                className={`flex items-center ${collapsed ? 'justify-center gap-0 px-0 py-3 md:py-3.5' : 'gap-3 px-2.5 md:px-3 py-2.5 md:py-3'} rounded-xl transition-all duration-200 group relative
                   ${isActive 
                     ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-xl shadow-fuchsia-600/20' 
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
@@ -217,7 +217,7 @@ export default function AppLayout() {
               <Link
                 key={n.to}
                 to={n.to}
-                className={`flex items-center gap-3 px-2.5 md:px-3 py-2.5 md:py-3 rounded-xl transition-all duration-200 group relative
+                className={`flex items-center ${collapsed ? 'justify-center gap-0 px-0 py-3 md:py-3.5' : 'gap-3 px-2.5 md:px-3 py-2.5 md:py-3'} rounded-xl transition-all duration-200 group relative
                   ${isActive 
                     ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-xl shadow-fuchsia-600/20' 
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
@@ -241,7 +241,7 @@ export default function AppLayout() {
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-2.5 md:px-3 py-2.5 md:py-3 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all group"
+            className={`w-full flex items-center ${collapsed ? 'justify-center gap-0 px-0 py-3 md:py-3.5' : 'gap-3 px-2.5 md:px-3 py-2.5 md:py-3'} text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all group`}
           >
             <span className="text-lg md:text-xl group-hover:scale-110 group-hover:-rotate-12 transition-transform"><HiOutlineLogout /></span>
             {!collapsed && <span className="font-bold text-sm tracking-tight">Cerrar Sesión</span>}

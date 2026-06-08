@@ -435,31 +435,31 @@ export default function CourseStatusPage() {
         <div className="space-y-1 text-center sm:text-left">
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Gestión Académica</span>
            <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Estado de Cursos</h1>
-           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-4">
-              <p className="text-gray-500 font-medium text-sm md:text-lg">Control de inscripciones y pagos en tiempo real.</p>
+           <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center sm:justify-start gap-4 mt-4">
+              <p className="text-gray-500 font-medium text-sm md:text-lg max-w-[20rem]">Control de inscripciones y pagos en tiempo real.</p>
               <div className="hidden sm:block h-4 w-px bg-gray-200" />
-               <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
-                 <button onClick={() => setViewMode('detailed')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='detailed' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Todos</button>
-                 <button onClick={() => setViewMode('pending')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='pending' ? 'bg-white shadow-sm text-rose-600' : 'text-rose-400/60 hover:text-rose-600'}`}>Pendientes</button>
-                 <button onClick={() => setViewMode('gender')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='gender' ? 'bg-white shadow-sm text-sky-600' : 'text-gray-400 hover:text-gray-600'}`}>Por género</button>
-                 <button onClick={() => setViewMode('summary')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='summary' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>Resumen</button>
+               <div className="grid grid-cols-2 sm:flex w-full sm:w-auto bg-gray-50 p-1.5 rounded-2xl border border-gray-100 gap-1.5">
+                 <button onClick={() => setViewMode('detailed')} className={`px-4 md:px-6 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='detailed' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Todos</button>
+                 <button onClick={() => setViewMode('pending')} className={`px-4 md:px-6 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='pending' ? 'bg-white shadow-sm text-rose-600' : 'text-rose-400/60 hover:text-rose-600'}`}>Pendientes</button>
+                 <button onClick={() => setViewMode('gender')} className={`px-4 md:px-6 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='gender' ? 'bg-white shadow-sm text-sky-600' : 'text-gray-400 hover:text-gray-600'}`}>Por género</button>
+                 <button onClick={() => setViewMode('summary')} className={`px-4 md:px-6 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='summary' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>Resumen</button>
                </div>
            </div>
         </div>
 
-        <div className="w-full xl:w-auto flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-[24px] border border-gray-100 shadow-xl shadow-gray-100/50">
-           <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="relative group flex-1">
+        <div className="w-full xl:w-auto flex flex-col gap-3 bg-white p-3 rounded-[24px] border border-gray-100 shadow-xl shadow-gray-100/50">
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+              <div className="relative group min-w-0">
                  <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={16} />
                  <input value={courseQ} onChange={e=>setCourseQ(e.target.value)} placeholder="Curso..." className="w-full pl-10 pr-5 py-2.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none transition-all" />
               </div>
-              <div className="relative group flex-1">
+              <div className="relative group min-w-0">
                  <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={16} />
                  <input value={studentQ} onChange={e=>setStudentQ(e.target.value)} placeholder="Alumno..." className="w-full pl-10 pr-5 py-2.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none transition-all" />
               </div>
            </div>
-           <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="relative flex-1 sm:w-36">
+           <div className="flex items-center gap-2 w-full">
+              <div className="relative flex-1">
                  <select value={selectedDay} onChange={e=>setSelectedDay(e.target.value)} className="w-full pl-5 pr-10 py-2.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none appearance-none transition-all">
                     <option value="">Cualquier día</option>
                     {DAY_NAMES.map((d,i)=><option key={i} value={i}>{d}</option>)}
@@ -494,8 +494,8 @@ export default function CourseStatusPage() {
                     {courses.map((row) => (
                        <div key={row.course.id} className={`bg-white border border-gray-100 transition-all duration-500 hover:shadow-2xl hover:shadow-gray-200/50 ${viewMode === 'summary' ? 'rounded-[32px] p-6 md:p-8' : 'rounded-[32px] overflow-hidden'}`}>
                           {/* Card Header / Summary Header */}
-                          <div className={`flex items-start justify-between ${viewMode === 'summary' ? 'mb-6' : 'px-6 md:px-8 py-5 md:py-6 bg-gray-50/50 border-b border-gray-100'}`}>
-                             <div className="flex items-center gap-4">
+                          <div className={`flex flex-col gap-4 ${viewMode === 'summary' ? 'mb-6' : 'px-5 md:px-8 py-5 md:py-6 bg-gray-50/50 border-b border-gray-100'}`}>
+                             <div className="flex items-center gap-4 min-w-0">
                                 <div className={`flex items-center justify-center bg-gradient-to-br from-fuchsia-600 to-purple-700 text-white font-black shadow-xl shadow-fuchsia-100 transition-transform duration-500 group-hover:scale-110 ${viewMode === 'summary' ? 'w-12 h-12 rounded-[20px] text-lg' : 'w-14 h-14 rounded-[22px] text-xl'}`}>
                                    {row.course.name[0]}
                                 </div>
@@ -527,25 +527,27 @@ export default function CourseStatusPage() {
                                    })()}
                                 </div>
                              </div>
-                             <div className="flex items-center gap-2">
+                             <div className="grid grid-cols-1 sm:flex gap-2 w-full sm:w-auto">
                                 <button
                                    onClick={() => openTransferModal(row)}
-                                   className={`${viewMode === 'summary' ? 'flex' : 'hidden md:flex'} items-center justify-center gap-2 ${viewMode === 'summary' ? 'w-10 h-10 p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all`} title="Trasladar alumnos"
+                                   className={`${viewMode === 'summary' ? 'hidden sm:flex' : 'hidden md:flex'} items-center justify-center gap-2 ${viewMode === 'summary' ? 'w-10 h-10 p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all`} title="Trasladar alumnos"
                                 >{viewMode === 'summary' ? <HiOutlineSwitchHorizontal size={16} /> : 'Trasladar'}</button>
                                 <button
                                    onClick={() => openBulkWhatsAppModal(row)}
                                    disabled={!!waBulkLoadingByCourse[row.course.id]}
-                                   className={`${viewMode === 'summary' ? 'flex' : 'hidden md:flex'} items-center justify-center gap-2 ${viewMode === 'summary' ? 'w-10 h-10 p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-rose-50 text-rose-700 text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all disabled:opacity-60`} title="Enviar mensaje"
+                                   className={`${viewMode === 'summary' ? 'hidden sm:flex' : 'hidden md:flex'} items-center justify-center gap-2 ${viewMode === 'summary' ? 'w-10 h-10 p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-rose-50 text-rose-700 text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all disabled:opacity-60`} title="Enviar mensaje"
                                 >
                                   <HiOutlineMail size={14} />{viewMode === 'summary' ? null : (waBulkLoadingByCourse[row.course.id] ? 'Enviando...' : 'Pendientes')}
                                 </button>
                                 <button 
                                    onClick={() => { setEnrollModalCourseId(row.course.id); loadAllStudents(); }} 
-                                   className={`flex items-center justify-center gap-2 ${viewMode === 'summary' ? 'w-10 h-10 p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-fuchsia-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 shadow-lg shadow-fuchsia-200 transition-all active:scale-95`} title="Inscribir alumno"
+                                   className={`flex items-center justify-center gap-2 w-full sm:w-auto ${viewMode === 'summary' ? 'sm:w-10 sm:h-10 p-3 sm:p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-fuchsia-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 shadow-lg shadow-fuchsia-200 transition-all active:scale-95`} title="Inscribir alumno"
                                 >
-                                   <HiOutlinePlus size={14} />{viewMode === 'summary' ? null : 'Inscribir'}</button>
+                                   <HiOutlinePlus size={14} />
+                                   <span className={viewMode === 'summary' ? 'sm:hidden' : ''}>Inscribir</span>
+                                </button>
                                 {(viewMode === 'detailed' || viewMode === 'pending' || viewMode === 'gender') && (
-                                   <button onClick={() => navigate(`/courses/${row.course.id}`)} className="p-4 bg-white border border-gray-100 rounded-2xl hover:text-fuchsia-600 hover:shadow-lg transition-all group/btn">
+                                   <button onClick={() => navigate(`/courses/${row.course.id}`)} className="hidden sm:flex p-4 bg-white border border-gray-100 rounded-2xl hover:text-fuchsia-600 hover:shadow-lg transition-all group/btn">
                                       <HiOutlineChevronRight size={24} className="group-hover/btn:translate-x-0.5 transition-transform" />
                                    </button>
                                 )}
@@ -590,13 +592,13 @@ export default function CourseStatusPage() {
                                                   </div>
                                                </td>
                                                <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6">
-                                                  <div className="w-full md:w-32 mx-auto">
+                                                  <div className="w-full md:w-32 max-w-[220px] md:max-w-none mx-auto">
                                                      <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase mb-2">
                                                         <span className="md:hidden">Asistencia: </span>
                                                         <span className="text-gray-900">{s.attendance_count}/{s.expected_count}</span>
                                                         <span className={progress >= 80 ? 'text-emerald-600' : 'text-fuchsia-600'}>{Math.round(progress)}%</span>
                                                      </div>
-                                                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner relative">
+                                                     <div className="h-1.5 md:h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner relative">
                                                         <div className={`h-full transition-all duration-1000 ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-fuchsia-500' : 'bg-rose-400'}`} style={{ width: `${progress}%` }} />
                                                      </div>
                                                      {!!s.extra_count && s.extra_count > 0 && (
@@ -633,11 +635,11 @@ export default function CourseStatusPage() {
                                                       <button
                                                         onClick={() => handleWhatsAppTest(s.id, row.course.id)}
                                                         disabled={!!waTestLoadingByStudent[waKey(row.course.id, s.id)]}
-                                                        className="flex items-center justify-center gap-3 px-5 py-3 md:p-3 rounded-2xl transition-all flex-1 md:flex-none border bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-100 disabled:opacity-60"
+                                                        className="flex items-center justify-center gap-3 px-3 py-3 md:p-3 rounded-2xl transition-all w-12 md:w-auto md:flex-none border bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-100 disabled:opacity-60 shrink-0"
                                                         title="Enviar WhatsApp"
                                                       >
                                                         <HiOutlinePhone size={18} />
-                                                        <span className="md:hidden text-[11px] font-black uppercase tracking-widest">{waTestLoadingByStudent[waKey(row.course.id, s.id)] ? 'Enviando' : 'WhatsApp'}</span>
+                                                        <span className="hidden md:inline text-[11px] font-black uppercase tracking-widest">{waTestLoadingByStudent[waKey(row.course.id, s.id)] ? 'Enviando' : 'WhatsApp'}</span>
                                                       </button>
                                                       {waTestResultByStudent[waKey(row.course.id, s.id)]?.message && (
                                                         <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
@@ -683,44 +685,44 @@ export default function CourseStatusPage() {
                                              <div className="text-[11px] text-sky-700/70 font-bold">Sin alumnos</div>
                                            ) : maleStudents.map((s) => (
                                              <div key={`m-${s.id}`} className="bg-white border border-sky-100 rounded-xl p-3">
-                                               <div className="flex items-center gap-3">
+                                               <div className="flex items-start gap-3">
                                                  <div className="w-10 h-10 rounded-xl bg-sky-50 overflow-hidden flex items-center justify-center text-sky-600 font-black shrink-0 border border-sky-100">
                                                    {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
                                                  </div>
-                                               <div className="min-w-0 flex-1">
-                                                   <div className="flex items-center gap-2 w-full">
-                                                     <div className="font-black text-sm text-gray-800 truncate">{s.first_name} {s.last_name}</div>
+                                                 <div className="min-w-0 flex-1 space-y-2">
+                                                   <div className="font-black text-sm text-gray-800 truncate">{s.first_name} {s.last_name}</div>
+                                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
+                                                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
                                                      <span className="text-[11px] font-black text-gray-600 uppercase shrink-0">{s.attendance_count || 0}/{s.expected_count || 0} asist.</span>
                                                      {(() => {
                                                        const progress = s.expected_count && s.expected_count > 0 ? Math.min(100, ((s.attendance_count || 0) / s.expected_count) * 100) : 0
                                                        return (
-                                                         <div className="flex items-center gap-1.5 shrink-0">
-                                                           <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                         <div className="flex items-center gap-1.5 min-w-0">
+                                                           <div className="flex-1 sm:flex-none sm:w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                                              <div className={`h-full transition-all duration-700 ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-fuchsia-500' : 'bg-rose-400'}`} style={{ width: `${progress}%` }} />
                                                            </div>
-                                                           <span className="text-[10px] font-black text-gray-600">{Math.round(progress)}%</span>
+                                                           <span className="text-[10px] font-black text-gray-600 shrink-0">{Math.round(progress)}%</span>
                                                          </div>
                                                        )
                                                      })()}
-                                                     <div className="ml-auto flex items-center gap-2">
+                                                   </div>
+                                                   <div className="flex flex-wrap items-center gap-2">
                                                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${s.payment_status === 'activo' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
                                                        <div className={`w-1.5 h-1.5 rounded-full ${s.payment_status === 'activo' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                                                        {s.payment_status === 'activo' ? 'Pagado' : 'Pendiente'}
                                                      </span>
                                                      {waTestResultByStudent[waKey(row.course.id, s.id)]?.message && (
-  <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
-)}
-<button
-  onClick={() => handleWhatsAppTest(s.id, row.course.id)}
-  disabled={!!waTestLoadingByStudent[waKey(row.course.id, s.id)]}
-  className="inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all shrink-0 bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white disabled:opacity-60"
-  title="Enviar WhatsApp"
->
-  <HiOutlinePhone size={14} />
-</button>
-                                                     </div>
+                                                       <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
+                                                     )}
+                                                     <button
+                                                       onClick={() => handleWhatsAppTest(s.id, row.course.id)}
+                                                       disabled={!!waTestLoadingByStudent[waKey(row.course.id, s.id)]}
+                                                       className="inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all shrink-0 bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white disabled:opacity-60"
+                                                       title="Enviar WhatsApp"
+                                                     >
+                                                       <HiOutlinePhone size={14} />
+                                                     </button>
                                                    </div>
-                                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
                                                  </div>
                                                </div>
                                              </div>
@@ -743,44 +745,44 @@ export default function CourseStatusPage() {
                                              <div className="text-[11px] text-pink-700/70 font-bold">Sin alumnas</div>
                                            ) : femaleStudents.map((s) => (
                                              <div key={`f-${s.id}`} className="bg-white border border-pink-100 rounded-xl p-3">
-                                               <div className="flex items-center gap-3">
+                                               <div className="flex items-start gap-3">
                                                  <div className="w-10 h-10 rounded-xl bg-pink-50 overflow-hidden flex items-center justify-center text-pink-600 font-black shrink-0 border border-pink-100">
                                                    {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
                                                  </div>
-                                               <div className="min-w-0 flex-1">
-                                                   <div className="flex items-center gap-2 w-full">
-                                                     <div className="font-black text-sm text-gray-800 truncate">{s.first_name} {s.last_name}</div>
+                                                 <div className="min-w-0 flex-1 space-y-2">
+                                                   <div className="font-black text-sm text-gray-800 truncate">{s.first_name} {s.last_name}</div>
+                                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
+                                                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
                                                      <span className="text-[11px] font-black text-gray-600 uppercase shrink-0">{s.attendance_count || 0}/{s.expected_count || 0} asist.</span>
                                                      {(() => {
                                                        const progress = s.expected_count && s.expected_count > 0 ? Math.min(100, ((s.attendance_count || 0) / s.expected_count) * 100) : 0
                                                        return (
-                                                         <div className="flex items-center gap-1.5 shrink-0">
-                                                           <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                         <div className="flex items-center gap-1.5 min-w-0">
+                                                           <div className="flex-1 sm:flex-none sm:w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                                              <div className={`h-full transition-all duration-700 ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-fuchsia-500' : 'bg-rose-400'}`} style={{ width: `${progress}%` }} />
                                                            </div>
-                                                           <span className="text-[10px] font-black text-gray-600">{Math.round(progress)}%</span>
+                                                           <span className="text-[10px] font-black text-gray-600 shrink-0">{Math.round(progress)}%</span>
                                                          </div>
                                                        )
                                                      })()}
-                                                     <div className="ml-auto flex items-center gap-2">
+                                                   </div>
+                                                   <div className="flex flex-wrap items-center gap-2">
                                                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${s.payment_status === 'activo' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
                                                        <div className={`w-1.5 h-1.5 rounded-full ${s.payment_status === 'activo' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                                                        {s.payment_status === 'activo' ? 'Pagado' : 'Pendiente'}
                                                      </span>
                                                      {waTestResultByStudent[waKey(row.course.id, s.id)]?.message && (
-  <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
-)}
-<button
-  onClick={() => handleWhatsAppTest(s.id, row.course.id)}
-  disabled={!!waTestLoadingByStudent[waKey(row.course.id, s.id)]}
-  className="inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all shrink-0 bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white disabled:opacity-60"
-  title="Enviar WhatsApp"
->
-  <HiOutlinePhone size={14} />
-</button>
-                                                     </div>
+                                                       <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
+                                                     )}
+                                                     <button
+                                                       onClick={() => handleWhatsAppTest(s.id, row.course.id)}
+                                                       disabled={!!waTestLoadingByStudent[waKey(row.course.id, s.id)]}
+                                                       className="inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all shrink-0 bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white disabled:opacity-60"
+                                                       title="Enviar WhatsApp"
+                                                     >
+                                                       <HiOutlinePhone size={14} />
+                                                     </button>
                                                    </div>
-                                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
                                                  </div>
                                                </div>
                                              </div>

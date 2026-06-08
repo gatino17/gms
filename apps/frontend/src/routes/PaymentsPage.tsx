@@ -840,17 +840,17 @@ export default function PaymentsPage() {
              <table className="w-full">
                <thead>
                  <tr className="bg-gray-50/50 text-left border-b border-gray-100">
-                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Profesor</th>
-                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Generado</th>
-                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Participación</th>
+                   <th className="px-4 md:px-8 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Profesor</th>
+                   <th className="px-4 md:px-6 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Generado</th>
+                   <th className="hidden md:table-cell px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Participación</th>
                  </tr>
                </thead>
                <tbody className="divide-y divide-gray-50">
                  {teacherRows.map(r => (
                    <tr key={r.name} className="hover:bg-fuchsia-50/20 transition-colors">
-                     <td className="px-8 py-6 font-black text-gray-900">{r.name}</td>
-                     <td className="px-6 py-6 text-right font-black text-gray-900 text-lg">{fmtCLP.format(r.total)}</td>
-                     <td className="px-6 py-6 text-right">
+                     <td className="px-4 md:px-8 py-4 md:py-6 font-black text-gray-900 text-sm md:text-base">{r.name}</td>
+                     <td className="px-4 md:px-6 py-4 md:py-6 text-right font-black text-gray-900 text-base md:text-lg">{fmtCLP.format(r.total)}</td>
+                     <td className="hidden md:table-cell px-6 py-6 text-right">
                         <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                            <div className="bg-fuchsia-600 h-full rounded-full" style={{ width: `${(r.total / stats.total_amount) * 100}%` }} />
                         </div>
@@ -875,3 +875,4 @@ export default function PaymentsPage() {
     </div>
   )
 }
+

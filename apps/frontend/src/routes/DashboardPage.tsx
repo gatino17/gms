@@ -202,7 +202,7 @@ export default function DashboardPage() {
       )}
 
       {/* KPI Section */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 px-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 px-4">
         {kpiData.map((k, idx) => (
           <div key={idx} className="group bg-white rounded-[24px] md:rounded-[32px] p-4 md:p-5 border border-gray-100 shadow-sm hover:shadow-2xl hover:border-fuchsia-100 transition-all duration-500 relative overflow-hidden">
             <div className="relative flex items-center gap-4">
@@ -428,7 +428,7 @@ export default function DashboardPage() {
           </section>
 
           {/* Estadísticas 30D */}
-          <section className="bg-gray-900 md:rounded-[32px] p-6 md:p-8 shadow-2xl relative overflow-hidden group mx-4 md:mx-0">
+          <section className="bg-gray-900 rounded-[32px] border border-fuchsia-200/20 p-6 md:p-8 shadow-2xl relative overflow-hidden group mx-4 md:mx-0">
             <div className="absolute top-0 right-0 w-32 md:w-40 h-32 md:h-40 bg-fuchsia-500/20 rounded-full -mr-16 -mt-16 md:-mr-20 md:-mt-20 blur-[40px] md:blur-[60px] group-hover:bg-fuchsia-500/30 transition-all" />
             <div className="relative space-y-4 md:space-y-6">
               <div className="flex items-center gap-4">

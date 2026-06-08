@@ -108,15 +108,15 @@ export default function CalendarPage() {
   }, [data])
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-20 px-6">
+    <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-20 px-3 md:px-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4 md:px-0 pt-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-2 md:px-0 pt-4">
         <div className="space-y-1 text-center sm:text-left">
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Programación</span>
            <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Calendario</h1>
            <p className="text-gray-500 font-medium text-xs md:text-sm">Distribución horaria y salas.</p>
         </div>
-        <div className="flex px-4 py-2.5 md:px-6 md:py-3 bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 items-center justify-center sm:justify-start gap-3 mx-4 sm:mx-0">
+        <div className="flex w-full max-w-sm sm:w-auto sm:max-w-none px-4 py-2.5 md:px-6 md:py-3 bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 items-center justify-center sm:justify-start gap-3 mx-2 sm:mx-0">
            <div className="p-2 md:p-2.5 bg-fuchsia-50 text-fuchsia-600 rounded-lg md:rounded-xl shrink-0">
               <HiOutlineCalendar size={18} />
            </div>
@@ -128,15 +128,15 @@ export default function CalendarPage() {
       </div>
 
       {/* Day Selector (Mobile Only) */}
-      <div className="flex md:hidden bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto no-scrollbar gap-1 mx-4">
+      <div className="grid grid-cols-7 md:hidden bg-white p-1 rounded-2xl border border-gray-100 shadow-sm gap-1 mx-2">
          {DAY_NAMES.map((d, i) => (
             <button 
               key={i} 
               onClick={() => setSelectedDay(i)}
-              className={`flex-1 min-w-[56px] py-2.5 rounded-xl transition-all flex flex-col items-center gap-0.5 ${selectedDay === i ? 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-100' : 'text-gray-400 hover:bg-gray-50'}`}
+              className={`min-w-0 py-2 rounded-xl transition-all flex flex-col items-center gap-0.5 ${selectedDay === i ? 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-100' : 'text-gray-400 hover:bg-gray-50'}`}
             >
                <span className="text-[7px] font-black uppercase tracking-widest">{d.slice(0,3)}</span>
-               <span className="text-sm font-black">{i + 1}</span>
+               <span className="text-[13px] font-black leading-none">{i + 1}</span>
             </button>
          ))}
       </div>
@@ -255,4 +255,3 @@ export default function CalendarPage() {
     </div>
   )
 }
-

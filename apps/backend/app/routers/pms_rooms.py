@@ -36,6 +36,7 @@ router = APIRouter(prefix="/api/pms/rooms", tags=["pms-rooms"])
 
 
 @router.get("/", response_model=list[RoomOut])
+@router.get("", response_model=list[RoomOut])
 async def list_rooms(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
@@ -63,6 +64,7 @@ async def get_room(
 
 
 @router.post("/", response_model=RoomOut, status_code=201)
+@router.post("", response_model=RoomOut, status_code=201)
 async def create_room(
     payload: RoomCreate,
     tenant_id: int = Depends(get_tenant_id),

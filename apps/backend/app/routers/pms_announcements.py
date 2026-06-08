@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/pms/announcements", tags=["pms-announcements"])
 
 
 @router.get("/", response_model=List[schemas.AnnouncementOut])
+@router.get("", response_model=List[schemas.AnnouncementOut])
 async def list_announcements(
     db: AsyncSession = Depends(get_db_session),
     active_only: bool = Query(default=True),
@@ -50,6 +51,7 @@ async def list_announcements(
 
 
 @router.post("/", response_model=schemas.AnnouncementOut)
+@router.post("", response_model=schemas.AnnouncementOut)
 async def create_announcement(
     payload: schemas.AnnouncementCreate,
     tenant_id: int = Depends(get_tenant_id),

@@ -55,6 +55,7 @@ router = APIRouter(prefix="/api/pms/teachers", tags=["pms-teachers"])
 
 
 @router.get("/", response_model=TeacherListResponse)
+@router.get("", response_model=TeacherListResponse)
 async def list_teachers(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
@@ -111,6 +112,7 @@ async def get_teacher(
 
 
 @router.post("/", response_model=TeacherOut, status_code=201)
+@router.post("", response_model=TeacherOut, status_code=201)
 async def create_teacher(
     payload: TeacherCreate,
     tenant_id: int = Depends(get_tenant_id),

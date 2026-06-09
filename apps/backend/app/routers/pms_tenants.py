@@ -59,6 +59,7 @@ def _next_renewal_for_cycle(cycle: str, base_date: date | None = None) -> date:
     return today + timedelta(days=365 if cycle == "annual" else 30)
 
 
+@router.get("", response_model=list[TenantOut])
 @router.get("/", response_model=list[TenantOut])
 async def list_tenants(
     _: models.User = Depends(get_current_active_superuser),
@@ -177,6 +178,7 @@ async def delete_tenant_plan(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
 async def create_tenant(
     payload: TenantCreate,

@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
-import { 
-  HiOutlineChevronLeft, 
-  HiOutlineUserGroup, 
-  HiOutlineCheckCircle, 
-  HiOutlineClock, 
+import {
+  HiOutlineChevronLeft,
+  HiOutlineUserGroup,
+  HiOutlineCheckCircle,
+  HiOutlineClock,
   HiOutlineCalendar,
   HiOutlineStar,
   HiOutlineLightningBolt,
@@ -22,20 +22,25 @@ type StudentRow = {
   gender?: string | null
   enrolled_since?: string | null
   renewal_date?: string | null
-  payment_status?: 'activo' | 'pendiente'
+  payment_status?: 'activo' | 'pendiente' | 'inactivo'
+  enrollment_mode?: 'regular' | 'single_class'
   attendance_count?: number
   birthday_today?: boolean
   attended_today?: boolean
   photo_url?: string | null
 }
 
+const isPaidStatus = (status?: string | null) => status === 'activo'
+const isPendingStatus = (status?: string | null) => status === 'pendiente'
+const isInactiveStatus = (status?: string | null) => status === 'inactivo'
+
 const fmtCLP = (n: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(n)
 
-function ymdToCL(ymd?: string | null): string { 
-  if (!ymd) return ''; 
-  const [y,m,d] = ymd.split('-').map(Number); 
-  const dt = new Date(y, (m||1)-1, d||1); 
-  return dt.toLocaleDateString('es-CL', { day:'2-digit', month:'short' }) 
+function ymdToCL(ymd?: string | null): string {
+  if (!ymd) return '';
+  const [y,m,d] = ymd.split('-').map(Number);
+  const dt = new Date(y, (m||1)-1, d||1);
+  return dt.toLocaleDateString('es-CL', { day:'2-digit', month:'short' })
 }
 
 export default function CourseDetailPage() {
@@ -86,8 +91,8 @@ export default function CourseDetailPage() {
   const counts = useMemo(() => {
     const students: StudentRow[] = data?.students ?? []
     const total = students.length
-    const activos = students.filter(s => s.payment_status === 'activo').length
-    const pendientes = total - activos
+    const activos = students.filter(s => isPaidStatus(s.payment_status)).length
+    const pendientes = students.filter(s => isPendingStatus(s.payment_status)).length
     const female = students.filter(s =>
       (s.gender || '').toLowerCase().startsWith('f') ||
       (s.gender || '').toLowerCase().startsWith('muj')
@@ -103,8 +108,8 @@ export default function CourseDetailPage() {
     if (!id) return
     try {
       setAttLoadingId(studentId)
-      await api.post('/api/pms/attendance', { 
-        student_id: studentId, 
+      await api.post('/api/pms/attendance', {
+        student_id: studentId,
         course_id: Number(id),
         is_recovery: isRecoveryMode
       })
@@ -179,8 +184,8 @@ export default function CourseDetailPage() {
                  { label: 'Alumnos', value: counts.total, icon: HiOutlineUserGroup, color: 'fuchsia' },
                  { label: 'Precio', value: fmtCLP(course.price || 0), icon: HiOutlineTicket, color: 'emerald' },
                  { label: 'Inicio', value: ymdToCL(course.start_date) || '---', icon: HiOutlineCalendar, color: 'indigo' },
-                 { 
-                   label: 'Género', 
+                 {
+                   label: 'Género',
                    value: (
                      <div className="flex items-center gap-3">
                        <div className="flex items-center gap-1.5">
@@ -196,9 +201,9 @@ export default function CourseDetailPage() {
                          <span className="text-sm md:text-base">{counts.female}</span>
                        </div>
                      </div>
-                   ), 
-                   icon: HiOutlineUser, 
-                   color: 'rose' 
+                   ),
+                   icon: HiOutlineUser,
+                   color: 'rose'
                  },
                  { label: 'Sesiones', value: `${sessionsPerWeek}/sem`, icon: HiOutlineClock, color: 'amber' },
                  { label: 'Estado', value: course.is_active !== false ? 'Abierta' : 'Cerrada', icon: HiOutlineStar, color: 'blue' },
@@ -231,7 +236,7 @@ export default function CourseDetailPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
            <div className="flex flex-col md:flex-row items-center gap-4">
               <h2 className="text-2xl font-black text-gray-900 text-center md:text-left">Lista de Alumnos</h2>
-              <button 
+              <button
                 onClick={() => setIsRecoveryMode(!isRecoveryMode)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 transition-all ${isRecoveryMode ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm' : 'bg-gray-50 border-gray-100 text-gray-400'}`}
               >
@@ -267,7 +272,8 @@ export default function CourseDetailPage() {
             </thead>
             <tbody className="divide-y divide-gray-50 block md:table-row-group">
               {(data.students || []).map((s: StudentRow) => {
-                const isPaid = s.payment_status === 'activo'
+                const isPaid = isPaidStatus(s.payment_status)
+                const isInactive = isInactiveStatus(s.payment_status)
                 const hasAtt = attendedToday.has(s.id) || !!s.attended_today
 
                 return (
@@ -291,14 +297,21 @@ export default function CourseDetailPage() {
                                  return <HiOutlineUser className="text-gray-400 shrink-0" size={14} />
                                })()}
                              </div>
-                             <div className="text-[9px] font-bold text-gray-400 uppercase">Alumno #{s.id}</div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="text-[9px] font-bold text-gray-400 uppercase">Alumno #{s.id}</div>
+                                {s.enrollment_mode === 'single_class' && (
+                                  <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md">
+                                    Clase suelta
+                                  </span>
+                                )}
+                              </div>
                           </div>
                        </div>
                     </td>
                     <td className="block md:table-cell px-6 py-1.5 md:py-4 text-left md:text-center">
-                       <span className={`inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                          {isPaid ? 'Al día' : 'Pendiente'}
-                       </span>
+                        <span className={`inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-700' : isInactive ? 'bg-slate-100 text-slate-600' : 'bg-rose-100 text-rose-700'}`}>
+                           {isPaid ? 'Al día' : isInactive ? 'Inactivo' : 'Pendiente'}
+                        </span>
                     </td>
                     <td className="hidden md:table-cell px-6 py-4 text-center font-bold text-sm text-gray-600">
                        {s.renewal_date ? ymdToCL(s.renewal_date) : '---'}
@@ -316,7 +329,7 @@ export default function CourseDetailPage() {
                     <td className="block md:table-cell px-6 md:px-8 py-3 md:py-4 text-left md:text-right">
                        <div className="flex items-center gap-2">
                           {!hasAtt && (
-                            <button 
+                            <button
                                disabled={attLoadingId === s.id}
                                onClick={() => markAttendance(s.id)}
                                className={`flex-1 md:flex-none px-4 py-2.5 text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all disabled:opacity-50 ${isRecoveryMode ? 'bg-blue-500 hover:bg-blue-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
@@ -324,7 +337,7 @@ export default function CourseDetailPage() {
                                {attLoadingId === s.id ? '...' : 'Presente'}
                             </button>
                           )}
-                          <button 
+                          <button
                              onClick={() => navigate(`/students/${s.id}`)}
                              className="flex-1 md:flex-none px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all border border-gray-100"
                           >
@@ -347,4 +360,3 @@ export default function CourseDetailPage() {
     </div>
   )
 }
-

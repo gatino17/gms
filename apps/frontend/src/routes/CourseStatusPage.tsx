@@ -1,15 +1,15 @@
-ï»¿import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
-import { 
-  HiOutlineMail, 
-  HiOutlinePhone, 
-  HiOutlineSearch, 
-  HiOutlineFilter, 
-  HiOutlineRefresh, 
-  HiOutlineChevronRight, 
-  HiOutlineCake, 
-  HiOutlineViewGrid, 
+import {
+  HiOutlineMail,
+  HiOutlinePhone,
+  HiOutlineSearch,
+  HiOutlineFilter,
+  HiOutlineRefresh,
+  HiOutlineChevronRight,
+  HiOutlineCake,
+  HiOutlineViewGrid,
   HiOutlineViewList,
   HiOutlineChartBar,
   HiOutlinePaperAirplane,
@@ -36,7 +36,9 @@ type CourseRow = {
     email?: string | null;
     phone?: string | null;
     renewal_date?: string | null;
-    payment_status?: 'activo' | 'pendiente';
+    payment_status?: 'activo' | 'pendiente' | 'inactivo';
+    enrollment_mode?: 'regular' | 'single_class';
+    single_class_date?: string | null;
     attendance_count?: number;
     expected_count?: number;
     extra_count?: number;
@@ -44,7 +46,7 @@ type CourseRow = {
   }[]
 }
 
-const DAY_NAMES = ['Lunes', 'Martes', 'MiÃ©rcoles', 'Jueves', 'Viernes', 'SÃ¡bado', 'Domingo']
+const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const fmtCLP = (n: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(n)
 const normalizeGender = (g?: string | null) => (g || '').trim().toLowerCase()
 const minusOneDayYMD = (ymd: string) => {
@@ -52,6 +54,29 @@ const minusOneDayYMD = (ymd: string) => {
   const dt = new Date(y, (m || 1) - 1, d || 1)
   dt.setDate(dt.getDate() - 1)
   return dt.toISOString().slice(0, 10)
+}
+
+const isPaidStatus = (status?: string | null) => status === 'activo'
+const isPendingStatus = (status?: string | null) => status === 'pendiente'
+const isInactiveStatus = (status?: string | null) => status === 'inactivo'
+const isSingleClassMode = (mode?: string | null) => mode === 'single_class'
+
+const paymentBadgeClass = (status?: string | null) => {
+  if (isPaidStatus(status)) return 'bg-emerald-50 text-emerald-700 border-emerald-100'
+  if (isInactiveStatus(status)) return 'bg-slate-100 text-slate-600 border-slate-200'
+  return 'bg-rose-50 text-rose-600 border-rose-100'
+}
+
+const paymentDotClass = (status?: string | null) => {
+  if (isPaidStatus(status)) return 'bg-emerald-500'
+  if (isInactiveStatus(status)) return 'bg-slate-400'
+  return 'bg-rose-500'
+}
+
+const paymentLabel = (status?: string | null) => {
+  if (isPaidStatus(status)) return 'Pagado'
+  if (isInactiveStatus(status)) return 'Inactivo'
+  return 'Pendiente'
 }
 
 export default function CourseStatusPage() {
@@ -62,15 +87,15 @@ export default function CourseStatusPage() {
   const [error, setError] = useState<string | null>(null)
   const [tenantInfo, setTenantInfo] = useState<any>(null)
   const [renewModalData, setRenewModalData] = useState<{ studentId: number; courseId: number; enrollmentId: number } | null>(null)
-  
+
   // View state: 'detailed' | 'pending' | 'summary' | 'gender'
   const [viewMode, setViewMode] = useState<'detailed' | 'pending' | 'summary' | 'gender'>('detailed')
-  
+
   // Filters
   const [courseQ, setCourseQ] = useState('')
   const [studentQ, setStudentQ] = useState('')
   const [selectedDay, setSelectedDay] = useState<string>('')
-  
+
   // Enrollment Modal States
   const [enrollModalCourseId, setEnrollModalCourseId] = useState<number | null>(null)
   const [allStudents, setAllStudents] = useState<any[]>([])
@@ -88,12 +113,12 @@ export default function CourseStatusPage() {
   const [waBulkLoadingByCourse, setWaBulkLoadingByCourse] = useState<Record<number, boolean>>({})
   const [waBulkResultByCourse, setWaBulkResultByCourse] = useState<Record<number, string>>({})
   const [waBulkConfirmCourse, setWaBulkConfirmCourse] = useState<CourseRow | null>(null)
-  
+
   // Quick Create Student States
   const [showQuickCreate, setShowQuickCreate] = useState(false)
-  const [newStudent, setNewStudent] = useState({ 
-    first_name: '', 
-    last_name: '', 
+  const [newStudent, setNewStudent] = useState({
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
     gender: '',
@@ -105,26 +130,26 @@ export default function CourseStatusPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
+
   const load = async () => {
     if (tenantId == null) return
     setLoading(true)
     try {
       const params: any = { course_q: courseQ, student_q: studentQ }
       if (selectedDay !== '') params.day_of_week = Number(selectedDay)
-      
+
       const [res, tenantRes] = await Promise.all([
         api.get('/api/pms/course_status', { params }),
         api.get('/api/pms/tenants/me')
       ])
-      
+
       setData(res.data || [])
       setTenantInfo(tenantRes.data)
       try {
         const coursesRes = await api.get('/api/pms/courses', { params: { limit: 500 } })
         setAllCoursesCatalog((coursesRes.data?.items || coursesRes.data || []).map((c: any) => ({ id: c.id, name: c.name })))
       } catch {
-        // Mantener ï¿½ltimo catï¿½logo cargado para no vaciar el selector destino
+        // Mantener ?ltimo cat?logo cargado para no vaciar el selector destino
       }
     } catch (e: any) {
       setError('Error al cargar datos')
@@ -150,7 +175,7 @@ export default function CourseStatusPage() {
 
   const handleEnroll = async (studentId: number) => {
     if (!enrollModalCourseId) return
-    
+
     // Check if already enrolled in this course
     const courseRow = data.find(r => r.course.id === enrollModalCourseId)
     if (courseRow?.students.some(s => s.id === studentId)) {
@@ -167,13 +192,13 @@ export default function CourseStatusPage() {
       })
       const enrollmentId = data.id
       const cid = enrollModalCourseId
-      
+
       setEnrollModalCourseId(null)
       setEnrollSearchQ('')
-      
+
       // Open Payment Modal (initial payment)
       setRenewModalData({ studentId, courseId: cid, enrollmentId })
-      
+
       load() // Refresh data
     } catch (e: any) {
       alert('Error al inscribir: ' + (e.response?.data?.detail || e.message))
@@ -195,30 +220,30 @@ export default function CourseStatusPage() {
         ...newStudent,
         is_active: true
       })
-      
+
       // Upload Photo if exists
       if (imageFile) {
         const formData = new FormData()
         formData.append('file', imageFile)
         await api.post(`/api/pms/students/${student.id}/photo`, formData)
       }
-      
+
       // 2. Enroll Student
       const { data: enrollment } = await api.post('/api/pms/enrollments/', {
         student_id: student.id,
         course_id: enrollModalCourseId,
         start_date: new Date().toISOString().split('T')[0]
       })
-      
+
       const cid = enrollModalCourseId
       const sid = student.id
       const eid = enrollment.id
 
       setEnrollModalCourseId(null)
       setShowQuickCreate(false)
-      setNewStudent({ 
-        first_name: '', 
-        last_name: '', 
+      setNewStudent({
+        first_name: '',
+        last_name: '',
         email: '',
         phone: '',
         gender: '',
@@ -256,7 +281,7 @@ export default function CourseStatusPage() {
       ...row,
       students: row.students.filter(s => {
         const matchesStudent = !studentQ || (s.first_name + ' ' + s.last_name).toLowerCase().includes(studentQ.toLowerCase())
-        const matchesPending = viewMode !== 'pending' || s.payment_status !== 'activo'
+        const matchesPending = viewMode !== 'pending' || isPendingStatus(s.payment_status)
         return matchesStudent && matchesPending
       })
     })).filter(row => row.students.length > 0 || (!studentQ && viewMode !== 'pending'))
@@ -266,7 +291,7 @@ export default function CourseStatusPage() {
     const groups: Record<string, CourseRow[]> = {}
     filteredData.forEach(row => {
       const d = row.course.day_of_week ?? 0
-      const dayName = DAY_NAMES[d] || 'Sin dÃ­a'
+      const dayName = DAY_NAMES[d] || 'Sin día'
       if (!groups[dayName]) groups[dayName] = []
       groups[dayName].push(row)
     })
@@ -390,7 +415,7 @@ export default function CourseStatusPage() {
     }
   }
   const openBulkWhatsAppModal = (row: CourseRow) => {
-    const pendingStudents = row.students.filter((s) => s.payment_status !== 'activo')
+    const pendingStudents = row.students.filter((s) => isPendingStatus(s.payment_status))
     if (pendingStudents.length === 0) {
       setWaBulkResultByCourse((prev) => ({ ...prev, [row.course.id]: 'Sin alumnos pendientes' }))
       return
@@ -399,7 +424,7 @@ export default function CourseStatusPage() {
   }
   const handleWhatsAppBulkByCourse = async (row: CourseRow) => {
     const courseId = row.course.id
-    const pendingStudents = row.students.filter((s) => s.payment_status !== 'activo')
+    const pendingStudents = row.students.filter((s) => isPendingStatus(s.payment_status))
     if (pendingStudents.length === 0) {
       setWaBulkResultByCourse((prev) => ({ ...prev, [courseId]: 'Sin alumnos pendientes' }))
       return
@@ -433,7 +458,7 @@ export default function CourseStatusPage() {
       {/* Header & Controls */}
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 pt-4">
         <div className="space-y-1 text-center sm:text-left">
-           <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">GestiÃ³n AcadÃ©mica</span>
+           <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Gestión Académica</span>
            <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Estado de Cursos</h1>
            <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center sm:justify-start gap-4 mt-4">
               <p className="text-gray-500 font-medium text-sm md:text-lg max-w-[20rem]">Control de inscripciones y pagos en tiempo real.</p>
@@ -441,7 +466,7 @@ export default function CourseStatusPage() {
                <div className="grid grid-cols-2 sm:flex w-full sm:w-auto bg-gray-50 p-1.5 rounded-2xl border border-gray-100 gap-1.5">
                  <button onClick={() => setViewMode('detailed')} className={`px-4 md:px-6 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='detailed' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Todos</button>
                  <button onClick={() => setViewMode('pending')} className={`px-4 md:px-6 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='pending' ? 'bg-white shadow-sm text-rose-600' : 'text-rose-400/60 hover:text-rose-600'}`}>Pendientes</button>
-                 <button onClick={() => setViewMode('gender')} className={`px-4 md:px-6 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='gender' ? 'bg-white shadow-sm text-sky-600' : 'text-gray-400 hover:text-gray-600'}`}>Por gÃ©nero</button>
+                 <button onClick={() => setViewMode('gender')} className={`px-4 md:px-6 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='gender' ? 'bg-white shadow-sm text-sky-600' : 'text-gray-400 hover:text-gray-600'}`}>Por género</button>
                  <button onClick={() => setViewMode('summary')} className={`px-4 md:px-6 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='summary' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>Resumen</button>
                </div>
            </div>
@@ -461,7 +486,7 @@ export default function CourseStatusPage() {
            <div className="flex items-center gap-2 w-full">
               <div className="relative flex-1">
                  <select value={selectedDay} onChange={e=>setSelectedDay(e.target.value)} className="w-full pl-5 pr-10 py-2.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none appearance-none transition-all">
-                    <option value="">Cualquier dÃ­a</option>
+                    <option value="">Cualquier día</option>
                     {DAY_NAMES.map((d,i)=><option key={i} value={i}>{d}</option>)}
                  </select>
                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
@@ -539,8 +564,8 @@ export default function CourseStatusPage() {
                                 >
                                   <HiOutlineMail size={14} />{viewMode === 'summary' ? null : (waBulkLoadingByCourse[row.course.id] ? 'Enviando...' : 'Pendientes')}
                                 </button>
-                                <button 
-                                   onClick={() => { setEnrollModalCourseId(row.course.id); loadAllStudents(); }} 
+                                <button
+                                   onClick={() => { setEnrollModalCourseId(row.course.id); loadAllStudents(); }}
                                    className={`flex items-center justify-center gap-2 w-full sm:w-auto ${viewMode === 'summary' ? 'sm:w-10 sm:h-10 p-3 sm:p-0 rounded-xl' : 'px-4 py-2.5 rounded-xl'} bg-fuchsia-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 shadow-lg shadow-fuchsia-200 transition-all active:scale-95`} title="Inscribir alumno"
                                 >
                                    <HiOutlinePlus size={14} />
@@ -564,33 +589,42 @@ export default function CourseStatusPage() {
                                 <table className="w-full">
                                    <thead className="hidden md:table-header-group">
                                       <tr className="text-left text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/30">
-                                         <th className="pl-12 pr-6 py-5">InformaciÃ³n Alumno</th>
+                                         <th className="pl-12 pr-6 py-5">Información Alumno</th>
                                          <th className="px-6 py-5 text-center">Progreso de Asistencia</th>
                                          <th className="px-6 py-5 text-center">Estatus Financiero</th>
-                                         <th className="pr-12 pl-6 py-5 text-right">GestiÃ³n de Contacto</th>
+                                         <th className="pr-12 pl-6 py-5 text-right">Gestión de Contacto</th>
                                       </tr>
                                    </thead>
                                    <tbody className="divide-y divide-gray-50 block md:table-row-group">
-                                      {row.students.map((s) => {
-                                         const isPaid = s.payment_status === 'activo'
-                                         const progress = s.expected_count && s.expected_count > 0 ? Math.min(100, (s.attendance_count || 0) / s.expected_count * 100) : 0
-                                         
-                                         return (
+                                       {row.students.map((s) => {
+                                          const isPaid = isPaidStatus(s.payment_status)
+                                          const isInactive = isInactiveStatus(s.payment_status)
+                                          const isSingleClass = isSingleClassMode(s.enrollment_mode)
+                                          const progress = s.expected_count && s.expected_count > 0 ? Math.min(100, (s.attendance_count || 0) / s.expected_count * 100) : 0
+
+                                          return (
                                             <tr key={s.id} className="block md:table-row hover:bg-gray-50/80 transition-all group">
                                                <td className="block md:table-cell pl-8 md:pl-12 pr-6 py-6">
                                                   <div className="flex items-center gap-4">
                                                      <div className="w-12 h-12 rounded-2xl bg-fuchsia-50 overflow-hidden flex items-center justify-center text-fuchsia-600 font-black shrink-0 border border-fuchsia-100 shadow-sm">
                                                         {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
                                                      </div>
-                                                     <div className="min-w-0">
-                                                        <div className="text-base font-black text-gray-900 truncate group-hover:text-fuchsia-600 transition-colors flex items-center gap-2">
-                                                           {s.first_name} {s.last_name}
-                                                           {s.birthday_today && <HiOutlineCake className="text-pink-500 shrink-0" size={16} />}
-                                                        </div>
-                                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Socio #{s.id}</div>
-                                                     </div>
-                                                  </div>
-                                               </td>
+                                                      <div className="min-w-0">
+                                                         <div className="text-base font-black text-gray-900 truncate group-hover:text-fuchsia-600 transition-colors flex items-center gap-2">
+                                                            {s.first_name} {s.last_name}
+                                                            {s.birthday_today && <HiOutlineCake className="text-pink-500 shrink-0" size={16} />}
+                                                         </div>
+                                                         <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Socio #{s.id}</div>
+                                                            {isSingleClass && (
+                                                              <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md">
+                                                                Clase suelta
+                                                              </span>
+                                                            )}
+                                                         </div>
+                                                      </div>
+                                                   </div>
+                                                </td>
                                                <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6">
                                                   <div className="w-full md:w-32 max-w-[220px] md:max-w-none mx-auto">
                                                      <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase mb-2">
@@ -601,29 +635,40 @@ export default function CourseStatusPage() {
                                                      <div className="h-1.5 md:h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner relative">
                                                         <div className={`h-full transition-all duration-1000 ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-fuchsia-500' : 'bg-rose-400'}`} style={{ width: `${progress}%` }} />
                                                      </div>
-                                                     {!!s.extra_count && s.extra_count > 0 && (
-                                                        <div className="mt-2 flex justify-center">
-                                                           <span className="px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md cursor-help transition-colors hover:bg-amber-100" title="Asistencia registrada fuera de las fechas de su plan original (ej. Clase suelta)">
-                                                              +{s.extra_count} Extra{s.extra_count > 1 ? 's' : ''}
-                                                           </span>
-                                                        </div>
+                                                      {!isSingleClass && !!s.extra_count && s.extra_count > 0 && (
+                                                         <div className="mt-2 flex justify-center">
+                                                            <span className="px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md cursor-help transition-colors hover:bg-amber-100" title="Asistencia registrada fuera de las fechas de su plan original (ej. Clase suelta)">
+                                                               +{s.extra_count} Extra{s.extra_count > 1 ? 's' : ''}
+                                                            </span>
+                                                         </div>
                                                      )}
                                                   </div>
                                                </td>
                                                <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6 text-left md:text-center">
-                                                  <span className="md:hidden text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">Estado de Pago</span>
-                                                  {isPaid ? (
-                                                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                                       <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" />
-                                                       PAGADO
-                                                    </div>
-                                                  ) : (
-                                                    <button 
-                                                      onClick={() => {
-                                                        if (s.enrollment_id) setRenewModalData({ studentId: s.id, courseId: row.course.id, enrollmentId: s.enrollment_id })
-                                                        else navigate(`/students/${s.id}`)
-                                                      }} 
-                                                      className="inline-flex items-center gap-2 px-6 py-3 md:px-4 md:py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all w-full md:w-auto justify-center shadow-sm shadow-rose-50 active:scale-95" 
+                                                   <span className="md:hidden text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">Estado de Pago</span>
+                                                   {isPaid ? (
+                                                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" />
+                                                        PAGADO
+                                                     </div>
+                                                   ) : isInactive ? (
+                                                     <button
+                                                       onClick={() => {
+                                                         if (s.enrollment_id) setRenewModalData({ studentId: s.id, courseId: row.course.id, enrollmentId: s.enrollment_id })
+                                                         else navigate(`/students/${s.id}`)
+                                                       }}
+                                                       className="inline-flex items-center gap-2 px-6 py-3 md:px-4 md:py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-700 hover:text-white transition-all w-full md:w-auto justify-center shadow-sm active:scale-95"
+                                                     >
+                                                        <div className="w-2 h-2 rounded-full bg-slate-400" />
+                                                        INACTIVO
+                                                     </button>
+                                                   ) : (
+                                                     <button
+                                                       onClick={() => {
+                                                         if (s.enrollment_id) setRenewModalData({ studentId: s.id, courseId: row.course.id, enrollmentId: s.enrollment_id })
+                                                         else navigate(`/students/${s.id}`)
+                                                      }}
+                                                      className="inline-flex items-center gap-2 px-6 py-3 md:px-4 md:py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all w-full md:w-auto justify-center shadow-sm shadow-rose-50 active:scale-95"
                                                     >
                                                        <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                                                        PENDIENTE
@@ -691,7 +736,14 @@ export default function CourseStatusPage() {
                                                  </div>
                                                  <div className="min-w-0 flex-1 space-y-2">
                                                    <div className="font-black text-sm text-gray-800 truncate">{s.first_name} {s.last_name}</div>
-                                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
+                                                      {isSingleClassMode(s.enrollment_mode) && (
+                                                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md">
+                                                          Clase suelta
+                                                        </span>
+                                                      )}
+                                                    </div>
                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
                                                      <span className="text-[11px] font-black text-gray-600 uppercase shrink-0">{s.attendance_count || 0}/{s.expected_count || 0} asist.</span>
                                                      {(() => {
@@ -707,10 +759,10 @@ export default function CourseStatusPage() {
                                                      })()}
                                                    </div>
                                                    <div className="flex flex-wrap items-center gap-2">
-                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${s.payment_status === 'activo' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
-                                                       <div className={`w-1.5 h-1.5 rounded-full ${s.payment_status === 'activo' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                                       {s.payment_status === 'activo' ? 'Pagado' : 'Pendiente'}
-                                                     </span>
+                                                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${paymentBadgeClass(s.payment_status)}`}>
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${paymentDotClass(s.payment_status)}`} />
+                                                        {paymentLabel(s.payment_status)}
+                                                      </span>
                                                      {waTestResultByStudent[waKey(row.course.id, s.id)]?.message && (
                                                        <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
                                                      )}
@@ -751,7 +803,14 @@ export default function CourseStatusPage() {
                                                  </div>
                                                  <div className="min-w-0 flex-1 space-y-2">
                                                    <div className="font-black text-sm text-gray-800 truncate">{s.first_name} {s.last_name}</div>
-                                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
+                                                      {isSingleClassMode(s.enrollment_mode) && (
+                                                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md">
+                                                          Clase suelta
+                                                        </span>
+                                                      )}
+                                                    </div>
                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
                                                      <span className="text-[11px] font-black text-gray-600 uppercase shrink-0">{s.attendance_count || 0}/{s.expected_count || 0} asist.</span>
                                                      {(() => {
@@ -767,10 +826,10 @@ export default function CourseStatusPage() {
                                                      })()}
                                                    </div>
                                                    <div className="flex flex-wrap items-center gap-2">
-                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${s.payment_status === 'activo' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
-                                                       <div className={`w-1.5 h-1.5 rounded-full ${s.payment_status === 'activo' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                                       {s.payment_status === 'activo' ? 'Pagado' : 'Pendiente'}
-                                                     </span>
+                                                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shrink-0 ${paymentBadgeClass(s.payment_status)}`}>
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${paymentDotClass(s.payment_status)}`} />
+                                                        {paymentLabel(s.payment_status)}
+                                                      </span>
                                                      {waTestResultByStudent[waKey(row.course.id, s.id)]?.message && (
                                                        <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
                                                      )}
@@ -814,12 +873,12 @@ export default function CourseStatusPage() {
                                 <div className="space-y-3 px-1">
                                    <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase tracking-widest">
                                       <span>Salud Financiera</span>
-                                      <span className="text-emerald-600">{row.students.filter(s=>s.payment_status==='activo').length} / {row.students.length}</span>
-                                   </div>
-                                   <div className="h-3 bg-gray-100 rounded-full overflow-hidden shadow-inner p-0.5">
-                                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000 shadow-sm" style={{ width: `${(row.students.filter(s=>s.payment_status==='activo').length / (row.students.length || 1)) * 100}%` }} />
-                                   </div>
-                                </div>
+                                      <span className="text-emerald-600">{row.students.filter(s => isPaidStatus(s.payment_status)).length} / {row.students.length}</span>
+                                    </div>
+                                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden shadow-inner p-0.5">
+                                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000 shadow-sm" style={{ width: `${(row.students.filter(s => isPaidStatus(s.payment_status)).length / (row.students.length || 1)) * 100}%` }} />
+                                    </div>
+                                  </div>
                                 <button onClick={() => navigate(`/courses/${row.course.id}`)} className="w-full py-4 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-fuchsia-600 hover:shadow-xl hover:shadow-fuchsia-100 transition-all flex items-center justify-center gap-3 group/nav">
                                    Explorar Detalles <HiOutlineChevronRight size={16} className="group-hover/nav:translate-x-1 transition-transform" />
                                 </button>
@@ -954,13 +1013,13 @@ export default function CourseStatusPage() {
               <div className="p-8 border-b border-gray-50 bg-gray-50/30">
                  <h2 className="text-xl font-black text-gray-900">{showQuickCreate ? 'Registrar Nuevo Alumno' : 'Inscribir Alumno'}</h2>
                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">{showQuickCreate ? 'Completa los datos del perfil oficial' : 'Busca y selecciona un alumno'}</p>
-                 
+
                  {!showQuickCreate && (
                     <div className="mt-6 relative animate-in fade-in zoom-in duration-300">
                        <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                       <input 
-                          type="text" 
-                          placeholder="Nombre, apellido o correo..." 
+                       <input
+                          type="text"
+                          placeholder="Nombre, apellido o correo..."
                           value={enrollSearchQ}
                           onChange={(e) => setEnrollSearchQ(e.target.value)}
                           autoFocus
@@ -977,7 +1036,7 @@ export default function CourseStatusPage() {
                            {/* Photo Upload Area */}
                            <div className="w-full md:w-40 shrink-0">
                               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Foto Alumno</label>
-                              <div 
+                              <div
                                  onClick={() => fileInputRef.current?.click()}
                                  className="aspect-square rounded-3xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center overflow-hidden hover:border-fuchsia-300 hover:bg-fuchsia-50/30 transition-all cursor-pointer group relative"
                               >
@@ -989,10 +1048,10 @@ export default function CourseStatusPage() {
                                        <span className="text-[8px] font-black uppercase mt-2">Subir</span>
                                     </div>
                                  )}
-                                 <input 
-                                    type="file" 
-                                    ref={fileInputRef} 
-                                    className="hidden" 
+                                 <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
                                     accept="image/*"
                                     onChange={(e) => {
                                        const file = e.target.files?.[0]
@@ -1010,8 +1069,8 @@ export default function CourseStatusPage() {
                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                               <div className="space-y-1.5">
                                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nombres</label>
-                                 <input 
-                                    type="text" 
+                                 <input
+                                    type="text"
                                     value={newStudent.first_name}
                                     onChange={(e) => setNewStudent({...newStudent, first_name: e.target.value})}
                                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
@@ -1020,18 +1079,18 @@ export default function CourseStatusPage() {
                               </div>
                               <div className="space-y-1.5">
                                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Apellidos</label>
-                                 <input 
-                                    type="text" 
+                                 <input
+                                    type="text"
                                     value={newStudent.last_name}
                                     onChange={(e) => setNewStudent({...newStudent, last_name: e.target.value})}
                                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
-                                    placeholder="Ej: PÃ©rez"
+                                    placeholder="Ej: Pérez"
                                  />
                               </div>
                               <div className="space-y-1.5">
                                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email</label>
-                                 <input 
-                                    type="email" 
+                                 <input
+                                    type="email"
                                     value={newStudent.email}
                                     onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}
                                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
@@ -1039,9 +1098,9 @@ export default function CourseStatusPage() {
                                  />
                               </div>
                               <div className="space-y-1.5">
-                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">TelÃ©fono / WhatsApp</label>
-                                 <input 
-                                    type="text" 
+                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Teléfono / WhatsApp</label>
+                                 <input
+                                    type="text"
                                     value={newStudent.phone}
                                     onChange={(e) => setNewStudent({...newStudent, phone: e.target.value})}
                                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
@@ -1049,8 +1108,8 @@ export default function CourseStatusPage() {
                                  />
                               </div>
                               <div className="space-y-1.5">
-                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">GÃ©nero</label>
-                                 <select 
+                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Género</label>
+                                 <select
                                     value={newStudent.gender}
                                     onChange={(e) => setNewStudent({...newStudent, gender: e.target.value})}
                                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all appearance-none"
@@ -1063,8 +1122,8 @@ export default function CourseStatusPage() {
                               </div>
                               <div className="space-y-1.5">
                                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Fecha Nacimiento</label>
-                                 <input 
-                                    type="date" 
+                                 <input
+                                    type="date"
                                     value={newStudent.birthdate}
                                     onChange={(e) => setNewStudent({...newStudent, birthdate: e.target.value})}
                                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all"
@@ -1074,7 +1133,7 @@ export default function CourseStatusPage() {
                         </div>
                         <div className="space-y-1.5">
                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Notas / Observaciones</label>
-                           <textarea 
+                           <textarea
                               value={newStudent.notes}
                               onChange={(e) => setNewStudent({...newStudent, notes: e.target.value})}
                               className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 focus:border-fuchsia-300 focus:bg-white outline-none font-bold text-sm transition-all resize-none"
@@ -1084,7 +1143,7 @@ export default function CourseStatusPage() {
                         </div>
 
                         <div className="pt-2">
-                           <button 
+                           <button
                               onClick={handleQuickCreateAndEnroll}
                               disabled={isEnrolling || !newStudent.first_name || !newStudent.last_name}
                               className="w-full py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black rounded-2xl shadow-xl shadow-fuchsia-200 hover:shadow-fuchsia-300 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
@@ -1096,11 +1155,11 @@ export default function CourseStatusPage() {
                                  </>
                               )}
                            </button>
-                           <button 
+                           <button
                               onClick={() => setShowQuickCreate(false)}
                               className="w-full py-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] hover:text-gray-600 transition-colors"
                            >
-                              Volver a la bÃºsqueda
+                              Volver a la búsqueda
                            </button>
                         </div>
                      </div>
@@ -1115,7 +1174,7 @@ export default function CourseStatusPage() {
                           .map(s => {
                              const isAlreadyIn = data.find(r => r.course.id === enrollModalCourseId)?.students.some(st => st.id === s.id)
                              return (
-                                <button 
+                                <button
                                    key={s.id}
                                    disabled={isEnrolling || isAlreadyIn}
                                    onClick={() => handleEnroll(s.id)}
@@ -1140,16 +1199,16 @@ export default function CourseStatusPage() {
                              )
                           })
                         }
-                       
+
                        <div className="pt-4 border-t border-gray-50">
-                          <button 
+                          <button
                              onClick={() => setShowQuickCreate(true)}
                              className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl bg-gray-50 text-gray-600 hover:bg-gray-100 border border-dashed border-gray-200 transition-all group"
                           >
                              <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-gray-400 group-hover:text-fuchsia-600 transition-colors shadow-sm">
                                 <HiOutlinePlus size={16} />
                              </div>
-                             <span className="text-xs font-black uppercase tracking-widest">Â¿Alumno nuevo? Crear aquÃ­</span>
+                             <span className="text-xs font-black uppercase tracking-widest">¿Alumno nuevo? Crear aquí</span>
                           </button>
                        </div>
                     </div>
@@ -1190,7 +1249,7 @@ export default function CourseStatusPage() {
               <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
                 <div className="text-[10px] font-black uppercase tracking-widest text-rose-500">Resumen</div>
                 <div className="mt-2 text-sm font-bold text-gray-700">
-                  Alumnos pendientes: {waBulkConfirmCourse.students.filter((s) => s.payment_status !== 'activo').length}
+                  Alumnos pendientes: {waBulkConfirmCourse.students.filter((s) => isPendingStatus(s.payment_status)).length}
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
                   Los mensajes se enviaran en cola, uno por uno, usando la plantilla aprobada de WhatsApp.
@@ -1218,7 +1277,7 @@ export default function CourseStatusPage() {
         </div>
         </div>
       )}
-      {/* Modal de RenovaciÃ³n */}
+      {/* Modal de Renovación */}
       {renewModalData && (
         <RenewModal
           isOpen={true}
@@ -1235,36 +1294,3 @@ export default function CourseStatusPage() {
     </div>
   )
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

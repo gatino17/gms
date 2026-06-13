@@ -20,14 +20,17 @@ type CourseRow = {
     enrolled_since?: string | null
     renewal_date?: string | null
     notes?: string | null
-    payment_status?: 'activo' | 'pendiente'
+    payment_status?: 'activo' | 'pendiente' | 'inactivo'
+    enrollment_mode?: 'regular' | 'single_class'
+    single_class_date?: string | null
     attendance_count?: number
+    expected_count?: number
+    extra_count?: number
     birthday_today?: boolean
   }[]
 }
 
 type GenderKey = 'female' | 'male' | 'other'
-type PaymentRow = { id: number; student_id?: number | null; course_id?: number | null; payment_date?: string | null }
 
 function toDate(iso?: string | null) {
   if (!iso) return null
@@ -84,13 +87,17 @@ function normalizeGender(gRaw?: string | null): GenderKey {
   return 'other'
 }
 
+const isPaidStatus = (status?: string | null) => status === 'activo'
+const isPendingStatus = (status?: string | null) => status === 'pendiente'
+const isInactiveStatus = (status?: string | null) => status === 'inactivo'
+const isSingleClassMode = (mode?: string | null) => mode === 'single_class'
+
 export default function CourseStatusByGenderPage() {
   const navigate = useNavigate()
   const { tenantId } = useTenant()
   const [data, setData] = useState<CourseRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [payments, setPayments] = useState<PaymentRow[]>([])
 
   const [courseQ, setCourseQ] = useState('')
   const [studentQ, setStudentQ] = useState('')
@@ -114,19 +121,7 @@ export default function CourseStatusByGenderPage() {
       if (teacherQ) params.teacher_q = teacherQ
       if (attendanceDays) params.attendance_days = Number(attendanceDays)
       const today = new Date()
-      const startRange = new Date()
-      startRange.setDate(today.getDate() - 365) // pagos del ultimo año
-      const [statusRes, payRes] = await Promise.all([
-        api.get('/api/pms/course_status', { params }),
-        api.get('/api/pms/payments', {
-          params: {
-            limit: 1000,
-            offset: 0,
-            date_from: toYMD(startRange),
-            date_to: toYMD(today),
-          },
-        }),
-      ])
+      const statusRes = await api.get('/api/pms/course_status', { params })
       const statusData: CourseRow[] = statusRes.data || []
 
       // Recalcular asistencias para capturar extras (5/4, etc.)
@@ -162,12 +157,8 @@ export default function CourseStatusByGenderPage() {
         await Promise.all(attendancePromises)
       } catch { /* si falla seguimos con los datos originales */ }
 
-      const payRows = Array.isArray(payRes.data)
-        ? payRes.data
-        : Array.isArray(payRes.data?.results)
-          ? payRes.data.results
-          : []
-      setPayments(payRows)
+
+
       setData(statusData)
     } catch (e: any) {
       setError(e?.message ?? 'Error cargando estado de cursos')
@@ -193,9 +184,7 @@ export default function CourseStatusByGenderPage() {
   // Filtrado en memoria para respuesta inmediata en la tabla
   // Agrupacion directa de los datos cargados (el load ya se dispara en cada cambio de filtro de texto con debounce)
   const grouped = useMemo(() => {
-    const pays = Array.isArray(payments) ? payments : []
     return data.map((row) => {
-      const today = new Date()
       const expectedDefault = Math.max(1, ((row.course as any).classes_per_week ?? 1) * 4)
       const sorter = (a: any, b: any) => {
         const av = a.attendance_count ?? 0
@@ -205,33 +194,29 @@ export default function CourseStatusByGenderPage() {
         return 0
       }
       const enrStudents = row.students.map((s) => {
-        const payStatus = (s.payment_status || '').toString().toLowerCase()
-        const hasPay = pays.some((p) => p.student_id === s.id && p.course_id === row.course.id)
         const stuEnd = toDate(s.renewal_date)
-        const isPastPeriod = stuEnd ? today > stuEnd : false
-        let statusLabel = 'Inscrito'
-        let statusClass = 'bg-sky-50 text-sky-700 border-sky-200'
-        if (!hasPay) {
+        let statusLabel = 'Pagado'
+        let statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        if (isPendingStatus(s.payment_status)) {
           statusLabel = 'Pendiente de pago'
           statusClass = 'bg-rose-50 text-rose-700 border-rose-200'
-        } else if (isPastPeriod) {
-          statusLabel = 'Pendiente de renovación'
-          statusClass = 'bg-amber-50 text-amber-700 border-amber-200'
+        } else if (isInactiveStatus(s.payment_status)) {
+          statusLabel = 'Inactivo'
+          statusClass = 'bg-slate-100 text-slate-600 border-slate-200'
         }
         const att = s.attendance_count ?? 0
         const stuStart = toDate(s.enrolled_since)
         const weeks = weeksBetween(stuStart, stuEnd)
+        const isSingleClass = isSingleClassMode(s.enrollment_mode) || !!(s.enrolled_since && s.renewal_date && s.enrolled_since === s.renewal_date)
         const expected =
-          stuStart && stuEnd && stuStart.getTime() === stuEnd.getTime()
+          isSingleClass
             ? 1
             : weeks != null
               ? Math.max(1, ((row.course as any).classes_per_week ?? 1) * weeks)
               : expectedDefault
         const attPct = expected > 0 ? Math.min(100, Math.round((att / expected) * 100)) : 0
         const over = att > expected
-        const extra = over ? att - expected : 0
-        const isSingleClass =
-          !!(s.enrolled_since && s.renewal_date && s.enrolled_since === s.renewal_date)
+        const extra = isSingleClass ? 0 : over ? att - expected : 0
 
         return { ...s, attendance_count: att, expected, attPct, extra, statusLabel, statusClass, isSingleClass }
       })
@@ -245,7 +230,7 @@ export default function CourseStatusByGenderPage() {
       }
       return { row, expectedAttendance: expectedDefault, female, male, other, counts }
     })
-  }, [data, sortBy, payments])
+  }, [data, sortBy])
 
   const handleViewStudent = (studentId: number) => {
     navigate(`/students/${studentId}`)
@@ -454,7 +439,14 @@ function GenderTable({ title, students, onView }: GenderTableProps) {
                               <span className="font-black text-gray-900 truncate">{s.first_name} {s.last_name}</span>
                               {s.birthday_today && <FaBirthdayCake className="text-pink-500 shrink-0" size={12} />}
                            </div>
-                           <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Socio #{s.id}</div>
+                           <div className="flex flex-wrap items-center gap-2">
+                             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Socio #{s.id}</div>
+                             {s.isSingleClass && (
+                               <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md">
+                                 Clase suelta
+                               </span>
+                             )}
+                           </div>
                          </div>
                       </div>
                     </td>

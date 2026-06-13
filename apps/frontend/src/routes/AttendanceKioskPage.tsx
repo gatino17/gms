@@ -18,6 +18,7 @@ type KioskCourse = {
     id: number
     name: string
     level?: string
+    image_url?: string | null
     day_of_week?: number | null
     day_of_week_2?: number | null
     day_of_week_3?: number | null
@@ -72,14 +73,17 @@ export default function AttendanceKioskPage() {
   const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
   const hhmm = (t?: string | null) => (t ? String(t).slice(0, 5) : '--:--')
 
-  const getScheduleLabel = (course: KioskCourse['course']) => {
-    const slots = [
+  const getCourseSlots = (course: KioskCourse['course']) =>
+    [
       { d: course.day_of_week, st: course.start_time },
       { d: course.day_of_week_2, st: course.start_time_2 },
       { d: course.day_of_week_3, st: course.start_time_3 },
       { d: course.day_of_week_4, st: course.start_time_4 },
       { d: course.day_of_week_5, st: course.start_time_5 },
     ].filter((s) => s.d != null && s.st)
+
+  const getScheduleLabel = (course: KioskCourse['course']) => {
+    const slots = getCourseSlots(course)
 
     if (!slots.length) return 'Horario por confirmar'
     return slots
@@ -98,6 +102,8 @@ export default function AttendanceKioskPage() {
     if (count <= 1) return null
     return `${count} veces por semana`
   }
+
+  const todayDayIndex = (now.getDay() + 6) % 7
 
   const formatAttendanceTime = (iso?: string) => {
     if (!iso) return ''
@@ -248,21 +254,25 @@ export default function AttendanceKioskPage() {
     }
   }
 
-  const nowLabel = (() => {
-    const datePart = new Intl.DateTimeFormat('es-CL', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(now)
-    const timePart = new Intl.DateTimeFormat('es-CL', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    }).format(now)
-    return `${datePart.charAt(0).toUpperCase()}${datePart.slice(1)}, ${timePart} hrs`
-  })()
+  const nowDayLabel = new Intl.DateTimeFormat('es-CL', {
+    weekday: 'long',
+  }).format(now)
+
+  const nowDateLabel = new Intl.DateTimeFormat('es-CL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(now)
+
+  const nowTimeLabel = new Intl.DateTimeFormat('es-CL', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(now)
+
+  const nowDayDisplay = `${nowDayLabel.charAt(0).toUpperCase()}${nowDayLabel.slice(1)}`
+  const nowDateDisplay = `${nowDateLabel.charAt(0).toUpperCase()}${nowDateLabel.slice(1)}`
 
   const filteredCourses = courses.filter((row) => {
     const q = courseQuery.trim().toLowerCase()
@@ -407,11 +417,29 @@ export default function AttendanceKioskPage() {
         )}
 
         {/* Step 1: Select Course */}
-        {!selectedCourse && !feedbackMsg && (
-          <div className="w-full max-w-7xl h-full min-h-0 flex flex-col">
-            <div className="mb-3 md:mb-4 text-center shrink-0">
-              <h2 className="text-lg md:text-2xl font-black text-white tracking-tight">{nowLabel}</h2>
-            </div>
+	        {!selectedCourse && !feedbackMsg && (
+	          <div className="w-full max-w-7xl h-full min-h-0 flex flex-col">
+	            <div className="mb-4 md:mb-5 text-center shrink-0">
+	              <div className="relative overflow-hidden rounded-[30px] border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black px-4 py-4 md:px-6 md:py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+	                <div className="absolute -left-10 top-0 h-28 w-28 rounded-full bg-fuchsia-600/15 blur-3xl" />
+	                <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-amber-400/10 blur-3xl" />
+	                <div className="relative grid grid-cols-1 md:grid-cols-[1.2fr_1fr_0.9fr] gap-3 md:gap-4 items-stretch">
+	                  <div className="rounded-[24px] border border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-500/20 via-fuchsia-500/10 to-purple-600/10 px-5 py-4 text-left">
+	                    <div className="text-[10px] md:text-xs font-black uppercase tracking-[0.45em] text-fuchsia-200/80">Dia actual</div>
+	                    <div className="mt-2 text-3xl md:text-5xl font-black text-white tracking-tight leading-none">{nowDayDisplay}</div>
+	                  </div>
+	                  <div className="rounded-[24px] border border-white/10 bg-white/[0.04] px-5 py-4 text-left">
+	                    <div className="text-[10px] md:text-xs font-black uppercase tracking-[0.45em] text-zinc-400">Fecha</div>
+	                    <div className="mt-2 text-lg md:text-3xl font-black text-white tracking-tight leading-tight">{nowDateDisplay}</div>
+	                  </div>
+	                  <div className="rounded-[24px] border border-amber-400/25 bg-gradient-to-br from-amber-400/15 to-zinc-900 px-5 py-4 text-left">
+	                    <div className="text-[10px] md:text-xs font-black uppercase tracking-[0.45em] text-amber-100/80">Hora actual</div>
+	                    <div className="mt-2 text-2xl md:text-4xl font-black text-white tracking-tight leading-none">{nowTimeLabel}</div>
+	                    <div className="mt-1 text-[10px] md:text-xs font-black uppercase tracking-[0.35em] text-amber-200/70">Chile</div>
+	                  </div>
+	                </div>
+	              </div>
+	            </div>
             <div className="mb-3 md:mb-4 shrink-0">
               <div className="relative">
                 <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
@@ -431,40 +459,73 @@ export default function AttendanceKioskPage() {
             ) : (
               <div className="flex-1 min-h-0 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 content-start auto-rows-max overflow-visible pt-1">
                 {filteredCourses.map((row) => (
-                  <button
-                    key={row.course.id}
-                    onClick={() => setSelectedCourse(row)}
-                    className="group relative bg-zinc-50 border border-zinc-300 rounded-2xl md:rounded-[24px] p-4 md:p-5 text-left hover:border-fuchsia-300 transition-all hover:-translate-y-1 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 flex flex-col justify-between min-h-[180px] overflow-hidden"
-                  >
-                    <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-r from-zinc-200 via-zinc-100 to-white" />
-                    <div className="relative">
-                      <div className="inline-flex items-center rounded-full bg-fuchsia-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 mb-4">
-                        Modo Asistencia
+		                  <button
+		                    key={row.course.id}
+		                    onClick={() => setSelectedCourse(row)}
+		                    className="group relative bg-gradient-to-br from-zinc-50 via-white to-fuchsia-50/40 border border-zinc-200 rounded-[26px] md:rounded-[30px] p-4 md:p-5 text-left hover:border-fuchsia-300 transition-all duration-300 hover:-translate-y-1.5 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 flex flex-col justify-between min-h-[220px] overflow-hidden"
+		                  >
+		                    <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-r from-fuchsia-100 via-white to-transparent" />
+		                    <div className="absolute right-0 top-0 h-28 w-28 bg-gradient-to-bl from-fuchsia-500/10 to-transparent blur-2xl" />
+	                      <div className="absolute top-4 right-4 w-16 h-16 md:w-20 md:h-20 rounded-[22px] border border-white/80 bg-white/95 shadow-xl shadow-black/10 overflow-hidden flex items-center justify-center">
+	                        {row.course.image_url ? (
+	                          <img
+	                            src={toAbsoluteUrl(row.course.image_url)}
+                            alt={row.course.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-fuchsia-600 to-purple-700 text-white flex items-center justify-center text-2xl md:text-3xl font-black">
+                            {row.course.name[0]}
+                          </div>
+                        )}
                       </div>
-                      <h3 className="text-xl md:text-2xl font-black text-zinc-900 group-hover:text-fuchsia-700 transition-colors leading-tight line-clamp-2">
-                        {row.course.name}
-                      </h3>
-                      {row.teacher?.name && (
-                        <p className="text-zinc-600 text-sm md:text-base mt-2 flex items-center gap-2 font-semibold line-clamp-1">
-                          <span className="w-2 h-2 rounded-full bg-fuchsia-500 inline-block" />
-                          Prof: {row.teacher.name}
-                        </p>
-                      )}
-                    </div>
-                    <div className="relative mt-3 flex items-center gap-3">
-                      <div className="bg-zinc-200 px-3 py-1.5 rounded-xl text-zinc-800 font-black uppercase tracking-widest text-[11px] border border-zinc-300">
-                        {row.students.length} Inscritos
-                      </div>
-                    </div>
-                    <p className="relative mt-2 text-xs md:text-sm text-zinc-700 font-bold line-clamp-2">
-                      {getScheduleLabel(row.course)}
-                    </p>
-                    {getWeeklyFrequencyLabel(row.course) && (
-                      <p className="relative mt-1 text-xs md:text-sm text-fuchsia-700 font-black uppercase tracking-wide">
-                        {getWeeklyFrequencyLabel(row.course)}
-                      </p>
-                    )}
-                  </button>
+		                    <div className="relative">
+                          <div className="absolute inset-x-0 top-0 h-24 rounded-[24px] bg-gradient-to-r from-fuchsia-200/80 via-white/95 to-transparent opacity-95" />
+		                      <div className="relative pr-16 md:pr-20 pl-4 py-3.5 rounded-[22px] border border-white/80 bg-white/75 backdrop-blur-sm shadow-[0_10px_30px_rgba(217,70,239,0.08)]">
+                                    <div className="mb-2 inline-flex items-center rounded-full bg-fuchsia-600/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.3em] text-fuchsia-700">
+                                      Curso activo
+                                    </div>
+		                        <h3 className="text-xl md:text-2xl font-black text-zinc-900 group-hover:text-fuchsia-700 transition-colors leading-tight line-clamp-2">
+		                          {row.course.name}
+		                        </h3>
+		                      </div>
+		                      {row.teacher?.name && (
+		                        <p className="text-zinc-600 text-sm md:text-base mt-3 flex items-center gap-2 font-semibold line-clamp-1">
+	                          <span className="w-2 h-2 rounded-full bg-fuchsia-500 inline-block" />
+		                          Prof: {row.teacher.name}
+		                        </p>
+		                      )}
+	                        <div className="mt-5 flex flex-wrap gap-2.5">
+	                          {getCourseSlots(row.course).length ? (
+	                            getCourseSlots(row.course).map((slot, index) => {
+	                              const isToday = slot.d === todayDayIndex
+	                              return (
+	                                <div
+	                                  key={`${row.course.id}-${index}`}
+	                                  className={`min-w-[94px] rounded-2xl px-3.5 py-2.5 border text-xs font-black uppercase tracking-[0.18em] ${
+	                                    isToday
+	                                      ? 'bg-gradient-to-br from-fuchsia-600 to-purple-700 text-white border-fuchsia-500 shadow-xl shadow-fuchsia-500/25'
+	                                      : 'bg-white/85 text-zinc-700 border-zinc-200 shadow-sm'
+	                                  }`}
+	                                >
+	                                  <div className={`${isToday ? 'text-white' : 'text-zinc-900'}`}>{DAY_NAMES[slot.d as number]}</div>
+	                                  <div className={`mt-1 ${isToday ? 'text-fuchsia-100' : 'text-zinc-500'}`}>{hhmm(slot.st)} hrs</div>
+	                                </div>
+	                              )
+	                            })
+	                          ) : (
+	                            <div className="rounded-2xl px-3.5 py-2.5 border border-zinc-200 bg-white/85 text-xs font-black uppercase tracking-[0.18em] text-zinc-500 shadow-sm">
+	                              Horario por confirmar
+	                            </div>
+	                          )}
+	                        </div>
+		                    </div>
+		                    {getWeeklyFrequencyLabel(row.course) && (
+		                      <p className="relative mt-5 inline-flex items-center self-start rounded-full border border-fuchsia-200 bg-fuchsia-50 px-3 py-1.5 text-xs md:text-sm text-fuchsia-700 font-black uppercase tracking-[0.22em]">
+		                        {getWeeklyFrequencyLabel(row.course)}
+		                      </p>
+		                    )}
+		                  </button>
                 ))}
               </div>
             )}

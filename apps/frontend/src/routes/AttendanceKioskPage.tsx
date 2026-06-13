@@ -464,9 +464,8 @@ export default function AttendanceKioskPage() {
 		                    onClick={() => setSelectedCourse(row)}
 		                    className="group relative bg-gradient-to-br from-zinc-50 via-white to-fuchsia-50/40 border border-zinc-200 rounded-[26px] md:rounded-[30px] p-4 md:p-5 text-left hover:border-fuchsia-300 transition-all duration-300 hover:-translate-y-1.5 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 flex flex-col justify-between min-h-[220px] overflow-hidden"
 		                  >
-		                    <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-r from-fuchsia-100 via-white to-transparent" />
-		                    <div className="absolute right-0 top-0 h-28 w-28 bg-gradient-to-bl from-fuchsia-500/10 to-transparent blur-2xl" />
-	                      <div className="absolute top-4 right-4 w-16 h-16 md:w-20 md:h-20 rounded-[22px] border border-white/80 bg-white/95 shadow-xl shadow-black/10 overflow-hidden flex items-center justify-center">
+		                    <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-r from-fuchsia-100/70 via-white to-transparent" />
+	                      <div className="absolute top-4 right-4 w-14 h-14 md:w-16 md:h-16 rounded-[20px] border border-white/80 bg-white shadow-lg shadow-black/10 overflow-hidden flex items-center justify-center">
 	                        {row.course.image_url ? (
 	                          <img
 	                            src={toAbsoluteUrl(row.course.image_url)}
@@ -480,12 +479,11 @@ export default function AttendanceKioskPage() {
                         )}
                       </div>
 		                    <div className="relative">
-                          <div className="absolute inset-x-0 top-0 h-24 rounded-[24px] bg-gradient-to-r from-fuchsia-200/80 via-white/95 to-transparent opacity-95" />
-		                      <div className="relative pr-16 md:pr-20 pl-4 py-3.5 rounded-[22px] border border-white/80 bg-white/75 backdrop-blur-sm shadow-[0_10px_30px_rgba(217,70,239,0.08)]">
+		                      <div className="relative pr-16 md:pr-20 pl-1 py-1">
                                     <div className="mb-2 inline-flex items-center rounded-full bg-fuchsia-600/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.3em] text-fuchsia-700">
                                       Curso activo
                                     </div>
-		                        <h3 className="text-xl md:text-2xl font-black text-zinc-900 group-hover:text-fuchsia-700 transition-colors leading-tight line-clamp-2">
+		                        <h3 className="text-lg md:text-xl font-black text-zinc-900 group-hover:text-fuchsia-700 transition-colors leading-tight line-clamp-2">
 		                          {row.course.name}
 		                        </h3>
 		                      </div>

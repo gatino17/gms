@@ -54,6 +54,7 @@ type CourseRow = {
     gender?: string | null;
     email?: string | null;
     phone?: string | null;
+    enrolled_since?: string | null;
     renewal_date?: string | null;
     payment_status?: 'activo' | 'pendiente' | 'inactivo';
     enrollment_mode?: 'regular' | 'single_class';
@@ -101,6 +102,11 @@ const paymentLabel = (status?: string | null) => {
 const formatScheduleTime = (raw?: string | null) => {
   if (!raw) return ''
   return raw.slice(0, 5)
+}
+
+const toDDMMYYYY = (ymd?: string | null) => {
+  if (!ymd) return ''
+  return ymd.split('-').reverse().join('/')
 }
 
 const courseScheduleSummary = (course: CourseRow['course']) => {
@@ -704,10 +710,17 @@ export default function CourseStatusPage() {
                                                </td>
                                                <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6 text-left md:text-center">
                                                    <span className="md:hidden text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">Cobro</span>
-                                                   <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${isSingleClass ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-sky-50 text-sky-700 border-sky-100'}`}>
-                                                      <div className={`w-2 h-2 rounded-full ${isSingleClass ? 'bg-amber-500' : 'bg-sky-500'}`} />
-                                                      {isSingleClass ? 'Clase suelta' : 'Mensualidad'}
-                                                   </span>
+                                                   <div className="inline-flex flex-col items-start md:items-center gap-1.5">
+                                                      <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${isSingleClass ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-sky-50 text-sky-700 border-sky-100'}`}>
+                                                         <div className={`w-2 h-2 rounded-full ${isSingleClass ? 'bg-amber-500' : 'bg-sky-500'}`} />
+                                                         {isSingleClass ? 'Clase suelta' : 'Mensualidad'}
+                                                      </span>
+                                                      <span className="text-[10px] font-bold text-gray-500 leading-none">
+                                                         {isSingleClass
+                                                           ? `Fecha ${toDDMMYYYY(s.single_class_date)}`
+                                                           : `${toDDMMYYYY(s.enrolled_since)} - ${toDDMMYYYY(s.renewal_date)}`}
+                                                      </span>
+                                                   </div>
                                                </td>
                                                <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6 text-left md:text-center">
                                                    <span className="md:hidden text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">Estado de Pago</span>

@@ -259,6 +259,7 @@ export default function StudiosPage() {
   const [twilioError, setTwilioError] = useState<string | null>(null)
   const [twilioBalance, setTwilioBalance] = useState<TwilioBalance | null>(null)
   const [twilioBalanceError, setTwilioBalanceError] = useState<string | null>(null)
+  const [twilioAdminForbidden, setTwilioAdminForbidden] = useState(false)
 
   const currencyFormatter = new Intl.NumberFormat('es-CL')
   const formatMoney = (value?: string | number | null) => {
@@ -324,8 +325,13 @@ export default function StudiosPage() {
       const { data } = await api.get<Studio[]>('/api/pms/tenants')
       setStudios(data)
     } catch (err: any) {
+      const detail = err?.response?.data?.detail
       if (!silent) {
-        setListError(err?.message || 'No se pudieron cargar los estudios.')
+        if (detail) {
+          setListError(typeof detail === 'string' ? detail : JSON.stringify(detail))
+        } else {
+          setListError(err?.message || 'No se pudieron cargar los estudios.')
+        }
       }
     } finally {
       if (!silent) {
@@ -346,6 +352,7 @@ export default function StudiosPage() {
   const fetchTwilioConfig = async () => {
     try {
       const { data } = await api.get<TwilioAdminConfig>('/api/pms/whatsapp/admin-config')
+      setTwilioAdminForbidden(false)
       setTwilioConfig(data)
       setTwilioForm((prev) => ({
         ...prev,
@@ -357,7 +364,13 @@ export default function StudiosPage() {
         template_sid: data.template_sid || prev.template_sid,
         enabled: !!data.enabled,
       }))
-    } catch {
+    } catch (err: any) {
+      const status = err?.response?.status
+      const detail = err?.response?.data?.detail
+      if (status === 400 || status === 403) {
+        setTwilioAdminForbidden(true)
+        setTwilioError(typeof detail === 'string' ? detail : 'Sin permisos para administrar Twilio.')
+      }
       setTwilioConfig(null)
     }
   }
@@ -365,10 +378,18 @@ export default function StudiosPage() {
     setTwilioBalanceError(null)
     try {
       const { data } = await api.get<TwilioBalance>('/api/pms/whatsapp/admin-balance')
+      setTwilioAdminForbidden(false)
       setTwilioBalance(data)
     } catch (err: any) {
+      const status = err?.response?.status
+      const detail = err?.response?.data?.detail
       setTwilioBalance(null)
-      setTwilioBalanceError(err?.response?.data?.detail || null)
+      if (status === 400 || status === 403) {
+        setTwilioAdminForbidden(true)
+        setTwilioBalanceError(typeof detail === 'string' ? detail : 'Sin permisos para consultar saldo Twilio.')
+      } else {
+        setTwilioBalanceError(err?.response?.data?.detail || err?.message || null)
+      }
     }
   }
 
@@ -461,22 +482,26 @@ export default function StudiosPage() {
     const timer = setInterval(() => {
       fetchStudios(true)
     }, 15000)
-    const twilioTimer = setInterval(() => {
-      fetchTwilioBalance()
-    }, 30000)
+    const twilioTimer = twilioAdminForbidden
+      ? null
+      : setInterval(() => {
+          fetchTwilioBalance()
+        }, 30000)
     const onVisible = () => {
       if (!document.hidden) {
         fetchStudios(true)
-        fetchTwilioBalance()
+        if (!twilioAdminForbidden) {
+          fetchTwilioBalance()
+        }
       }
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       clearInterval(timer)
-      clearInterval(twilioTimer)
+      if (twilioTimer) clearInterval(twilioTimer)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [])
+  }, [twilioAdminForbidden])
 
   const handleSaveTwilioConfig = async (event: FormEvent) => {
     event.preventDefault()

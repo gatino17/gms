@@ -17,6 +17,7 @@ import {
   HiOutlineTag,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
+  HiOutlineSelector,
   HiOutlineViewGrid,
   HiOutlineViewList,
   HiOutlineUserGroup,
@@ -134,6 +135,7 @@ export default function PaymentsPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [totalItems, setTotalItems] = useState(0)
+  const [dateSort, setDateSort] = useState<'asc' | 'desc'>('desc')
 
   // Vista
   const [viewMode, setViewMode] = useState<ViewMode>('detalle')
@@ -154,7 +156,8 @@ export default function PaymentsPage() {
         date_to: dateTo || undefined,
         q: q || undefined,
         method: fMethod || undefined,
-        type: fType || undefined
+        type: fType || undefined,
+        date_sort: dateSort,
       }
 
       const [pres, cres, sres, eres] = await Promise.all([
@@ -197,7 +200,7 @@ export default function PaymentsPage() {
     }
   }
 
-  useEffect(() => { load() }, [tenantId, page, pageSize, dateFrom, dateTo, fMethod, fType, reloadKey])
+  useEffect(() => { load() }, [tenantId, page, pageSize, dateFrom, dateTo, fMethod, fType, dateSort, reloadKey])
 
   // Debounced Search
   useEffect(() => {
@@ -684,7 +687,18 @@ export default function PaymentsPage() {
             <table className="w-full">
               <thead className="hidden md:table-header-group">
                 <tr className="bg-gray-50/50 text-left border-b border-gray-100">
-                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">N°</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <button
+                      type="button"
+                      onClick={() => setDateSort((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+                      className="inline-flex items-center gap-2 hover:text-fuchsia-600 transition-colors"
+                      title={dateSort === 'desc' ? 'Ordenar fecha ascendente' : 'Ordenar fecha descendente'}
+                    >
+                      <span>Fecha</span>
+                      <HiOutlineSelector size={14} className={dateSort === 'desc' ? 'rotate-180' : ''} />
+                    </button>
+                  </th>
                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno / Concepto</th>
                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Método / Tipo</th>
                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Monto</th>
@@ -693,9 +707,15 @@ export default function PaymentsPage() {
               </thead>
               <tbody className="divide-y divide-gray-50 block md:table-row-group">
                 {visibleData.length === 0 && !loading ? (
-                  <tr className="block md:table-row"><td colSpan={5} className="px-8 py-20 text-center text-gray-400 font-bold block md:table-cell">No se encontraron pagos en este rango.</td></tr>
-                ) : visibleData.map((p) => (
+                  <tr className="block md:table-row"><td colSpan={6} className="px-8 py-20 text-center text-gray-400 font-bold block md:table-cell">No se encontraron pagos en este rango.</td></tr>
+                ) : visibleData.map((p, index) => (
                   <tr key={p.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors group">
+                    <td className="block md:table-cell px-6 md:px-6 py-2 md:py-6">
+                      <div className="flex md:block items-center justify-between">
+                        <div className="md:hidden text-[8px] font-black text-gray-400 uppercase">N°</div>
+                        <div className="text-sm font-black text-gray-900">{(page - 1) * pageSize + index + 1}</div>
+                      </div>
+                    </td>
                     <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6">
                       <div className="flex md:block items-center justify-between">
                         <div className="text-sm font-black text-gray-900">{toDDMMYYYY(p.payment_date)}</div>

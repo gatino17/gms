@@ -15,7 +15,8 @@ import {
   HiOutlineUser,
   HiOutlineFilter,
   HiOutlineUserGroup,
-  HiOutlineChartBar
+  HiOutlineChartBar,
+  HiOutlineSelector
 } from 'react-icons/hi'
 
 type Payment = {
@@ -101,6 +102,7 @@ export default function PaymentsTeachers() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [teacher, setTeacher] = useState<string>('')
+  const [dateSort, setDateSort] = useState<'asc' | 'desc'>('desc')
 
   const todayYMD = useMemo(() => toYMDInTZ(new Date()), [])
   const initialMonthRange = useMemo(() => monthRangeFor(), [])
@@ -190,8 +192,16 @@ export default function PaymentsTeachers() {
 
   const detailedRows = useMemo(() => {
     if (!teacher) return []
-    return enriched.filter(p => p.teacherName === teacher).sort((a, b) => b.id - a.id)
-  }, [enriched, teacher])
+    return enriched
+      .filter(p => p.teacherName === teacher)
+      .sort((a, b) => {
+        const dateCompare = dateSort === 'asc'
+          ? a.payment_date.localeCompare(b.payment_date)
+          : b.payment_date.localeCompare(a.payment_date)
+        if (dateCompare !== 0) return dateCompare
+        return dateSort === 'asc' ? a.id - b.id : b.id - a.id
+      })
+  }, [enriched, teacher, dateSort])
 
   const selectedAgg = useMemo(() => {
     if (!teacher) return null
@@ -365,7 +375,18 @@ export default function PaymentsTeachers() {
             <table className="w-full">
               <thead className="hidden md:table-header-group">
                 <tr className="bg-gray-50/50 text-left border-b border-gray-100">
-                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">N°</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <button
+                      type="button"
+                      onClick={() => setDateSort(prev => (prev === 'desc' ? 'asc' : 'desc'))}
+                      className="inline-flex items-center gap-2 hover:text-fuchsia-600 transition-colors"
+                      title={dateSort === 'desc' ? 'Ordenar fecha ascendente' : 'Ordenar fecha descendente'}
+                    >
+                      <span>Fecha</span>
+                      <HiOutlineSelector size={14} className={dateSort === 'desc' ? 'rotate-180' : ''} />
+                    </button>
+                  </th>
                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno / Curso</th>
                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Método</th>
                   <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Periodo</th>
@@ -376,6 +397,12 @@ export default function PaymentsTeachers() {
               <tbody className="divide-y divide-gray-50 block md:table-row-group">
                 {pageRows.map((r, i) => (
                   <tr key={i} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors group">
+                    <td className="block md:table-cell px-6 md:px-6 py-2 md:py-6">
+                      <div className="flex md:block items-center justify-between">
+                        <div className="md:hidden text-[8px] font-black text-gray-400 uppercase">N°</div>
+                        <div className="text-sm font-black text-gray-900">{(safePage - 1) * pageSize + i + 1}</div>
+                      </div>
+                    </td>
                     <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6">
                       <div className="flex md:block items-center justify-between">
                         <div className="text-sm font-black text-gray-900">{toDDMMYYYY(r.payment_date)}</div>

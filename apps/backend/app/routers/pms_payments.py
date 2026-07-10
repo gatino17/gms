@@ -104,6 +104,7 @@ async def list_payments(
     method: str | None = Query(default=None),
     type: str | None = Query(default=None),
     q: str | None = Query(default=None, description="Buscar en referencia/notas/metodo/tipo"),
+    date_sort: str = Query(default="desc"),
     limit: int = Query(default=50, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
 ):
@@ -196,10 +197,13 @@ async def list_payments(
     }
 
     # List query
+    payment_date_order = Payment.payment_date.asc() if date_sort == "asc" else Payment.payment_date.desc()
+    created_at_order = Payment.created_at.asc() if date_sort == "asc" else Payment.created_at.desc()
+
     list_stmt = apply_filters(
         select(Payment, Student.first_name, Student.last_name)
         .join(Student, Payment.student_id == Student.id, isouter=True)
-    ).order_by(Payment.payment_date.desc(), Payment.created_at.desc())
+    ).order_by(payment_date_order, created_at_order)
     
     res = await db.execute(list_stmt.offset(offset).limit(limit))
     rows = res.all()

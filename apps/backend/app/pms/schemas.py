@@ -165,6 +165,7 @@ class StudentOut(StudentBase):
     created_at: datetime
     updated_at: datetime
     enrollment_count: Optional[int] = 0
+    has_registration_fee: bool = False
 
     class Config:
         from_attributes = True
@@ -175,6 +176,7 @@ class StudentStats(BaseModel):
     female: int = 0
     male: int = 0
     new_this_week: int = 0
+    without_course: int = 0
 
 class StudentListResponse(BaseModel):
     items: list[StudentOut]

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
@@ -37,6 +37,7 @@ type Student = {
   joined_at?: string | null
   is_active?: boolean
   enrollment_count?: number
+  has_registration_fee?: boolean
 }
 
 type TenantPlanInfo = {
@@ -58,9 +59,10 @@ export default function StudentsPage() {
   const [data, setData] = useState<Student[]>([])
   const [loading, setLoading] = useState(false)
   const [q, setQ] = useState('')
-  const [stats, setStats] = useState({ total_active: 0, total_inactive: 0, female: 0, male: 0, new_this_week: 0 })
-  const [enrollmentFeeByStudent, setEnrollmentFeeByStudent] = useState<Record<number, boolean>>({})
+  const [debouncedQ, setDebouncedQ] = useState('')
+  const [stats, setStats] = useState({ total_active: 0, total_inactive: 0, female: 0, male: 0, new_this_week: 0, without_course: 0 })
   const [tenantPlanInfo, setTenantPlanInfo] = useState<TenantPlanInfo>({})
+  const [totalItems, setTotalItems] = useState(0)
   
   const [showCreate, setShowCreate] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
@@ -70,18 +72,46 @@ export default function StudentsPage() {
   const [showEnroll, setShowEnroll] = useState(false)
   const [showPay, setShowPay] = useState(false)
   const [payData, setPayData] = useState<{ studentId: number, courseId: number, enrollmentId: number } | null>(null)
+  const lastStudentsRequestRef = useRef(0)
 
   // Pagination states
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [joinedSort, setJoinedSort] = useState<'asc' | 'desc'>('desc')
 
   const load = async () => {
+    const requestId = ++lastStudentsRequestRef.current
     setLoading(true)
     try {
-      const studentsRes = await api.get('/api/pms/students', { params: { q, limit: 1000 } })
+      const studentsRes = await api.get('/api/pms/students', {
+        params: {
+          q: debouncedQ || undefined,
+          limit: pageSize,
+          offset: (page - 1) * pageSize,
+          joined_sort: joinedSort,
+        },
+      })
+      if (requestId !== lastStudentsRequestRef.current) return
       setData(studentsRes.data.items)
+      setTotalItems(studentsRes.data.total || 0)
       setStats(studentsRes.data.stats)
+    } finally {
+      if (requestId === lastStudentsRequestRef.current) {
+        setLoading(false)
+      }
+    }
+  }
 
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setDebouncedQ(q)
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(id)
+  }, [q])
+
+  useEffect(() => {
+    const loadTenantPlanInfo = async () => {
       try {
         const tenantRes = await api.get<TenantPlanInfo>('/api/pms/tenants/me')
         setTenantPlanInfo({
@@ -91,37 +121,19 @@ export default function StudentsPage() {
       } catch {
         setTenantPlanInfo({})
       }
+    }
+    loadTenantPlanInfo()
+  }, [tenantId])
 
-      // Optional load: if payments fails, students list must still render.
-      try {
-        const paymentsRes = await api.get('/api/pms/payments', { params: { type: 'registration', limit: 1000, offset: 0 } })
-        const feeMap: Record<number, boolean> = {}
-        for (const p of (paymentsRes.data?.items || [])) {
-          const sid = Number(p?.student_id || 0)
-          if (!sid) continue
-          feeMap[sid] = true
-        }
-        setEnrollmentFeeByStudent(feeMap)
-      } catch {
-        setEnrollmentFeeByStudent({})
-      }
-
-      setPage(1) // Reset to first page on new search
-    } finally { setLoading(false) }
-  }
-
-  useEffect(() => { load() }, [tenantId])
+  useEffect(() => { load() }, [tenantId, page, pageSize, debouncedQ, joinedSort])
   useEffect(() => {
-    const id = setTimeout(() => load(), 300)
-    return () => clearTimeout(id)
-  }, [q, tenantId])
+    const nextTotalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+    if (page > nextTotalPages) {
+      setPage(nextTotalPages)
+    }
+  }, [page, pageSize, totalItems])
 
-  const paginatedData = useMemo(() => {
-    const start = (page - 1) * pageSize
-    return data.slice(start, start + pageSize)
-  }, [data, page, pageSize])
-
-  const totalPages = Math.ceil(data.length / pageSize)
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
   const maxActiveStudents = tenantPlanInfo.max_active_students ?? null
   const activeStudentsLabel = maxActiveStudents
     ? `${stats.total_active}/${maxActiveStudents} activos`
@@ -146,7 +158,7 @@ export default function StudentsPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (confirm('¿Eliminar alumno permanentemente?')) {
+    if (confirm('Â¿Eliminar alumno permanentemente?')) {
       await api.delete(`/api/pms/students/${id}`)
       load()
     }
@@ -159,7 +171,7 @@ export default function StudentsPage() {
         <div className="space-y-1 text-center sm:text-left">
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Comunidad</span>
            <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight leading-none">Alumnos</h1>
-           <p className="text-gray-500 font-medium text-xs md:text-sm">Gestión centralizada de tu academia.</p>
+           <p className="text-gray-500 font-medium text-xs md:text-sm">GestiÃ³n centralizada de tu academia.</p>
            <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2">
              <span className={`inline-flex px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${capacityTone}`}>
                {activeStudentsLabel}
@@ -180,12 +192,13 @@ export default function StudentsPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5">
         {[
           { label: 'Total Activos', value: stats.total_active, icon: HiOutlineCheckCircle, color: 'emerald' },
           { label: 'Inactivos', value: stats.total_inactive, icon: HiOutlineXCircle, color: 'gray' },
           { label: 'Nuevos (Semana)', value: stats.new_this_week, icon: HiOutlineUserAdd, color: 'fuchsia' },
-          { label: 'Género (M/H)', value: `${stats.female}/${stats.male}`, icon: HiOutlineUserGroup, color: 'blue' },
+          { label: 'Sin Curso', value: stats.without_course, icon: HiOutlineCalendar, color: 'amber' },
+          { label: 'Género', value: `${stats.female}/${stats.male}`, icon: HiOutlineUserGroup, color: 'blue', isGender: true },
         ].map((s, i) => (
           <div key={i} className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
             <div className={`p-2.5 w-10 h-10 md:w-11 md:h-11 rounded-xl bg-${s.color}-50 text-${s.color}-600 flex items-center justify-center shrink-0`}>
@@ -193,7 +206,20 @@ export default function StudentsPage() {
             </div>
             <div className="min-w-0">
                <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest truncate">{s.label}</div>
-               <div className="text-lg md:text-xl font-black text-gray-900 truncate leading-none mt-1">{s.value}</div>
+               {s.isGender ? (
+                 <div className="mt-1 flex items-center gap-2">
+                   <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-1 text-sm font-black text-pink-600">
+                     <span>{'\u2640'}</span>
+                     <span>{stats.female}</span>
+                   </span>
+                   <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-sm font-black text-sky-600">
+                     <span>{'\u2642'}</span>
+                     <span>{stats.male}</span>
+                   </span>
+                 </div>
+               ) : (
+                 <div className="text-lg md:text-xl font-black text-gray-900 truncate leading-none mt-1">{s.value}</div>
+               )}
             </div>
           </div>
         ))}
@@ -224,21 +250,35 @@ export default function StudentsPage() {
         ) : (
           <div className="flex flex-col">
             <div className="overflow-x-auto no-scrollbar">
-              <table className="w-full border-collapse">
-                <thead className="hidden md:table-header-group">
-                  <tr className="bg-gray-50/50 text-left border-b border-gray-100">
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contacto</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Registro</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Ingreso</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 block md:table-row-group">
-                  {paginatedData.map((s) => (
-                    <tr key={s.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors group">
-                      <td className="block md:table-cell px-6 py-3 md:py-4">
+	              <table className="w-full border-collapse">
+	                <thead className="hidden md:table-header-group">
+	                  <tr className="bg-gray-50/50 text-left border-b border-gray-100">
+	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">NÂ°</th>
+	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno</th>
+	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contacto</th>
+	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
+	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Registro</th>
+	                    <th className="px-6 py-4 text-center">
+	                      <button
+	                        onClick={() => setJoinedSort((current) => (current === 'asc' ? 'desc' : 'asc'))}
+	                        className="inline-flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-fuchsia-600 transition-colors"
+	                      >
+	                        <span>Ingreso</span>
+	                        <span className="rounded-full bg-white px-2 py-0.5 text-[8px] text-fuchsia-600 border border-fuchsia-100">
+	                          {joinedSort === 'asc' ? 'Asc' : 'Desc'}
+	                        </span>
+	                      </button>
+	                    </th>
+	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
+	                  </tr>
+	                </thead>
+	                <tbody className="divide-y divide-gray-50 block md:table-row-group">
+	                  {data.map((s, index) => (
+	                    <tr key={s.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors group">
+	                      <td className="hidden md:table-cell px-4 py-4 text-center font-black text-xs text-gray-400">
+	                        {(page - 1) * pageSize + index + 1}
+	                      </td>
+	                      <td className="block md:table-cell px-6 py-3 md:py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center font-black overflow-hidden border-2 border-white shadow-sm shrink-0">
                             {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
@@ -278,9 +318,9 @@ export default function StudentsPage() {
                           <span className="text-[7px] font-bold text-gray-400 uppercase tracking-tighter">
                             {s.enrollment_count || 0} inscripciones
                           </span>
-                          <span className={`inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${enrollmentFeeByStudent[s.id] ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                            {enrollmentFeeByStudent[s.id] ? 'Con matrícula' : 'Sin matrícula'}
-                          </span>
+	                          <span className={`inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${s.has_registration_fee ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+	                            {s.has_registration_fee ? 'Con matrÃ­cula' : 'Sin matrÃ­cula'}
+	                          </span>
                         </div>
                       </td>
                       <td className="hidden md:table-cell px-6 py-4 text-center font-bold text-xs text-gray-500">
@@ -326,10 +366,10 @@ export default function StudentsPage() {
 
             {/* Pagination Controls */}
             <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  Mostrando {paginatedData.length} de {data.length} alumnos
-                </div>
+	              <div className="flex items-center gap-4">
+	                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+	                  Mostrando {data.length} de {totalItems} alumnos
+	                </div>
                 <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm">
                   <span className="text-[10px] font-black text-gray-400 uppercase">Ver:</span>
                   <select 

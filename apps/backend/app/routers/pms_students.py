@@ -72,19 +72,37 @@ async def list_students(
     q: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
+    joined_sort: str = Query(default="desc", pattern="^(asc|desc)$"),
 ):
     conditions = [Student.tenant_id == tenant_id]
     if q:
         like = f"%{q}%"
         conditions.append((Student.first_name.ilike(like)) | (Student.last_name.ilike(like)) | (Student.email.ilike(like)))
 
+    registration_exists = (
+        select(Payment.id)
+        .where(
+            Payment.tenant_id == tenant_id,
+            Payment.student_id == Student.id,
+            func.lower(Payment.type) == "registration",
+        )
+        .limit(1)
+        .exists()
+    )
+
+    order_by = (
+        (Student.joined_at.asc(), Student.created_at.asc())
+        if joined_sort == "asc"
+        else (Student.joined_at.desc(), Student.created_at.desc())
+    )
+
     # Fetch items with enrollment count
     stmt = (
-        select(Student, func.count(Enrollment.id))
+        select(Student, func.count(Enrollment.id), registration_exists.label("has_registration_fee"))
         .outerjoin(Enrollment, Enrollment.student_id == Student.id)
         .where(*conditions)
         .group_by(Student.id)
-        .order_by(Student.created_at.desc())
+        .order_by(*order_by)
         .offset(offset)
         .limit(limit)
     )
@@ -92,8 +110,9 @@ async def list_students(
     rows = res.all()
     
     items = []
-    for s, count in rows:
+    for s, count, has_registration_fee in rows:
         setattr(s, 'enrollment_count', count)
+        setattr(s, 'has_registration_fee', bool(has_registration_fee))
         items.append(s)
 
     # Combine total count and stats into ONE query
@@ -101,6 +120,15 @@ async def list_students(
     female_case = case((lower_gender.like('f%'), 1), (lower_gender.like('muj%'), 1), else_=0)
     male_case = case((lower_gender.like('m%'), 1), (lower_gender.like('hombre%'), 1), (lower_gender.like('masculino%'), 1), else_=0)
     week_cut = date.today() - timedelta(days=7)
+    enrollment_exists = (
+        select(Enrollment.id)
+        .where(
+            Enrollment.tenant_id == tenant_id,
+            Enrollment.student_id == Student.id,
+        )
+        .limit(1)
+        .exists()
+    )
     
     stats_stmt = select(
         func.count().label('total'),
@@ -109,6 +137,7 @@ async def list_students(
         func.sum(female_case).label('female'),
         func.sum(male_case).label('male'),
         func.sum(case(((Student.joined_at != None) & (Student.joined_at >= week_cut), 1), else_=0)).label('new_week'),
+        func.sum(case((~enrollment_exists, 1), else_=0)).label('without_course'),
     ).where(*conditions)
     
     sres = await db.execute(stats_stmt)
@@ -120,6 +149,7 @@ async def list_students(
         female=int(row.female or 0),
         male=int(row.male or 0),
         new_this_week=int(row.new_week or 0),
+        without_course=int(row.without_course or 0),
     )
 
     return {"items": items, "total": int(row.total or 0), "stats": stats}

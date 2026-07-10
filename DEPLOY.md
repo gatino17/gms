@@ -59,6 +59,44 @@ cd /home/gms
 docker compose -f deploy/docker-compose.prod.yml up -d --build
 ```
 
+## Flujo de actualizacion habitual
+
+Cuando hagas cambios locales y los subas a GitHub, en el servidor el flujo recomendado es:
+
+```bash
+cd /home/gms
+git pull
+```
+
+### Si cambiaste solo frontend
+
+```bash
+./deploy/update-gms.sh frontend
+```
+
+### Si cambiaste solo backend
+
+```bash
+./deploy/update-gms.sh backend
+```
+
+### Si cambiaste ambos o quieres un recambio limpio
+
+```bash
+./deploy/update-gms.sh all
+```
+
+Notas:
+
+- el script usa por defecto `docker-compose.yml`
+- si mas adelante decides mover el servidor al compose productivo del repo, puedes ejecutar:
+
+```bash
+COMPOSE_FILE=deploy/docker-compose.prod.yml ./deploy/update-gms.sh all
+```
+
+- si despues de un cambio frontend sigues viendo archivos viejos en navegador, purga cache en Cloudflare y prueba en modo incognito
+
 ## Nginx reverse proxy
 
 Archivo incluido:

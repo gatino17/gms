@@ -40,6 +40,26 @@ type Student = {
   has_registration_fee?: boolean
 }
 
+type EnrollmentCourseSnapshot = {
+  id: number
+  name: string
+  level?: string | null
+  teacher_name?: string | null
+  price?: number | null
+  class_price?: number | null
+  classes_per_week?: number | null
+  day_of_week?: number | null
+  start_time?: string | null
+  day_of_week_2?: number | null
+  start_time_2?: string | null
+  day_of_week_3?: number | null
+  start_time_3?: string | null
+  day_of_week_4?: number | null
+  start_time_4?: string | null
+  day_of_week_5?: number | null
+  start_time_5?: string | null
+}
+
 type TenantPlanInfo = {
   max_active_students?: number | null
   plan_name?: string | null
@@ -71,7 +91,15 @@ export default function StudentsPage() {
 
   const [showEnroll, setShowEnroll] = useState(false)
   const [showPay, setShowPay] = useState(false)
-  const [payData, setPayData] = useState<{ studentId: number, courseId: number, enrollmentId: number } | null>(null)
+  const [payData, setPayData] = useState<{
+    studentId: number
+    studentName: string
+    courseId: number
+    enrollmentId: number
+    courseSnapshot?: EnrollmentCourseSnapshot | null
+    enrollmentStartDate?: string | null
+    enrollmentEndDate?: string | null
+  } | null>(null)
   const lastStudentsRequestRef = useRef(0)
 
   // Pagination states
@@ -425,11 +453,19 @@ export default function StudentsPage() {
            studentId={selectedStudent.id}
            studentName={`${selectedStudent.first_name} ${selectedStudent.last_name}`}
            onClose={() => setShowEnroll(false)}
-           onSuccess={(courseId, enrollmentId) => {
+           onSuccess={(course, enrollment) => {
               setShowEnroll(false)
-              setPayData({ studentId: selectedStudent.id, courseId, enrollmentId })
+              setPayData({
+                studentId: selectedStudent.id,
+                studentName: `${selectedStudent.first_name} ${selectedStudent.last_name}`,
+                courseId: course.id,
+                enrollmentId: enrollment.id,
+                courseSnapshot: course,
+                enrollmentStartDate: enrollment.start_date ?? null,
+                enrollmentEndDate: enrollment.end_date ?? null,
+              })
               setShowPay(true)
-           }}
+            }}
         />
       )}
 
@@ -437,8 +473,15 @@ export default function StudentsPage() {
         <RenewModal 
            isOpen={true}
            studentId={payData.studentId}
+           studentNamePreset={payData.studentName}
            courseId={payData.courseId}
            enrollmentId={payData.enrollmentId}
+           coursePreset={payData.courseSnapshot ?? undefined}
+           enrollmentPreset={{
+             start_date: payData.enrollmentStartDate ?? null,
+             end_date: payData.enrollmentEndDate ?? null,
+             is_active: true,
+           }}
            onClose={() => { setShowPay(false); setPayData(null); load(); }}
            onSuccess={() => { setShowPay(false); setPayData(null); load(); }}
         />
@@ -449,12 +492,13 @@ export default function StudentsPage() {
            onClose={() => setShowCreate(false)} 
            onSuccess={(student, shouldEnroll) => { 
               setShowCreate(false); 
-              load();
               if (shouldEnroll) {
-                 setSelectedStudent(student);
-                 setShowEnroll(true);
+                  setSelectedStudent(student);
+                  setShowEnroll(true);
+              } else {
+                 load();
               }
-           }} 
+            }} 
         />
       )}
       {showEdit && selectedStudent && (

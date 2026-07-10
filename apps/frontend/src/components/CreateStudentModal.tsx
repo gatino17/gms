@@ -21,7 +21,6 @@ type Props = {
 
 export default function CreateStudentModal({ onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false)
-  const [courses, setCourses] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
   const [createdStudentId, setCreatedStudentId] = useState<number | null>(null)
   const [attemptedSubmit, setAttemptedSubmit] = useState(false)
@@ -51,10 +50,6 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
   // Photo
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
-
-  useEffect(() => {
-    api.get('/api/pms/courses').then(res => setCourses(res.data.items || []))
-  }, [])
 
   useEffect(() => {
     const tenantId = getTenant()

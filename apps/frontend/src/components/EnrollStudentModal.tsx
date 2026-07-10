@@ -13,6 +13,7 @@ type Course = {
   id: number
   name: string
   level?: string | null
+  classes_per_week?: number | null
   day_of_week?: number | null
   start_time?: string | null
   end_time?: string | null
@@ -25,17 +26,25 @@ type Course = {
   day_of_week_5?: number | null
   start_time_5?: string | null
   teacher_name?: string | null
-  price_monthly?: number | null
+  price?: number | null
+  class_price?: number | null
+}
+
+type EnrollmentPayload = {
+  id: number
+  start_date?: string | null
+  end_date?: string | null
 }
 
 type Props = {
   studentId: number
   studentName: string
   onClose: () => void
-  onSuccess: (courseId: number, enrollmentId: number) => void
+  onSuccess: (course: Course, enrollment: EnrollmentPayload) => void
 }
 
 const DAYS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
+let cachedCourses: Course[] | null = null
 
 export default function EnrollStudentModal({ studentId, studentName, onClose, onSuccess }: Props) {
   const [courses, setCourses] = useState<Course[]>([])
@@ -48,15 +57,18 @@ export default function EnrollStudentModal({ studentId, studentName, onClose, on
     const load = async () => {
       try {
         setLoading(true)
-        const [coursesRes, studentRes] = await Promise.all([
-          api.get('/api/pms/courses'),
-          api.get(`/api/pms/students/${studentId}/portal`)
+        const [coursesRes, enrollmentsRes] = await Promise.all([
+          cachedCourses
+            ? Promise.resolve({ data: { items: cachedCourses } })
+            : api.get('/api/pms/courses'),
+          api.get('/api/pms/enrollments', { params: { student_id: studentId, active_only: false } })
         ])
-        setCourses(coursesRes.data.items || [])
+        const nextCourses = coursesRes.data.items || []
+        cachedCourses = nextCourses
+        setCourses(nextCourses)
         
-        // Extract enrolled course IDs
-        const enrollments = studentRes.data.enrollments || []
-        setEnrolledCourseIds(enrollments.map((e: any) => e.course.id))
+        const enrollments = enrollmentsRes.data || []
+        setEnrolledCourseIds(enrollments.map((e: any) => e.course_id))
       } catch (e) {
         console.error('Error loading data', e)
       } finally {
@@ -74,15 +86,19 @@ export default function EnrollStudentModal({ studentId, studentName, onClose, on
     )
   }, [courses, searchQ])
 
-  const handleEnroll = async (courseId: number) => {
+  const handleEnroll = async (course: Course) => {
     setEnrolling(true)
     try {
       const { data } = await api.post('/api/pms/enrollments/', {
         student_id: studentId,
-        course_id: courseId,
+        course_id: course.id,
         start_date: new Date().toISOString().split('T')[0]
       })
-      onSuccess(courseId, data.id)
+      onSuccess(course, {
+        id: data.id,
+        start_date: data.start_date ?? null,
+        end_date: data.end_date ?? null,
+      })
     } catch (e: any) {
       alert('Error al inscribir: ' + (e.response?.data?.detail || e.message))
     } finally {
@@ -150,7 +166,7 @@ export default function EnrollStudentModal({ studentId, studentName, onClose, on
                   <button
                     key={c.id}
                     disabled={enrolling || isEnrolled}
-                    onClick={() => handleEnroll(c.id)}
+                    onClick={() => handleEnroll(c)}
                     className={`p-5 border rounded-[32px] transition-all group text-left flex flex-col justify-between h-full shadow-sm ${isEnrolled ? 'bg-emerald-50/50 border-emerald-100 cursor-not-allowed' : 'bg-white border-gray-100 hover:shadow-md hover:border-fuchsia-200 hover:bg-fuchsia-50/30'}`}
                   >
                     <div className="space-y-3">

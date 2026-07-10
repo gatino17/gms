@@ -33,10 +33,21 @@ type CourseInfo = {
   class_price?: number | null
   classes_per_week?: number | null
   day_of_week?: number | null
+  start_time?: string | null
   day_of_week_2?: number | null
+  start_time_2?: string | null
   day_of_week_3?: number | null
+  start_time_3?: string | null
   day_of_week_4?: number | null
+  start_time_4?: string | null
   day_of_week_5?: number | null
+  start_time_5?: string | null
+}
+
+type EnrollmentPreset = {
+  start_date?: string | null
+  end_date?: string | null
+  is_active?: boolean
 }
 
 type TenantFeeSettings = {
@@ -148,6 +159,28 @@ function getWeeklyClassesCount(source?: {
   return Math.max(1, slots)
 }
 
+function normalizeCourseInfo(raw: any): CourseInfo | null {
+  if (!raw || typeof raw !== 'object' || raw.id == null) return null
+  return {
+    id: raw.id,
+    name: raw.name,
+    teacher_name: raw.teacher_name ?? null,
+    price: raw.price ?? null,
+    class_price: raw.class_price ?? null,
+    classes_per_week: raw.classes_per_week ?? null,
+    day_of_week: raw.day_of_week ?? null,
+    start_time: raw.start_time ?? null,
+    day_of_week_2: raw.day_of_week_2 ?? null,
+    start_time_2: raw.start_time_2 ?? null,
+    day_of_week_3: raw.day_of_week_3 ?? null,
+    start_time_3: raw.start_time_3 ?? null,
+    day_of_week_4: raw.day_of_week_4 ?? null,
+    start_time_4: raw.start_time_4 ?? null,
+    day_of_week_5: raw.day_of_week_5 ?? null,
+    start_time_5: raw.start_time_5 ?? null,
+  }
+}
+
 function getActiveScheduledDays(source?: {
   classes_per_week?: number | null
   day_of_week?: number | null
@@ -226,8 +259,11 @@ type RenewModalProps = {
   onClose: () => void
   onSuccess: () => void
   studentId: number
+  studentNamePreset?: string
   courseId: number
   enrollmentId: number
+  coursePreset?: CourseInfo
+  enrollmentPreset?: EnrollmentPreset
 }
 
 // ===================== Componente =====================
@@ -236,8 +272,11 @@ export default function RenewModal({
   onClose,
   onSuccess,
   studentId,
+  studentNamePreset,
   courseId,
-  enrollmentId
+  enrollmentId,
+  coursePreset,
+  enrollmentPreset,
 }: RenewModalProps) {
   const [loading, setLoading] = useState(true)
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null)
@@ -301,18 +340,51 @@ export default function RenewModal({
       try {
         setLoading(true)
         setError(null)
+        const hasPresetEnrollment = Boolean(studentNamePreset && coursePreset && enrollmentPreset)
         const [studentRes, courseRes, tenantRes, regPaymentsRes] = await Promise.all([
-          api.get(`/api/pms/students/${studentId}/portal`),
-          api.get(`/api/pms/courses/${courseId}`),
+          hasPresetEnrollment ? Promise.resolve(null) : api.get(`/api/pms/students/${studentId}/portal`),
+          hasPresetEnrollment ? Promise.resolve(null) : api.get(`/api/pms/courses/${courseId}`),
           api.get('/api/pms/tenants/me'),
           api.get('/api/pms/payments', { params: { student_id: Number(studentId), type: 'registration', limit: 1000, offset: 0 } }),
         ])
 
-        const student = studentRes.data.student
-        setStudentName(`${student.first_name} ${student.last_name}`)
+        let enrollments: Enrollment[] = []
+        let enroll: Enrollment | null = null
+        let courseInfo: CourseInfo | null = null
 
-        const enrollments = studentRes.data.enrollments || []
-        const enroll = enrollments.find((e: Enrollment) => e.id === Number(enrollmentId))
+        if (hasPresetEnrollment) {
+          setStudentName(studentNamePreset || '')
+          courseInfo = normalizeCourseInfo(coursePreset)
+          enroll = {
+            id: Number(enrollmentId),
+            is_active: enrollmentPreset?.is_active ?? true,
+            start_date: enrollmentPreset?.start_date ?? null,
+            end_date: enrollmentPreset?.end_date ?? null,
+            course: {
+              id: coursePreset!.id,
+              name: coursePreset!.name,
+              level: coursePreset!.level ?? null,
+              day_of_week: coursePreset!.day_of_week ?? null,
+              start_time: coursePreset!.start_time ?? null,
+              day_of_week_2: coursePreset!.day_of_week_2 ?? null,
+              start_time_2: coursePreset!.start_time_2 ?? null,
+              day_of_week_3: coursePreset!.day_of_week_3 ?? null,
+              start_time_3: coursePreset!.start_time_3 ?? null,
+              day_of_week_4: coursePreset!.day_of_week_4 ?? null,
+              start_time_4: coursePreset!.start_time_4 ?? null,
+              day_of_week_5: coursePreset!.day_of_week_5 ?? null,
+              start_time_5: coursePreset!.start_time_5 ?? null,
+              teacher_id: null,
+            }
+          }
+        } else {
+          const student = (studentRes as any).data.student
+          setStudentName(`${student.first_name} ${student.last_name}`)
+          enrollments = (studentRes as any).data.enrollments || []
+          enroll = enrollments.find((e: Enrollment) => e.id === Number(enrollmentId)) || null
+          courseInfo = normalizeCourseInfo(((courseRes as any).data as any)?.course ?? ((courseRes as any).data as any)?.item ?? (courseRes as any).data ?? null)
+        }
+
         if (!enroll) {
           setError('Matricula no encontrada')
           setLoading(false)
@@ -322,25 +394,12 @@ export default function RenewModal({
         const settings = (tenantRes.data || {}) as TenantFeeSettings
         setFeeSettings(settings)
 
-        const courseInfo = (courseRes.data as any)?.course ?? (courseRes.data as any)?.item ?? (courseRes.data ?? null)
-        if (!courseInfo || typeof courseInfo !== 'object' || courseInfo.id == null) {
+        if (!courseInfo) {
           setError('Curso no encontrado')
           setLoading(false)
           return
         }
-        setCourse({
-          id: courseInfo.id,
-          name: courseInfo.name,
-          teacher_name: courseInfo.teacher_name ?? null,
-          price: courseInfo.price ?? null,
-          class_price: courseInfo.class_price ?? null,
-          classes_per_week: courseInfo.classes_per_week ?? null,
-          day_of_week: courseInfo.day_of_week ?? null,
-          day_of_week_2: courseInfo.day_of_week_2 ?? null,
-          day_of_week_3: courseInfo.day_of_week_3 ?? null,
-          day_of_week_4: courseInfo.day_of_week_4 ?? null,
-          day_of_week_5: courseInfo.day_of_week_5 ?? null,
-        })
+        setCourse(courseInfo)
 
         // Calcular fechas sugeridas
         const dayCoding = detectDayCoding(enrollments)

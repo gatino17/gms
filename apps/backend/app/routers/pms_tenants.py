@@ -24,6 +24,7 @@ from app.pms.schemas import (
     TenantPlanCreate,
     TenantPlanUpdate,
 )
+from app.pms.phone_utils import resolve_tenant_phone_prefix
 from app.core import security
 from app.pms import models
 from pydantic import BaseModel
@@ -217,6 +218,7 @@ async def create_tenant(
         city=payload.city,
         postal_code=payload.postal_code,
         phone=payload.phone,
+        phone_prefix=resolve_tenant_phone_prefix(payload.phone_prefix, payload.country, payload.currency),
         whatsapp_message=payload.whatsapp_message,
         logo_url=payload.logo_url,
         currency=payload.currency,
@@ -328,6 +330,18 @@ async def update_current_tenant(
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
 
     data = payload.model_dump(exclude_unset=True)
+    if "phone_prefix" in data:
+        data["phone_prefix"] = resolve_tenant_phone_prefix(
+            data.get("phone_prefix"),
+            data.get("country", tenant.country),
+            data.get("currency", tenant.currency),
+        )
+    elif any(key in data for key in ("country", "currency")):
+        data["phone_prefix"] = resolve_tenant_phone_prefix(
+            tenant.phone_prefix,
+            data.get("country", tenant.country),
+            data.get("currency", tenant.currency),
+        )
     for field, value in data.items():
         setattr(tenant, field, value)
 
@@ -411,12 +425,24 @@ async def update_tenant(
         tenant.postal_code = data["postal_code"]
     if "phone" in data:
         tenant.phone = data["phone"]
+    if "phone_prefix" in data:
+        tenant.phone_prefix = resolve_tenant_phone_prefix(
+            data["phone_prefix"],
+            data.get("country", tenant.country),
+            data.get("currency", tenant.currency),
+        )
     if "whatsapp_message" in data:
         tenant.whatsapp_message = data["whatsapp_message"]
     if "logo_url" in data:
         tenant.logo_url = data["logo_url"]
     if "currency" in data:
         tenant.currency = data["currency"]
+        if "phone_prefix" not in data and "country" not in data:
+            tenant.phone_prefix = resolve_tenant_phone_prefix(
+                tenant.phone_prefix,
+                tenant.country,
+                tenant.currency,
+            )
     if "instagram_url" in data:
         tenant.instagram_url = data["instagram_url"]
     if "tiktok_url" in data:
@@ -425,6 +451,12 @@ async def update_tenant(
         tenant.facebook_url = data["facebook_url"]
     if "website_url" in data:
         tenant.website_url = data["website_url"]
+    if "phone_prefix" not in data and ("country" in data or "currency" in data):
+        tenant.phone_prefix = resolve_tenant_phone_prefix(
+            tenant.phone_prefix,
+            tenant.country,
+            tenant.currency,
+        )
     if "plan_id" in data:
         if data["plan_id"] is None:
             tenant.plan_id = None

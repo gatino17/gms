@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
-import { api, toAbsoluteUrl } from '../lib/api'
+import { api, getTenant, toAbsoluteUrl } from '../lib/api'
+import { composePhoneWithPrefix, sanitizePhoneInput, stripPhonePrefix } from '../lib/phone'
 import { 
   HiOutlineUser, 
   HiOutlineMail, 
@@ -24,6 +25,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [createdStudentId, setCreatedStudentId] = useState<number | null>(null)
   const [attemptedSubmit, setAttemptedSubmit] = useState(false)
+  const [tenantPhonePrefix, setTenantPhonePrefix] = useState('+56')
   
   // Student Info
   const [form, setForm] = useState({
@@ -46,14 +48,29 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
   }
   const hasRequiredErrors = Object.values(requiredErrors).some(Boolean)
 
-  const normalizePhoneInput = (value: string) => value.replace(/[^0-9+\s()-]/g, '')
-
   // Photo
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   useEffect(() => {
     api.get('/api/pms/courses').then(res => setCourses(res.data.items || []))
+  }, [])
+
+  useEffect(() => {
+    const tenantId = getTenant()
+    if (!tenantId) return
+    api.get('/api/pms/tenants/me', {
+      headers: { 'X-Tenant-ID': tenantId },
+    }).then((res) => {
+      const nextPrefix = res.data?.phone_prefix || '+56'
+      setTenantPhonePrefix(nextPrefix)
+      setForm((current) => ({
+        ...current,
+        phone: current.phone ? stripPhonePrefix(current.phone, nextPrefix) : current.phone,
+      }))
+    }).catch(() => {
+      setTenantPhonePrefix('+56')
+    })
   }, [])
 
   const handleSave = async (shouldEnroll: boolean = false) => {
@@ -72,6 +89,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
         // First attempt: Create student
         const payload = {
           ...form,
+          phone: composePhoneWithPrefix(form.phone, tenantPhonePrefix),
           birthdate: form.birthdate?.trim() ? form.birthdate : null,
         }
         const res = await api.post('/api/pms/students', payload)
@@ -82,6 +100,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
         // Retry attempt: Update existing student
         const payload = {
           ...form,
+          phone: composePhoneWithPrefix(form.phone, tenantPhonePrefix),
           birthdate: form.birthdate?.trim() ? form.birthdate : null,
         }
         const res = await api.put(`/api/pms/students/${studentId}`, payload)
@@ -219,16 +238,24 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
                           className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
                        />
                     </div>
-                    <div className="space-y-2">
-                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.phone ? 'text-rose-600' : 'text-gray-400'}`}>WhatsApp / Teléfono <span className="text-rose-500">*</span></label>
-                       <input 
-                          value={form.phone}
-                          onChange={(e) => setForm(f => ({ ...f, phone: normalizePhoneInput(e.target.value) }))}
-                          placeholder="+56 9 ..."
-                          inputMode="tel"
-                          className={`w-full px-6 py-4 bg-gray-50 border-2 rounded-2xl font-bold text-gray-700 transition-all outline-none ${attemptedSubmit && requiredErrors.phone ? 'border-rose-400 focus:border-rose-500 focus:bg-white focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50'}`}
-                       />
-                    </div>
+	                    <div className="space-y-2">
+	                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.phone ? 'text-rose-600' : 'text-gray-400'}`}>WhatsApp / Teléfono <span className="text-rose-500">*</span></label>
+	                       <div className={`flex items-stretch overflow-hidden rounded-2xl border-2 bg-gray-50 transition-all ${attemptedSubmit && requiredErrors.phone ? 'border-rose-400 focus-within:border-rose-500 focus-within:bg-white focus-within:ring-8 focus-within:ring-rose-50' : 'border-transparent focus-within:border-fuchsia-200 focus-within:bg-white focus-within:ring-8 focus-within:ring-fuchsia-50'}`}>
+	                          <div className="flex items-center px-5 bg-fuchsia-50 text-fuchsia-600 text-sm font-black tracking-widest border-r border-fuchsia-100">
+	                            {tenantPhonePrefix}
+	                          </div>
+	                          <input
+	                             value={form.phone}
+	                             onChange={(e) => setForm(f => ({ ...f, phone: stripPhonePrefix(sanitizePhoneInput(e.target.value), tenantPhonePrefix) }))}
+	                             placeholder="9 1234 5678"
+	                             inputMode="tel"
+	                             className="w-full px-5 py-4 bg-transparent font-bold text-gray-700 outline-none"
+	                          />
+	                       </div>
+	                       <p className="px-2 text-[10px] font-bold text-gray-400">
+	                         Se guardará como {tenantPhonePrefix} seguido del número ingresado.
+	                       </p>
+	                    </div>
                     <div className="space-y-2">
                        <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.gender ? 'text-rose-600' : 'text-gray-400'}`}>Género <span className="text-rose-500">*</span></label>
                        <select 

@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from app.core.config import settings
 from app.pms.deps import get_db_session, get_tenant_id, get_current_active_superuser, get_current_user
 from app.pms.models import Tenant, Student, Course, WhatsAppMessageLog, AppSetting
+from app.pms.phone_utils import COUNTRY_PHONE_PRESETS, normalize_phone_value, resolve_tenant_phone_prefix
 
 
 router = APIRouter(prefix="/api/pms/whatsapp", tags=["pms-whatsapp"])
@@ -143,17 +144,17 @@ def _twilio_auth_b64(account_sid: str, auth_token: str, api_key_sid: str, api_ke
     return base64.b64encode(auth_raw).decode("ascii")
 
 
-def _normalize_phone(phone: str | None) -> str:
-    if not phone:
-        return ""
-    digits = "".join(ch for ch in phone if ch.isdigit())
-    if not digits:
-        return ""
-    if digits.startswith("56"):
-        return f"whatsapp:+{digits}"
-    if digits.startswith("0"):
-        digits = digits[1:]
-    return f"whatsapp:+56{digits}"
+def _normalize_phone(phone: str | None, tenant: Tenant | None = None) -> str:
+    normalized = normalize_phone_value(
+        phone,
+        default_prefix=resolve_tenant_phone_prefix(
+            getattr(tenant, "phone_prefix", None),
+            getattr(tenant, "country", None),
+            getattr(tenant, "currency", None),
+        ),
+        known_prefixes=[preset["prefix"] for preset in COUNTRY_PHONE_PRESETS.values()],
+    )
+    return f"whatsapp:{normalized}" if normalized else ""
 
 
 def _course_schedule_text(course: Course) -> str:
@@ -372,7 +373,7 @@ async def whatsapp_test_send(
     if not course:
         raise HTTPException(status_code=404, detail="Curso no encontrado.")
 
-    to_phone = _normalize_phone(student.phone)
+    to_phone = _normalize_phone(student.phone, tenant)
     if not to_phone:
         raise HTTPException(status_code=400, detail="El alumno no tiene telÃ©fono vÃ¡lido para WhatsApp.")
 

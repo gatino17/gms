@@ -672,13 +672,22 @@ export default function RenewModal({
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5 md:w-1/2">
-                      <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Fecha de la clase</label>
-                      <input type="date" value={singleDate} onChange={e => setSingleDate(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-all" />
-                    </div>
-                    <label className="flex items-center gap-3 cursor-pointer group">
+	                ) : (
+	                  <div className="space-y-4">
+	                    <div className="space-y-1.5 md:w-1/2">
+	                      <div className="flex items-center justify-between gap-3">
+	                        <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Fecha de la clase</label>
+	                        <button
+	                          type="button"
+	                          onClick={() => setSingleDate(toYMDInTZ(new Date()))}
+	                          className="px-3 py-1.5 rounded-lg bg-fuchsia-50 text-fuchsia-600 text-[10px] font-black uppercase tracking-widest border border-fuchsia-100 hover:bg-fuchsia-100 transition-all active:scale-95"
+	                        >
+	                          Hoy
+	                        </button>
+	                      </div>
+	                      <input type="date" value={singleDate} onChange={e => setSingleDate(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-all" />
+	                    </div>
+	                    <label className="flex items-center gap-3 cursor-pointer group">
                       <div className="relative flex items-center justify-center">
                         <input type="checkbox" checked={markAttendance} onChange={e => setMarkAttendance(e.target.checked)} className="peer appearance-none w-5 h-5 border-2 border-gray-300 rounded focus:ring-fuchsia-500 focus:ring-offset-1 checked:bg-fuchsia-500 checked:border-fuchsia-500 transition-all cursor-pointer" />
                         <svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>

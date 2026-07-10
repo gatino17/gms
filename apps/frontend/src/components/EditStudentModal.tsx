@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { api, toAbsoluteUrl } from '../lib/api'
+import { api, getTenant, toAbsoluteUrl } from '../lib/api'
+import { phonePlaceholder, sanitizePhoneInput } from '../lib/phone'
 import { 
   HiOutlineUser, 
   HiOutlineMail, 
@@ -36,6 +37,7 @@ type Props = {
 export default function EditStudentModal({ student, onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tenantPhonePrefix, setTenantPhonePrefix] = useState('+56')
   
   const [form, setForm] = useState({
     first_name: student.first_name || '',
@@ -51,6 +53,18 @@ export default function EditStudentModal({ student, onClose, onSuccess }: Props)
 
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(student.photo_url || null)
+
+  useEffect(() => {
+    const tenantId = getTenant()
+    if (!tenantId) return
+    api.get('/api/pms/tenants/me', {
+      headers: { 'X-Tenant-ID': tenantId },
+    }).then((res) => {
+      setTenantPhonePrefix(res.data?.phone_prefix || '+56')
+    }).catch(() => {
+      setTenantPhonePrefix('+56')
+    })
+  }, [])
 
   const handleSave = async () => {
     setLoading(true)
@@ -196,7 +210,8 @@ export default function EditStudentModal({ student, onClose, onSuccess }: Props)
                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">WhatsApp</label>
                        <input 
                           value={form.phone}
-                          onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+                          onChange={(e) => setForm(f => ({ ...f, phone: sanitizePhoneInput(e.target.value) }))}
+                          placeholder={phonePlaceholder(tenantPhonePrefix)}
                           className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-indigo-200 focus:bg-white focus:ring-8 focus:ring-indigo-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
                        />
                     </div>

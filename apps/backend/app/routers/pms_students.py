@@ -15,6 +15,7 @@ from app.pms.models import Student, Tenant, TenantPlan
 from app.pms.models import Course, Enrollment, Attendance, Payment, Teacher
 from app.pms.schemas import StudentOut, StudentCreate, StudentUpdate, StudentListResponse, StudentStats
 from app.pms.deps import get_tenant_id, get_db_session, get_current_student
+from app.pms.phone_utils import COUNTRY_PHONE_PRESETS, resolve_tenant_phone_prefix, normalize_phone_value
 
 router = APIRouter(prefix="/api/pms/students", tags=["pms-students"])
 
@@ -62,6 +63,19 @@ async def _ensure_student_plan_capacity(db: AsyncSession, tenant_id: int) -> Non
         detail += " Puedes cambiar de plan desde Studios para seguir inscribiendo alumnos."
 
     raise HTTPException(status_code=400, detail=detail)
+
+
+def _known_phone_prefixes() -> list[str]:
+    return [preset["prefix"] for preset in COUNTRY_PHONE_PRESETS.values()]
+
+
+def _normalize_student_phone(phone: str | None, tenant: Tenant | None) -> str | None:
+    default_prefix = resolve_tenant_phone_prefix(
+        getattr(tenant, "phone_prefix", None),
+        getattr(tenant, "country", None),
+        getattr(tenant, "currency", None),
+    )
+    return normalize_phone_value(phone, default_prefix=default_prefix, known_prefixes=_known_phone_prefixes())
 
 
 @router.get("/", response_model=StudentListResponse)
@@ -179,7 +193,10 @@ async def create_student(
 ):
     if payload.is_active is not False:
         await _ensure_student_plan_capacity(db, tenant_id)
-    obj = Student(tenant_id=tenant_id, **payload.model_dump(exclude_unset=True))
+    tenant = await db.get(Tenant, tenant_id)
+    data = payload.model_dump(exclude_unset=True)
+    data["phone"] = _normalize_student_phone(data.get("phone"), tenant)
+    obj = Student(tenant_id=tenant_id, **data)
     db.add(obj)
     await db.flush()
     await db.refresh(obj)
@@ -200,8 +217,11 @@ async def update_student(
     obj = res.scalar_one_or_none()
     if not obj:
         raise HTTPException(status_code=404, detail="Alumno no encontrado")
+    tenant = await db.get(Tenant, tenant_id)
     prev_is_active = bool(obj.is_active)
     incoming = payload.model_dump(exclude_unset=True)
+    if "phone" in incoming:
+        incoming["phone"] = _normalize_student_phone(incoming.get("phone"), tenant)
     for k, v in incoming.items():
         setattr(obj, k, v)
     if "is_active" in incoming:

@@ -16,6 +16,7 @@ class TenantOut(BaseModel):
     city: Optional[str] = None
     postal_code: Optional[str] = None
     phone: Optional[str] = None
+    phone_prefix: Optional[str] = "+56"
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
     currency: Optional[str] = "CLP"
@@ -58,6 +59,7 @@ class TenantCreate(BaseModel):
     city: Optional[str] = Field(default=None, max_length=120)
     postal_code: Optional[str] = Field(default=None, max_length=20)
     phone: Optional[str] = Field(default=None, max_length=40)
+    phone_prefix: Optional[str] = Field(default="+56", max_length=10)
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
     currency: Optional[str] = "CLP"
@@ -89,6 +91,7 @@ class TenantUpdate(BaseModel):
     city: Optional[str] = Field(default=None, max_length=120)
     postal_code: Optional[str] = Field(default=None, max_length=20)
     phone: Optional[str] = Field(default=None, max_length=40)
+    phone_prefix: Optional[str] = Field(default=None, max_length=10)
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
     currency: Optional[str] = None
@@ -119,6 +122,7 @@ class TenantSelfUpdate(BaseModel):
     city: Optional[str] = Field(default=None, max_length=120)
     postal_code: Optional[str] = Field(default=None, max_length=20)
     phone: Optional[str] = Field(default=None, max_length=40)
+    phone_prefix: Optional[str] = Field(default=None, max_length=10)
     whatsapp_message: Optional[str] = None
     logo_url: Optional[str] = None
     currency: Optional[str] = None

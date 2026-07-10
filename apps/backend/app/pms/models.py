@@ -61,6 +61,7 @@ class Tenant(Base):
     city: Mapped[Optional[str]] = mapped_column(String(120))
     postal_code: Mapped[Optional[str]] = mapped_column(String(20))
     phone: Mapped[Optional[str]] = mapped_column(String(40))
+    phone_prefix: Mapped[Optional[str]] = mapped_column(String(10), default="+56")
     whatsapp_message: Mapped[Optional[str]] = mapped_column(Text())
     logo_url: Mapped[Optional[str]] = mapped_column(String(255))
     attendance_pin: Mapped[Optional[str]] = mapped_column(String(4))

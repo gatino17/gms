@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { api, toAbsoluteUrl, getTenant } from '../lib/api'
 import { useTenant } from '../lib/tenant'
+import { REGION_PRESETS, findRegionPreset, sanitizePhonePrefix } from '../lib/phone'
 import { 
   HiOutlineOfficeBuilding, 
   HiOutlineMail, 
@@ -27,7 +28,7 @@ const whatsappTemplateOptions = [
     name: 'copy_payment_reminder_option2_es',
     label: 'Opcion 2',
     preview:
-      'Hola [Nombre Alumno] ✨ Desde [Nombre Estudio] queremos recordarte de forma cordial que tienes un pago pendiente del curso [Nombre Curso] de los dias [Dia y Hora]. Si ya realizaste el pago, puedes ignorar este mensaje.',
+      'Hola [Nombre Alumno] âœ¨ Desde [Nombre Estudio] queremos recordarte de forma cordial que tienes un pago pendiente del curso [Nombre Curso] de los dias [Dia y Hora]. Si ya realizaste el pago, puedes ignorar este mensaje.',
   },
 ] as const
 
@@ -40,6 +41,7 @@ type TenantSettings = {
   city?: string | null
   postal_code?: string | null
   phone?: string | null
+  phone_prefix?: string | null
   whatsapp_message?: string | null
   logo_url?: string | null
   currency?: string | null
@@ -74,6 +76,7 @@ export default function SettingsPage() {
     city: '',
     postal_code: '',
     phone: '',
+    phone_prefix: '+56',
     whatsapp_message: '',
     logo_url: '',
     currency: 'CLP',
@@ -106,6 +109,7 @@ export default function SettingsPage() {
     '[Nombre Estudio]',
     settings.name || 'Tu Estudio'
   )
+  const regionPreset = findRegionPreset(settings.country, settings.currency, settings.phone_prefix)
 
   useEffect(() => {
     const load = async () => {
@@ -116,7 +120,7 @@ export default function SettingsPage() {
       })()
       if (resolvedTenantId == null) {
         setLoading(false)
-        setError('Selecciona un tenant para cargar la configuración.')
+        setError('Selecciona un tenant para cargar la configuraciÃ³n.')
         return
       }
       setLoading(true)
@@ -140,7 +144,7 @@ export default function SettingsPage() {
         }
         await loadRooms(resolvedTenantId)
       } catch (e: any) {
-        setError(e?.message || 'No se pudo cargar la configuración.')
+        setError(e?.message || 'No se pudo cargar la configuraciÃ³n.')
       } finally {
         setLoading(false)
       }
@@ -237,12 +241,27 @@ export default function SettingsPage() {
     alert('Mensaje de WhatsApp actualizado correctamente.')
   }
 
-  const handleSaveCurrency = async (newCurrency: string) => {
-    setSettings(s => ({ ...s, currency: newCurrency }))
-    await saveGlobalSettings({ currency: newCurrency })
-    alert(`Moneda actualizada a ${newCurrency} correctamente.`)
+  const handleApplyRegionPreset = (country: string) => {
+    const preset = REGION_PRESETS.find((item) => item.country === country) || REGION_PRESETS[0]
+    setSettings((current) => ({
+      ...current,
+      country: preset.country,
+      currency: preset.currency,
+      phone_prefix: preset.prefix,
+    }))
   }
 
+  const handleSaveRegionConfig = async () => {
+    const nextPrefix = sanitizePhonePrefix(settings.phone_prefix)
+    const nextCurrency = (settings.currency || regionPreset.currency || 'CLP').toUpperCase()
+    setSettings((current) => ({ ...current, phone_prefix: nextPrefix, currency: nextCurrency }))
+    await saveGlobalSettings({
+      country: settings.country,
+      currency: nextCurrency,
+      phone_prefix: nextPrefix,
+    })
+    alert('Región, prefijo y moneda actualizados correctamente.')
+  }
   const handleSaveSocial = async () => {
     await saveGlobalSettings({
       instagram_url: settings.instagram_url,
@@ -255,7 +274,7 @@ export default function SettingsPage() {
 
   const handleSavePin = async () => {
     if (settings.attendance_pin && settings.attendance_pin.length !== 4) {
-      alert('El PIN debe tener exactamente 4 dígitos.')
+      alert('El PIN debe tener exactamente 4 dÃ­gitos.')
       return
     }
     await saveGlobalSettings({ attendance_pin: settings.attendance_pin })
@@ -273,7 +292,7 @@ export default function SettingsPage() {
       enrollment_fee_kind: settings.enrollment_fee_kind || 'incorporation',
       enrollment_fee_renewal: settings.enrollment_fee_renewal || 'never',
     })
-    alert('Configuración de matrícula actualizada correctamente.')
+    alert('ConfiguraciÃ³n de matrÃ­cula actualizada correctamente.')
   }
 
   if (loading) {
@@ -292,12 +311,12 @@ export default function SettingsPage() {
       {/* Header */}
       <div className="space-y-2 px-1 md:px-0">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Configuración</span>
+          <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">ConfiguraciÃ³n</span>
           <div className="h-1 w-1 rounded-full bg-gray-300" />
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Panel de Control</span>
         </div>
         <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Ajustes del Estudio</h1>
-        <p className="text-sm md:text-base text-gray-500 font-medium">Gestiona la identidad de tu academia y la infraestructura física.</p>
+        <p className="text-sm md:text-base text-gray-500 font-medium">Gestiona la identidad de tu academia y la infraestructura fÃ­sica.</p>
       </div>
 
       {/* Profile Card */}
@@ -321,7 +340,7 @@ export default function SettingsPage() {
           <div className="flex-1 space-y-4 md:space-y-6 text-center md:text-left">
             <div>
               <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{settings.name || 'Estudio sin nombre'}</h2>
-              <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mt-1">{settings.city || 'Ciudad'}, {settings.country || 'País'}</p>
+              <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mt-1">{settings.city || 'Ciudad'}, {settings.country || 'PaÃ­s'}</p>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 md:gap-3 justify-center md:justify-start w-full">
@@ -349,7 +368,7 @@ export default function SettingsPage() {
             
             <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-gray-50/50 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 group-hover:bg-white transition-colors">
-                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Dirección Física</div>
+                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">DirecciÃ³n FÃ­sica</div>
                  <div className="text-sm font-black text-gray-700 flex items-center gap-2">
                    <HiOutlineLocationMarker className="text-fuchsia-400" /> {settings.address || '--'}
                  </div>
@@ -373,7 +392,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Mensaje WhatsApp</h2>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Mensajería Automática</p>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">MensajerÃ­a AutomÃ¡tica</p>
           </div>
         </div>
 
@@ -389,7 +408,7 @@ export default function SettingsPage() {
             <div className="p-4 md:p-6 bg-indigo-50/30 rounded-2xl border border-indigo-100/50 space-y-3">
                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-3">
                   <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Previsualizacion del template</div>
-                  <span className="px-2.5 py-1 rounded-full bg-white border border-indigo-100 text-[9px] font-black uppercase tracking-widest text-indigo-600 w-fit max-w-full"><span className="md:hidden">{activeTemplate.label}</span><span className="hidden md:inline">{activeTemplate.label} � {activeTemplate.name}</span></span>
+                  <span className="px-2.5 py-1 rounded-full bg-white border border-indigo-100 text-[9px] font-black uppercase tracking-widest text-indigo-600 w-fit max-w-full"><span className="md:hidden">{activeTemplate.label}</span><span className="hidden md:inline">{activeTemplate.label} · {activeTemplate.name}</span></span>
                </div>
                <div className="bg-white p-4 rounded-xl text-[11px] md:text-xs text-gray-600 leading-relaxed shadow-sm border border-indigo-50">
                   {activeTemplatePreview}
@@ -405,7 +424,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Global Config Section (Currency) */}
+      {/* Global Config Section (Currency + Region) */}
       <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -413,27 +432,64 @@ export default function SettingsPage() {
           </div>
           <div>
             <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Moneda y Región</h2>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Configuración Financiera</p>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Contexto comercial y telefónico</p>
           </div>
         </div>
 
         <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8 items-end">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8 items-end">
+              <div className="space-y-3">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">País / Región</label>
+                 <select
+                    className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-amber-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm appearance-none cursor-pointer"
+                    value={settings.country || regionPreset.country}
+                    onChange={(e) => handleApplyRegionPreset(e.target.value)}
+                 >
+                    {REGION_PRESETS.map((preset) => (
+                      <option key={preset.country} value={preset.country}>{preset.label}</option>
+                    ))}
+                 </select>
+              </div>
+              <div className="space-y-3">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Prefijo WhatsApp por defecto</label>
+                 <input
+                    className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-amber-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm"
+                    value={settings.phone_prefix || regionPreset.prefix}
+                    onChange={(e) => setSettings((current) => ({ ...current, phone_prefix: sanitizePhonePrefix(e.target.value) }))}
+                    placeholder="+56"
+                 />
+              </div>
               <div className="space-y-3">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de Moneda</label>
-                 <select 
+                 <select
                     className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-amber-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm appearance-none cursor-pointer"
-                    value={settings.currency || 'CLP'}
-                    onChange={(e) => handleSaveCurrency(e.target.value)}
+                    value={settings.currency || regionPreset.currency}
+                    onChange={(e) => setSettings((current) => ({ ...current, currency: e.target.value }))}
                  >
                     <option value="CLP">CLP - Peso Chileno ($)</option>
                     <option value="ARS">ARS - Peso Argentino ($)</option>
+                    <option value="PEN">PEN - Sol Peruano (S/)</option>
+                    <option value="COP">COP - Peso Colombiano ($)</option>
+                    <option value="MXN">MXN - Peso Mexicano ($)</option>
                     <option value="USD">USD - Dólar Estadounidense (US$)</option>
+                    <option value="EUR">EUR - Euro (€)</option>
                  </select>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
+              <div className="p-5 bg-white rounded-2xl border border-gray-100 flex items-center gap-4">
+                 <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-black text-sm">
+                    {settings.phone_prefix || regionPreset.prefix}
+                 </div>
+                 <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Prefijo activo</p>
+                    <p className="text-sm font-black text-gray-700">Se usará como referencia para alumnos y WhatsApp.</p>
+                 </div>
               </div>
               <div className="p-5 bg-white rounded-2xl border border-gray-100 flex items-center gap-4">
                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-black text-lg">
-                    {settings.currency === 'USD' ? 'US$' : '$'}
+                    {settings.currency === 'USD' ? 'US$' : settings.currency === 'EUR' ? '€' : settings.currency === 'PEN' ? 'S/' : '$'}
                  </div>
                  <div>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Símbolo actual</p>
@@ -441,9 +497,24 @@ export default function SettingsPage() {
                  </div>
               </div>
            </div>
+
+           <div className="px-4 py-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
+                El país sugiere un prefijo telefónico y una moneda, pero ambos siguen siendo editables para casos especiales.
+              </p>
+           </div>
+
+           <div className="flex justify-end">
+              <button
+                onClick={handleSaveRegionConfig}
+                disabled={isSavingMsg}
+                className="px-8 py-3.5 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-amber-100 hover:bg-amber-700 transition-all active:scale-95 disabled:opacity-50"
+              >
+                Guardar Región
+              </button>
+           </div>
         </div>
       </div>
-
       {/* Enrollment Fee Section */}
       <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
@@ -451,7 +522,7 @@ export default function SettingsPage() {
              <HiOutlineCog className="text-2xl" />
           </div>
           <div>
-            <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Matrícula</h2>
+            <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">MatrÃ­cula</h2>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Reglas de cobro inicial</p>
           </div>
         </div>
@@ -465,14 +536,14 @@ export default function SettingsPage() {
               className="h-5 w-5 accent-rose-600"
             />
             <div>
-              <div className="text-sm font-black text-gray-800">Cobrar matrícula</div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Activa cobro adicional en inscripción inicial</div>
+              <div className="text-sm font-black text-gray-800">Cobrar matrÃ­cula</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Activa cobro adicional en inscripciÃ³n inicial</div>
             </div>
           </label>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2 px-1 md:px-0">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Monto matrícula</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Monto matrÃ­cula</label>
               <input
                 type="number"
                 min="0"
@@ -497,19 +568,19 @@ export default function SettingsPage() {
               </select>
             </div>
             <div className="space-y-2 px-1 md:px-0">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de matrícula</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de matrÃ­cula</label>
               <select
                 value={settings.enrollment_fee_kind || 'incorporation'}
                 onChange={(e) => setSettings(s => ({ ...s, enrollment_fee_kind: e.target.value as 'incorporation' | 'annual' }))}
                 className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-rose-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm appearance-none"
                 disabled={!settings.enrollment_fee_enabled}
               >
-                <option value="incorporation">Incorporación</option>
+                <option value="incorporation">IncorporaciÃ³n</option>
                 <option value="annual">Anual</option>
               </select>
             </div>
             <div className="space-y-2 px-1 md:px-0">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Renovación de matrícula</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">RenovaciÃ³n de matrÃ­cula</label>
               <select
                 value={settings.enrollment_fee_renewal || 'never'}
                 onChange={(e) => setSettings(s => ({ ...s, enrollment_fee_renewal: e.target.value as 'never' | 'yearly' }))}
@@ -517,7 +588,7 @@ export default function SettingsPage() {
                 disabled={!settings.enrollment_fee_enabled}
               >
                 <option value="never">Por siempre (una sola vez)</option>
-                <option value="yearly">Renovación anual</option>
+                <option value="yearly">RenovaciÃ³n anual</option>
               </select>
             </div>
           </div>
@@ -531,8 +602,8 @@ export default function SettingsPage() {
               disabled={!settings.enrollment_fee_enabled}
             />
             <div>
-              <div className="text-sm font-black text-gray-800">Permitir omitir matrícula al cobrar</div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Útil para becas, promociones o excepción administrativa</div>
+              <div className="text-sm font-black text-gray-800">Permitir omitir matrÃ­cula al cobrar</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ãštil para becas, promociones o excepciÃ³n administrativa</div>
             </div>
           </label>
 
@@ -542,7 +613,7 @@ export default function SettingsPage() {
               disabled={isSavingMsg}
               className="px-8 py-3.5 bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50"
             >
-              Guardar Matrícula
+              Guardar MatrÃ­cula
             </button>
           </div>
         </div>
@@ -625,7 +696,7 @@ export default function SettingsPage() {
         <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8 items-end">
               <div className="space-y-3">
-                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">PIN de Seguridad (4 dígitos)</label>
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">PIN de Seguridad (4 dÃ­gitos)</label>
                  <input 
                     type="password"
                     maxLength={4}
@@ -651,7 +722,7 @@ export default function SettingsPage() {
            
            <div className="px-4 py-3 bg-white rounded-xl border border-gray-100 shadow-sm mt-4">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
-                💡 Este PIN se utilizará para salir de la pantalla de auto-asistencia y evitar que los alumnos ingresen a tu panel de administración. Si olvidas el PIN, puedes usar tu contraseña de administrador como respaldo.
+                ðŸ’¡ Este PIN se utilizarÃ¡ para salir de la pantalla de auto-asistencia y evitar que los alumnos ingresen a tu panel de administraciÃ³n. Si olvidas el PIN, puedes usar tu contraseÃ±a de administrador como respaldo.
               </p>
            </div>
         </div>
@@ -665,7 +736,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Infraestructura</h2>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Gestión de Salas y Espacios</p>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">GestiÃ³n de Salas y Espacios</p>
             </div>
           </div>
           <button
@@ -689,7 +760,7 @@ export default function SettingsPage() {
              />
           </div>
           <div className="space-y-2 px-1 md:px-0">
-             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Ubicación / Piso</label>
+             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">UbicaciÃ³n / Piso</label>
              <input
                className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl font-bold text-gray-700 outline-none transition-all"
                placeholder="Ej: Segundo Piso"
@@ -698,7 +769,7 @@ export default function SettingsPage() {
              />
           </div>
           <div className="space-y-2 px-1 md:px-0">
-             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Capacidad Máxima</label>
+             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Capacidad MÃ¡xima</label>
              <input
                className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl font-bold text-gray-700 outline-none transition-all"
                placeholder="Ej: 15"
@@ -737,7 +808,7 @@ export default function SettingsPage() {
                  <div className="text-lg font-black text-gray-900 group-hover:text-emerald-600 transition-colors">{r.name}</div>
                  <div className="flex flex-col gap-1 mt-2">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                       <HiOutlineLocationMarker /> {r.location || 'Sin ubicación'}
+                       <HiOutlineLocationMarker /> {r.location || 'Sin ubicaciÃ³n'}
                     </div>
                     <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                        <HiOutlineUserGroup /> {r.capacity || 'Capacidad libre'} cupos

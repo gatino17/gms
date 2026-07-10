@@ -31,6 +31,12 @@ type CourseInfo = {
   teacher_name?: string | null
   price?: number | null
   class_price?: number | null
+  classes_per_week?: number | null
+  day_of_week?: number | null
+  day_of_week_2?: number | null
+  day_of_week_3?: number | null
+  day_of_week_4?: number | null
+  day_of_week_5?: number | null
 }
 
 type TenantFeeSettings = {
@@ -78,16 +84,33 @@ function addDays(ymd: string, days: number): string {
   return toYMDInTZ(dt)
 }
 
+function parseYMDAsUTC(ymd: string): Date {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(Date.UTC(y, (m || 1) - 1, d || 1, 12, 0, 0))
+}
+
+function toYMDFromUTC(dt: Date): string {
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`
+}
+
+function addDaysUTC(dt: Date, days: number): Date {
+  const copy = new Date(dt.getTime())
+  copy.setUTCDate(copy.getUTCDate() + days)
+  return copy
+}
+
 function detectDayCoding(enrollments: Enrollment[] | undefined): DayCoding {
   const ds = (enrollments ?? [])
     .map(e => e.course.day_of_week)
     .filter((d): d is number => d !== null && d !== undefined)
   if (!ds.length) return 'MON0'
-  const has7 = ds.some(d => d === 7)
-  const min = Math.min(...ds)
-  const max = Math.max(...ds)
-  if (has7 || (min >= 1 && max <= 7)) return 'ISO1'
-  return 'MON0'
+  return ds.some(d => d === 7) ? 'ISO1' : 'MON0'
+}
+
+function detectDayCodingFromValues(days: Array<number | null | undefined>): DayCoding {
+  const ds = days.filter((d): d is number => d !== null && d !== undefined)
+  if (!ds.length) return 'MON0'
+  return ds.some(d => d === 7) ? 'ISO1' : 'MON0'
 }
 
 function toUiDayIndex(d: number | null | undefined, mode: DayCoding): number | null {
@@ -105,8 +128,83 @@ function getNextWeekday(fromYMD: string, targetWeekday: number): string {
   return toYMDInTZ(dt)
 }
 
-function calculate4thOccurrence(startYMD: string): string {
-  return addDays(startYMD, 21)
+function getWeeklyClassesCount(source?: {
+  classes_per_week?: number | null
+  day_of_week?: number | null
+  day_of_week_2?: number | null
+  day_of_week_3?: number | null
+  day_of_week_4?: number | null
+  day_of_week_5?: number | null
+} | null): number {
+  const explicit = Number(source?.classes_per_week || 0)
+  if (explicit > 0) return explicit
+  const slots = [
+    source?.day_of_week,
+    source?.day_of_week_2,
+    source?.day_of_week_3,
+    source?.day_of_week_4,
+    source?.day_of_week_5,
+  ].filter((day) => day !== null && day !== undefined).length
+  return Math.max(1, slots)
+}
+
+function getActiveScheduledDays(source?: {
+  classes_per_week?: number | null
+  day_of_week?: number | null
+  day_of_week_2?: number | null
+  day_of_week_3?: number | null
+  day_of_week_4?: number | null
+  day_of_week_5?: number | null
+} | null): number[] {
+  const allDays = [
+    source?.day_of_week,
+    source?.day_of_week_2,
+    source?.day_of_week_3,
+    source?.day_of_week_4,
+    source?.day_of_week_5,
+  ]
+  const explicitWeeklyClasses = Number(source?.classes_per_week || 0)
+  const relevantDays =
+    explicitWeeklyClasses > 0
+      ? allDays.slice(0, explicitWeeklyClasses)
+      : allDays
+  return relevantDays.filter((day): day is number => day !== null && day !== undefined)
+}
+
+function calculatePeriodEndDate(startYMD: string, source?: {
+  classes_per_week?: number | null
+  day_of_week?: number | null
+  day_of_week_2?: number | null
+  day_of_week_3?: number | null
+  day_of_week_4?: number | null
+  day_of_week_5?: number | null
+} | null): string {
+  const rawDays = getActiveScheduledDays(source)
+  const dayCoding = detectDayCodingFromValues(rawDays)
+  const scheduledDays = Array.from(new Set(
+    rawDays
+      .map((day) => toUiDayIndex(day, dayCoding))
+      .filter((day): day is number => day !== null && day !== undefined)
+  ))
+
+  if (!scheduledDays.length) {
+    return addDays(startYMD, 21)
+  }
+
+  const startDate = parseYMDAsUTC(startYMD)
+  const weekFourAnchor = addDaysUTC(startDate, 21)
+  const startWeekday = (startDate.getUTCDay() + 6) % 7
+  const endWeekday = [...scheduledDays]
+    .filter((day) => day >= startWeekday)
+    .sort((a, b) => b - a)[0]
+
+  const anchorWeekday = (weekFourAnchor.getUTCDay() + 6) % 7
+  if (endWeekday !== undefined) {
+    return toYMDFromUTC(addDaysUTC(weekFourAnchor, endWeekday - anchorWeekday))
+  }
+
+  const fallbackEndWeekday = [...scheduledDays].sort((a, b) => b - a)[0]
+  return toYMDFromUTC(addDaysUTC(weekFourAnchor, fallbackEndWeekday - anchorWeekday))
 }
 
 function monthsInRange(startYMD: string, endYMD: string) {
@@ -168,6 +266,9 @@ export default function RenewModal({
   
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string|null>(null)
+  const weeklyClasses = getWeeklyClassesCount(course || enrollment?.course || null)
+  const monthlyClasses = weeklyClasses * 4
+  const monthlyReferenceDefault = `Renovacion mensual (${monthlyClasses} clases)`
 
   // Carga inicial
   useEffect(() => {
@@ -233,6 +334,12 @@ export default function RenewModal({
           teacher_name: courseInfo.teacher_name ?? null,
           price: courseInfo.price ?? null,
           class_price: courseInfo.class_price ?? null,
+          classes_per_week: courseInfo.classes_per_week ?? null,
+          day_of_week: courseInfo.day_of_week ?? null,
+          day_of_week_2: courseInfo.day_of_week_2 ?? null,
+          day_of_week_3: courseInfo.day_of_week_3 ?? null,
+          day_of_week_4: courseInfo.day_of_week_4 ?? null,
+          day_of_week_5: courseInfo.day_of_week_5 ?? null,
         })
 
         // Calcular fechas sugeridas
@@ -246,7 +353,7 @@ export default function RenewModal({
         }
         
         setRenewStartDate(startDefault)
-        setComputedEndDate(calculate4thOccurrence(startDefault))
+        setComputedEndDate(calculatePeriodEndDate(startDefault, courseInfo))
         setPayAmount(courseInfo.price ? String(courseInfo.price) : '')
         const feeEnabled = !!settings.enrollment_fee_enabled
         const feeAmount = Number(settings.enrollment_fee_amount || 0)
@@ -291,7 +398,8 @@ export default function RenewModal({
         setIncludeEnrollmentFee(shouldOfferFee)
         setEnrollmentFeeEligible(eligible)
         setEnrollmentFeeHint(hint)
-        setPayReference('Renovacion mensual (4 clases)')
+        const initialWeeklyClasses = getWeeklyClassesCount(courseInfo)
+        setPayReference(`Renovacion mensual (${initialWeeklyClasses * 4} clases)`)
 
         // Detectar clases fuera de plan
         if (enroll.end_date && uiIdx !== null) {
@@ -343,23 +451,23 @@ export default function RenewModal({
   // Actualizar fechas cuando cambie el modo o fecha de inicio
   useEffect(() => {
     if (renewMode === 'monthly' && renewStartDate) {
-      setComputedEndDate(calculate4thOccurrence(renewStartDate))
+      setComputedEndDate(calculatePeriodEndDate(renewStartDate, course || enrollment?.course || null))
       if (course?.price && (!payAmount || payAmount === String(course.class_price))) {
         setPayAmount(String(course.price))
       }
       if (!payReference || payReference === 'Clase suelta') {
-        setPayReference('Renovacion mensual (4 clases)')
+        setPayReference(monthlyReferenceDefault)
       }
     }
     if (renewMode === 'single_class') {
       if (course?.class_price && (!payAmount || payAmount === String(course.price))) {
         setPayAmount(String(course.class_price))
       }
-      if (!payReference || payReference === 'Renovacion mensual (4 clases)') {
+      if (!payReference || payReference === monthlyReferenceDefault) {
         setPayReference('Clase suelta')
       }
     }
-  }, [renewMode, renewStartDate, course])
+  }, [renewMode, renewStartDate, course, enrollment, payAmount, payReference, monthlyReferenceDefault])
 
   const handleSubmit = async () => {
     try {
@@ -398,7 +506,7 @@ export default function RenewModal({
           } else if (outOfPlanOption === 'adjust') {
             const earliestDate = outOfPlanDates.sort()[0]
             finalStartDate = earliestDate
-            finalEndDate = calculate4thOccurrence(earliestDate)
+              finalEndDate = calculatePeriodEndDate(earliestDate, course || enrollment?.course || null)
           } else {
             throw new Error('Debe seleccionar como manejar las clases fuera de plan')
           }
@@ -417,7 +525,7 @@ export default function RenewModal({
           payment_date: toYMDInTZ(new Date()),
           course_id: Number(courseId),
           enrollment_id: Number(enrollmentId),
-          reference: payReference || 'Renovacion mensual (4 clases)',
+          reference: payReference || monthlyReferenceDefault,
           period_start: finalStartDate,
           period_end: finalEndDate,
         })
@@ -625,7 +733,7 @@ export default function RenewModal({
                       onClick={() => { setRenewMode('monthly'); setPayAmount(''); setPayReference(''); }}
                       className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${renewMode === 'monthly' ? 'bg-white text-fuchsia-600 shadow-sm ring-1 ring-gray-200/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
                     >
-                      Mensual (4 clases)
+                      {`Mensual (${monthlyClasses} clases)`}
                     </button>
                     <button 
                       type="button"
@@ -646,7 +754,7 @@ export default function RenewModal({
                       <p className="text-[10px] text-gray-400 font-medium">Proximo dia segun periodo anterior</p>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Fecha de fin <span className="text-gray-300 font-normal tracking-normal">(4ta clase)</span></label>
+                      <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Fecha de fin <span className="text-gray-300 font-normal tracking-normal">(fin del periodo)</span></label>
                       <input
                         type="date"
                         value={computedEndDate}
@@ -659,7 +767,7 @@ export default function RenewModal({
                         }`}
                       />
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-[10px] text-gray-400 font-medium">Calculado automáticamente (+3 semanas)</p>
+                         <p className="text-[10px] text-gray-400 font-medium">Calculado automaticamente para cubrir 4 semanas</p>
                         <label className="inline-flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"

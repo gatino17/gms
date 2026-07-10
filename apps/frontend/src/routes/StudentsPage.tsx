@@ -186,7 +186,7 @@ export default function StudentsPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (confirm('Â¿Eliminar alumno permanentemente?')) {
+    if (confirm('¿Eliminar alumno permanentemente?')) {
       await api.delete(`/api/pms/students/${id}`)
       load()
     }
@@ -199,7 +199,7 @@ export default function StudentsPage() {
         <div className="space-y-1 text-center sm:text-left">
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Comunidad</span>
            <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight leading-none">Alumnos</h1>
-           <p className="text-gray-500 font-medium text-xs md:text-sm">GestiÃ³n centralizada de tu academia.</p>
+           <p className="text-gray-500 font-medium text-xs md:text-sm">Gestión centralizada de tu academia.</p>
            <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2">
              <span className={`inline-flex px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${capacityTone}`}>
                {activeStudentsLabel}
@@ -281,7 +281,7 @@ export default function StudentsPage() {
 	              <table className="w-full border-collapse">
 	                <thead className="hidden md:table-header-group">
 	                  <tr className="bg-gray-50/50 text-left border-b border-gray-100">
-	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">NÂ°</th>
+	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">N°</th>
 	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno</th>
 	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contacto</th>
 	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
@@ -347,7 +347,7 @@ export default function StudentsPage() {
                             {s.enrollment_count || 0} inscripciones
                           </span>
 	                          <span className={`inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${s.has_registration_fee ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-	                            {s.has_registration_fee ? 'Con matrÃ­cula' : 'Sin matrÃ­cula'}
+	                            {s.has_registration_fee ? 'Con matrícula' : 'Sin matrícula'}
 	                          </span>
                         </div>
                       </td>

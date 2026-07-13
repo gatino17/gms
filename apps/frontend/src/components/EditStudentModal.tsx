@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api, getTenant, toAbsoluteUrl } from '../lib/api'
-import { phonePlaceholder, sanitizePhoneInput } from '../lib/phone'
+import { composePhoneWithPrefix, sanitizePhoneInput, stripPhonePrefix } from '../lib/phone'
 import { 
   HiOutlineUser, 
   HiOutlineMail, 
@@ -43,7 +43,7 @@ export default function EditStudentModal({ student, onClose, onSuccess }: Props)
     first_name: student.first_name || '',
     last_name: student.last_name || '',
     email: student.email || '',
-    phone: student.phone || '',
+    phone: student.phone ? stripPhonePrefix(student.phone, tenantPhonePrefix) : '',
     gender: student.gender || '',
     birthdate: student.birthdate || '',
     notes: student.notes || '',
@@ -60,7 +60,12 @@ export default function EditStudentModal({ student, onClose, onSuccess }: Props)
     api.get('/api/pms/tenants/me', {
       headers: { 'X-Tenant-ID': tenantId },
     }).then((res) => {
-      setTenantPhonePrefix(res.data?.phone_prefix || '+56')
+      const nextPrefix = res.data?.phone_prefix || '+56'
+      setTenantPhonePrefix(nextPrefix)
+      setForm((current) => ({
+        ...current,
+        phone: current.phone ? stripPhonePrefix(current.phone, nextPrefix) : current.phone,
+      }))
     }).catch(() => {
       setTenantPhonePrefix('+56')
     })
@@ -70,7 +75,11 @@ export default function EditStudentModal({ student, onClose, onSuccess }: Props)
     setLoading(true)
     setError(null)
     try {
-      await api.put(`/api/pms/students/${student.id}`, form)
+      await api.put(`/api/pms/students/${student.id}`, {
+        ...form,
+        phone: composePhoneWithPrefix(form.phone, tenantPhonePrefix),
+        birthdate: form.birthdate?.trim() ? form.birthdate : null,
+      })
       
       if (imageFile) {
         const fd = new FormData()
@@ -207,13 +216,22 @@ export default function EditStudentModal({ student, onClose, onSuccess }: Props)
                        />
                     </div>
                     <div className="space-y-2">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">WhatsApp</label>
-                       <input 
-                          value={form.phone}
-                          onChange={(e) => setForm(f => ({ ...f, phone: sanitizePhoneInput(e.target.value) }))}
-                          placeholder={phonePlaceholder(tenantPhonePrefix)}
-                          className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-indigo-200 focus:bg-white focus:ring-8 focus:ring-indigo-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
-                       />
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">WhatsApp</label>
+                        <div className="flex items-stretch overflow-hidden rounded-2xl border-2 border-transparent bg-gray-50 transition-all focus-within:border-indigo-200 focus-within:bg-white focus-within:ring-8 focus-within:ring-indigo-50">
+                           <div className="flex items-center px-5 bg-indigo-50 text-indigo-600 text-sm font-black tracking-widest border-r border-indigo-100">
+                              {tenantPhonePrefix}
+                           </div>
+                           <input 
+                              value={form.phone}
+                              onChange={(e) => setForm(f => ({ ...f, phone: stripPhonePrefix(sanitizePhoneInput(e.target.value), tenantPhonePrefix) }))}
+                              placeholder="9 1234 5678"
+                              inputMode="tel"
+                              className="w-full px-5 py-4 bg-transparent font-bold text-gray-700 outline-none"
+                           />
+                        </div>
+                        <p className="px-2 text-[10px] font-bold text-gray-400">
+                           Se guardará como {tenantPhonePrefix} seguido del número ingresado.
+                        </p>
                     </div>
                     <div className="space-y-2">
                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Género</label>

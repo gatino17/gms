@@ -25,10 +25,19 @@ type KioskCourse = {
     day_of_week_4?: number | null
     day_of_week_5?: number | null
     start_time?: string | null
+    end_time?: string | null
     start_time_2?: string | null
+    end_time_2?: string | null
     start_time_3?: string | null
+    end_time_3?: string | null
     start_time_4?: string | null
+    end_time_4?: string | null
     start_time_5?: string | null
+    end_time_5?: string | null
+    attendance_window_open?: boolean
+    attendance_window_message?: string | null
+    attendance_window_start?: string | null
+    attendance_window_end?: string | null
   }
   teacher?: { name?: string | null } | null
   students: {
@@ -62,12 +71,13 @@ export default function AttendanceKioskPage() {
 
   // Success feedback
   const [feedbackMsg, setFeedbackMsg] = useState<{
-    type: 'ok' | 'already' | 'renewal' | 'last_day'
+    type: 'ok' | 'already' | 'renewal' | 'last_day' | 'blocked'
     studentName: string
     courseName: string
     attendedAt?: string
     renewalMessage?: string
     lastDayMessage?: string
+    blockedMessage?: string
   } | null>(null)
 
   const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -177,10 +187,20 @@ export default function AttendanceKioskPage() {
 
   const markAttendance = async (studentId: number, studentName: string) => {
     if (!selectedCourse || !tenantId) return
+    if (!selectedCourse.course.attendance_window_open) {
+      setFeedbackMsg({
+        type: 'blocked',
+        studentName,
+        courseName: selectedCourse.course.name,
+        blockedMessage: selectedCourse.course.attendance_window_message || 'Dirígete a recepción para ingreso manual.',
+      })
+      setTimeout(() => setFeedbackMsg(null), FEEDBACK_DURATION_MS)
+      return
+    }
     try {
       const res = await api.post(
         '/api/pms/attendance',
-        { student_id: studentId, course_id: selectedCourse.course.id },
+        { student_id: studentId, course_id: selectedCourse.course.id, self_service: true },
         { headers: { 'X-Tenant-ID': tenantId } }
       )
       if (res.data?.status === 'already_marked') {
@@ -219,7 +239,17 @@ export default function AttendanceKioskPage() {
         setSelectedCourse(null)
         setStudentQuery('')
       }, FEEDBACK_DURATION_MS)
-    } catch {
+    } catch (e: any) {
+      if (e?.response?.status === 403) {
+        setFeedbackMsg({
+          type: 'blocked',
+          studentName,
+          courseName: selectedCourse.course.name,
+          blockedMessage: e.response?.data?.detail || 'Dirígete a recepción para ingreso manual.',
+        })
+        setTimeout(() => setFeedbackMsg(null), FEEDBACK_DURATION_MS)
+        return
+      }
       alert('Error al marcar asistencia. Por favor, intenta nuevamente.')
     }
   }
@@ -262,7 +292,11 @@ export default function AttendanceKioskPage() {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-  }).format(now)
+  })
+    .formatToParts(now)
+    .filter((part) => part.type === 'day' || part.type === 'month' || part.type === 'year')
+    .map((part) => part.value)
+    .join(' ')
 
   const nowTimeLabel = new Intl.DateTimeFormat('es-CL', {
     hour: '2-digit',
@@ -387,6 +421,15 @@ export default function AttendanceKioskPage() {
                   Registro previo: {formatAttendanceTime(feedbackMsg.attendedAt)} hrs
                 </p>
               </>
+            ) : feedbackMsg.type === 'blocked' ? (
+              <>
+                <p className="text-2xl text-rose-300 font-extrabold tracking-widest uppercase">
+                  Auto-asistencia fuera de horario
+                </p>
+                <p className="text-xl text-rose-100 mt-4 text-center max-w-2xl bg-rose-900/40 border border-rose-500/60 rounded-2xl px-6 py-4 font-bold">
+                  {feedbackMsg.blockedMessage}
+                </p>
+              </>
             ) : feedbackMsg.type === 'renewal' ? (
               <>
                 <p className="text-2xl text-red-300 font-extrabold tracking-widest uppercase">
@@ -462,7 +505,11 @@ export default function AttendanceKioskPage() {
 		                  <button
 		                    key={row.course.id}
 		                    onClick={() => setSelectedCourse(row)}
-		                    className="group relative bg-gradient-to-br from-zinc-50 via-white to-fuchsia-50/40 border border-zinc-200 rounded-[26px] md:rounded-[30px] p-4 md:p-5 text-left hover:border-fuchsia-300 transition-all duration-300 hover:-translate-y-1.5 shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 flex flex-col justify-between min-h-[220px] overflow-hidden"
+		                    className={`group relative rounded-[26px] md:rounded-[30px] p-4 md:p-5 text-left transition-all duration-300 shadow-xl shadow-black/20 flex flex-col justify-between min-h-[220px] overflow-hidden ${
+                              row.course.attendance_window_open
+                                ? 'bg-gradient-to-br from-zinc-50 via-white to-fuchsia-50/40 border border-zinc-200 hover:border-fuchsia-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-black/30'
+                                : 'bg-gradient-to-br from-zinc-100 via-white to-rose-50/60 border border-rose-200 opacity-95'
+                            }`}
 		                  >
 		                    <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-r from-fuchsia-100/70 via-white to-transparent" />
 	                      <div className="absolute top-4 right-4 w-14 h-14 md:w-16 md:h-16 rounded-[20px] border border-white/80 bg-white shadow-lg shadow-black/10 overflow-hidden flex items-center justify-center">
@@ -480,8 +527,13 @@ export default function AttendanceKioskPage() {
                       </div>
 		                    <div className="relative">
 		                      <div className="relative pr-16 md:pr-20 pl-1 py-1">
-                                    <div className="mb-2 inline-flex items-center rounded-full bg-fuchsia-600/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.3em] text-fuchsia-700">
-                                      Curso activo
+                                    <div className={`mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.3em] ${
+                                      row.course.attendance_window_open
+                                        ? 'bg-emerald-500/12 text-emerald-700'
+                                        : 'bg-rose-100 text-rose-700'
+                                    }`}>
+                                      {row.course.attendance_window_open && <HiOutlineCheckCircle className="text-emerald-600" size={12} />}
+                                      Curso
                                     </div>
 		                        <h3 className="text-lg md:text-xl font-black text-zinc-900 group-hover:text-fuchsia-700 transition-colors leading-tight line-clamp-2">
 		                          {row.course.name}
@@ -519,9 +571,20 @@ export default function AttendanceKioskPage() {
 	                        </div>
 		                    </div>
 		                    {getWeeklyFrequencyLabel(row.course) && (
-		                      <p className="relative mt-5 inline-flex items-center self-start rounded-full border border-fuchsia-200 bg-fuchsia-50 px-3 py-1.5 text-xs md:text-sm text-fuchsia-700 font-black uppercase tracking-[0.22em]">
-		                        {getWeeklyFrequencyLabel(row.course)}
-		                      </p>
+		                      <div className="relative mt-5 space-y-2">
+                              <p className={`inline-flex items-center self-start rounded-full px-3 py-1.5 text-xs md:text-sm font-black uppercase tracking-[0.22em] ${
+                                row.course.attendance_window_open
+                                  ? 'border border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700'
+                                  : 'border border-rose-200 bg-rose-50 text-rose-700'
+                              }`}>
+		                          {getWeeklyFrequencyLabel(row.course)}
+                              </p>
+                              {row.course.attendance_window_message && (
+                                <p className="text-[10px] leading-relaxed font-bold text-zinc-500 max-w-[240px]">
+                                  {row.course.attendance_window_message}
+                                </p>
+                              )}
+                            </div>
 		                    )}
 		                  </button>
                 ))}
@@ -561,6 +624,15 @@ export default function AttendanceKioskPage() {
                 />
               </div>
             </div>
+
+            {!selectedCourse.course.attendance_window_open && (
+              <div className="mb-3 md:mb-4 shrink-0 rounded-[24px] border border-rose-500/40 bg-rose-500/10 px-5 py-4">
+                <div className="text-[10px] md:text-xs font-black uppercase tracking-[0.35em] text-rose-300">Curso</div>
+                <div className="mt-2 text-sm md:text-base font-bold text-rose-100">
+                  {selectedCourse.course.attendance_window_message || 'La auto-asistencia está fuera de horario. Dirígete a recepción para ingreso manual.'}
+                </div>
+              </div>
+            )}
 
             {filteredStudents.length === 0 ? (
               <div className="text-center py-20 bg-zinc-900/70 rounded-[40px] border border-zinc-700/60">

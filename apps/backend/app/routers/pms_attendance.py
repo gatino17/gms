@@ -11,6 +11,39 @@ from app.core.config import settings
 
 router = APIRouter(prefix="/api/pms", tags=["pms-attendance"])
 
+
+def _course_slots_for_day(course: Course, day_idx: int):
+    slots = []
+    for suffix in ["", "_2", "_3", "_4", "_5"]:
+        dow = getattr(course, f"day_of_week{suffix}", None)
+        start = getattr(course, f"start_time{suffix}", None)
+        end = getattr(course, f"end_time{suffix}", None)
+        if dow == day_idx and start and end:
+            slots.append((start, end))
+    return slots
+
+
+def _attendance_window_for_course(course: Course, local_now: datetime):
+    slots = _course_slots_for_day(course, local_now.weekday())
+    if not slots:
+        return False, "Hoy no corresponde este curso para auto-asistencia. Dirígete a recepción para ingreso manual."
+
+    open_ranges = []
+    for start_t, end_t in slots:
+        start_dt = local_now.replace(hour=start_t.hour, minute=start_t.minute, second=0, microsecond=0)
+        end_dt = local_now.replace(hour=end_t.hour, minute=end_t.minute, second=0, microsecond=0)
+        open_ranges.append((start_dt - timedelta(minutes=30), end_dt, start_t, end_t))
+
+    for open_dt, close_dt, _start_t, end_t in open_ranges:
+        if open_dt <= local_now <= close_dt:
+            return True, f"Asistencia habilitada hasta las {end_t.strftime('%H:%M')} hrs."
+
+    next_open = min(open_ranges, key=lambda item: item[0])
+    last_close = max(open_ranges, key=lambda item: item[1])
+    if local_now < next_open[0]:
+        return False, f"La auto-asistencia se habilita desde las {next_open[0].strftime('%H:%M')} hrs. Dirígete a recepción para ingreso manual."
+    return False, f"La auto-asistencia para este curso cerró a las {last_close[3].strftime('%H:%M')} hrs. Dirígete a recepción para ingreso manual."
+
 class AttendanceIn(dict):
     student_id: int
     course_id: int
@@ -28,8 +61,9 @@ async def mark_attendance(
         raise HTTPException(status_code=400, detail="student_id y course_id son requeridos")
 
     # Validaciones básicas
-    c = await db.execute(select(Course.id).where(Course.id == course_id, Course.tenant_id == tenant_id))
-    if not c.scalar_one_or_none():
+    c = await db.execute(select(Course).where(Course.id == course_id, Course.tenant_id == tenant_id))
+    course = c.scalar_one_or_none()
+    if not course:
         raise HTTPException(status_code=404, detail="Curso no encontrado")
 
     s = await db.execute(select(Student.id).where(Student.id == student_id, Student.tenant_id == tenant_id))
@@ -51,6 +85,11 @@ async def mark_attendance(
                 attended_at = datetime.fromisoformat(raw_dt)
         except Exception:
             pass
+
+    if bool(payload.get("self_service")):
+        allowed, message = _attendance_window_for_course(course, datetime.now(local_tz))
+        if not allowed:
+            raise HTTPException(status_code=403, detail=message)
 
     # (Opcional) Evitar duplicado mismo día por alumno/curso
     start_day = attended_at.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -95,7 +134,7 @@ async def mark_attendance(
         student_id=student_id,
         course_id=course_id,
         attended_at=attended_at,
-        marked_by="web",
+        marked_by="kiosk" if bool(payload.get("self_service")) else "web",
         is_recovery=is_recovery,
         notes=notes,
     )

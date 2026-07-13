@@ -3,14 +3,69 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, func
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, time
 from zoneinfo import ZoneInfo
 
 from app.pms.models import Course, Enrollment, Student, Teacher, Attendance, Payment
 from app.pms.deps import get_tenant_id, get_db_session
+from app.core.config import settings
 
 
 router = APIRouter(prefix="/api/pms/course_status", tags=["pms-course-status"])
+
+
+def _course_slots_for_day(course: Course, day_idx: int) -> list[tuple[time, time]]:
+    slots: list[tuple[time, time]] = []
+    for suffix in ["", "_2", "_3", "_4", "_5"]:
+        dow = getattr(course, f"day_of_week{suffix}", None)
+        start = getattr(course, f"start_time{suffix}", None)
+        end = getattr(course, f"end_time{suffix}", None)
+        if dow == day_idx and start and end:
+            slots.append((start, end))
+    return slots
+
+
+def _attendance_window_payload(course: Course, local_now: datetime) -> dict[str, object]:
+    slots = _course_slots_for_day(course, local_now.weekday())
+    if not slots:
+        return {
+            "attendance_window_open": False,
+            "attendance_window_message": "Hoy no corresponde este curso para auto-asistencia.",
+            "attendance_window_start": None,
+            "attendance_window_end": None,
+        }
+
+    open_ranges: list[tuple[datetime, datetime, time, time]] = []
+    for start_t, end_t in slots:
+        start_dt = local_now.replace(hour=start_t.hour, minute=start_t.minute, second=0, microsecond=0)
+        end_dt = local_now.replace(hour=end_t.hour, minute=end_t.minute, second=0, microsecond=0)
+        open_ranges.append((start_dt - timedelta(minutes=30), end_dt, start_t, end_t))
+
+    for open_dt, close_dt, start_t, end_t in open_ranges:
+        if open_dt <= local_now <= close_dt:
+            return {
+                "attendance_window_open": True,
+                "attendance_window_message": f"Disponible desde {(open_dt).strftime('%H:%M')} hasta {end_t.strftime('%H:%M')} hrs.",
+                "attendance_window_start": open_dt.strftime("%H:%M"),
+                "attendance_window_end": end_t.strftime("%H:%M"),
+            }
+
+    next_open = min(open_ranges, key=lambda item: item[0])
+    last_close = max(open_ranges, key=lambda item: item[1])
+    if local_now < next_open[0]:
+        return {
+            "attendance_window_open": False,
+            "attendance_window_message": f"La auto-asistencia se habilita desde {next_open[0].strftime('%H:%M')} hrs. Si necesitas registrar tu ingreso, dirígete a recepción.",
+            "attendance_window_start": next_open[0].strftime("%H:%M"),
+            "attendance_window_end": next_open[3].strftime("%H:%M"),
+        }
+
+    return {
+        "attendance_window_open": False,
+        "attendance_window_message": f"La auto-asistencia para este curso cerró a las {last_close[3].strftime('%H:%M')} hrs. Dirígete a recepción para ingreso manual.",
+        "attendance_window_start": last_close[2].strftime("%H:%M"),
+        "attendance_window_end": last_close[3].strftime("%H:%M"),
+    }
 
 
 @router.get("/")
@@ -122,8 +177,9 @@ async def course_status(
     if student_q:
         stmt = stmt.where(or_(Student.first_name.ilike(f"%{student_q}%"), Student.last_name.ilike(f"%{student_q}%")))
     effective_day = day_of_week
+    local_now = datetime.now(ZoneInfo(settings.tz))
     if effective_day is None and use_today:
-        effective_day = datetime.now(ZoneInfo("America/Santiago")).weekday()
+        effective_day = local_now.weekday()
 
     if effective_day is not None:
         stmt = stmt.where(
@@ -158,6 +214,7 @@ async def course_status(
     for course_obj, t_name, student_obj, enr_id, enr_start, enr_end, att_count, extra_count, latest_single_class_date in rows:
         cid = course_obj.id
         if cid not in grouped:
+            attendance_window = _attendance_window_payload(course_obj, local_now)
             grouped[cid] = {
                 "course": {
                     "id": course_obj.id,
@@ -173,9 +230,15 @@ async def course_status(
                     "start_time": course_obj.start_time.isoformat() if course_obj.start_time else None,
                     "start_time_2": course_obj.start_time_2.isoformat() if course_obj.start_time_2 else None,
                     "start_time_3": course_obj.start_time_3.isoformat() if course_obj.start_time_3 else None,
+                    "end_time": course_obj.end_time.isoformat() if course_obj.end_time else None,
                     "start_time_4": course_obj.start_time_4.isoformat() if course_obj.start_time_4 else None,
+                    "end_time_2": course_obj.end_time_2.isoformat() if course_obj.end_time_2 else None,
                     "start_time_5": course_obj.start_time_5.isoformat() if course_obj.start_time_5 else None,
+                    "end_time_3": course_obj.end_time_3.isoformat() if course_obj.end_time_3 else None,
+                    "end_time_4": course_obj.end_time_4.isoformat() if course_obj.end_time_4 else None,
+                    "end_time_5": course_obj.end_time_5.isoformat() if course_obj.end_time_5 else None,
                     "start_date": course_obj.start_date.isoformat() if course_obj.start_date else None,
+                    **attendance_window,
                 },
                 "teacher": {"name": t_name} if t_name else None,
                 "students": [],

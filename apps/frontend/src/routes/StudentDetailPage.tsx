@@ -108,6 +108,12 @@ export default function StudentDetailPage() {
   const [calLoading, setCalLoading] = useState(false)
   const [deleteAttendanceModal, setDeleteAttendanceModal] = useState<{ date: string; courseIds: number[] } | null>(null)
   const [deletingAttendance, setDeletingAttendance] = useState(false)
+  const [markAttendanceModal, setMarkAttendanceModal] = useState<{
+    date: string
+    mode: 'expected' | 'recovery'
+    courseIds: number[]
+  } | null>(null)
+  const [savingAttendance, setSavingAttendance] = useState(false)
   const [loadingReport, setLoadingReport] = useState(false)
   const [feeSettings, setFeeSettings] = useState<TenantFeeSettings | null>(null)
   const [showFeeModal, setShowFeeModal] = useState(false)
@@ -188,8 +194,22 @@ export default function StudentDetailPage() {
   }, [id, tenantId, calYear, calMonth])
 
   const handleDayClick = async (day: CalDay) => {
-    if (!day.attended || !day.attended_course_ids || day.attended_course_ids.length === 0) return
-    setDeleteAttendanceModal({ date: day.date, courseIds: day.attended_course_ids })
+    if (day.date > todayYMD) return
+    if (day.attended && day.attended_course_ids && day.attended_course_ids.length > 0) {
+      setDeleteAttendanceModal({ date: day.date, courseIds: day.attended_course_ids })
+      return
+    }
+    const expectedCourseIds = day.expected_course_ids || []
+    if (expectedCourseIds.length > 0) {
+      setMarkAttendanceModal({ date: day.date, mode: 'expected', courseIds: expectedCourseIds })
+      return
+    }
+    const recoveryCourseIds = (data?.enrollments || [])
+      .filter((e) => e.is_active)
+      .map((e) => e.course.id)
+    if (recoveryCourseIds.length > 0) {
+      setMarkAttendanceModal({ date: day.date, mode: 'recovery', courseIds: recoveryCourseIds })
+    }
   }
 
   const getCourseNameById = (courseId: number) => {
@@ -217,6 +237,26 @@ export default function StudentDetailPage() {
       alert('Error al eliminar: ' + (e.response?.data?.detail || e.message))
     } finally {
       setDeletingAttendance(false)
+    }
+  }
+
+  const markAttendanceForCourse = async (courseId: number, attendedDate: string, isRecovery = false) => {
+    if (!id) return
+    setSavingAttendance(true)
+    try {
+      await api.post('/api/pms/attendance', {
+        student_id: Number(id),
+        course_id: courseId,
+        date: attendedDate,
+        is_recovery: isRecovery,
+      })
+      await loadCalendar()
+      await loadData(false)
+      setMarkAttendanceModal(null)
+    } catch (e: any) {
+      alert('No se pudo marcar la asistencia: ' + (e.response?.data?.detail || e.message))
+    } finally {
+      setSavingAttendance(false)
     }
   }
 
@@ -636,19 +676,20 @@ export default function StudentDetailPage() {
                     const offset = (first.getDay() + 6) % 7
                     const res = []
                     for(let i=0; i<offset; i++) res.push(<div key={`empty-${i}`} />)
-                    calendar.forEach((d, i) => {
-                       const isToday = d.date === todayYMD
-                       const dayNum = new Date(d.date + "T00:00:00").getDate()
-                       res.push(
-                          <div 
-                             key={i} 
-                             onClick={() => handleDayClick(d)}
-                             className={`aspect-square rounded-lg md:rounded-2xl border-2 flex flex-col items-center justify-center transition-all duration-300 hover:scale-110 cursor-pointer relative group ${
-                                d.attended ? (d.is_extra ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-100' : d.is_recovery ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-100' : 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-100') : 
-                                d.expected ? 'bg-rose-50 border-rose-100 text-rose-400 hover:bg-rose-100' : 
-                                'bg-white border-gray-50 text-gray-300 hover:border-fuchsia-100'
-                             } ${isToday ? 'ring-2 md:ring-4 ring-fuchsia-100 border-fuchsia-500 !text-fuchsia-600' : ''}`}
-                          >
+                     calendar.forEach((d, i) => {
+                        const isToday = d.date === todayYMD
+                        const isFuture = d.date > todayYMD
+                        const dayNum = new Date(d.date + "T00:00:00").getDate()
+                        res.push(
+                           <div 
+                              key={i} 
+                              onClick={() => handleDayClick(d)}
+                              className={`aspect-square rounded-lg md:rounded-2xl border-2 flex flex-col items-center justify-center transition-all duration-300 relative group ${
+                                 d.attended ? (d.is_extra ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-100' : d.is_recovery ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-100' : 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-100') : 
+                                 d.expected ? 'bg-rose-50 border-rose-100 text-rose-400 hover:bg-rose-100' : 
+                                 'bg-white border-gray-50 text-gray-300 hover:border-fuchsia-100'
+                              } ${isToday ? 'ring-2 md:ring-4 ring-fuchsia-100 border-fuchsia-500 !text-fuchsia-600' : ''} ${isFuture ? 'cursor-default opacity-60' : 'cursor-pointer hover:scale-110'}`}
+                           >
                              <span className="text-[10px] md:text-sm font-black">{dayNum}</span>
                              {d.attended && <div className="absolute top-1 md:top-1.5 right-1 md:right-1.5 w-1 md:h-1.5 md:w-1.5 h-1 bg-white rounded-full animate-pulse" />}
                           </div>
@@ -810,6 +851,56 @@ export default function StudentDetailPage() {
                 onClick={() => setDeleteAttendanceModal(null)}
                 disabled={deletingAttendance}
                 className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {markAttendanceModal && createPortal(
+        <div className="fixed left-0 top-0 z-[999] h-screen w-screen bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-white border border-gray-200 rounded-3xl shadow-2xl p-6 md:p-8 space-y-5">
+            <div>
+              <h3 className="text-lg md:text-xl font-black text-gray-900">
+                {markAttendanceModal.mode === 'expected' ? 'Marcar asistencia' : 'Marcar recuperación'}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Día {ymdToCL(markAttendanceModal.date)}.
+                {' '}
+                {markAttendanceModal.mode === 'expected'
+                  ? 'Selecciona el curso para registrar la asistencia olvidada.'
+                  : 'Selecciona el curso para registrar una asistencia fuera del horario habitual.'}
+              </p>
+            </div>
+
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {markAttendanceModal.courseIds.map((courseId) => (
+                <button
+                  key={courseId}
+                  onClick={() => markAttendanceForCourse(courseId, markAttendanceModal.date, markAttendanceModal.mode === 'recovery')}
+                  disabled={savingAttendance}
+                  className="w-full text-left p-4 rounded-2xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-black text-gray-900">{getCourseNameById(courseId)}</div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mt-1">
+                        {markAttendanceModal.mode === 'expected' ? 'Registrar asistencia normal' : 'Registrar como recuperación'}
+                      </div>
+                    </div>
+                    <HiOutlineCheckCircle className="text-emerald-500 shrink-0" size={20} />
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setMarkAttendanceModal(null)}
+                disabled={savingAttendance}
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors disabled:opacity-60"
               >
                 Cancelar
               </button>

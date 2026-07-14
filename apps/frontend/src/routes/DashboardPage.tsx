@@ -164,16 +164,16 @@ export default function DashboardPage() {
   const attendances30d = summary?.attendance_30d || 0
 
   const kpiData = [
-    { label: 'Alumnos activos', value: kpis?.active_students || 0, icon: <HiUserGroup />, color: 'fuchsia' },
-    { label: 'Cursos activos', value: kpis?.active_courses || 0, icon: <HiBookOpen />, color: 'purple' },
-    { label: 'Ingresos hoy', value: fmtCLP.format(kpis?.revenue_today || 0), icon: <HiOutlineCurrencyDollar />, color: 'emerald' },
-    { label: 'Ingresos mes', value: fmtCLP.format(kpis?.revenue_month || 0), icon: <HiOutlineTrendingUp />, color: 'indigo' },
+    { label: 'Alumnos activos', mobileLabel: 'Alumnos', value: kpis?.active_students || 0, icon: <HiUserGroup />, color: 'fuchsia' },
+    { label: 'Cursos activos', mobileLabel: 'Cursos', value: kpis?.active_courses || 0, icon: <HiBookOpen />, color: 'purple' },
+    { label: 'Ingresos hoy', value: fmtCLP.format(kpis?.revenue_today || 0), icon: <HiOutlineCurrencyDollar />, color: 'emerald', mobileFull: true },
+    { label: 'Ingresos mes', value: fmtCLP.format(kpis?.revenue_month || 0), icon: <HiOutlineTrendingUp />, color: 'indigo', mobileFull: true },
   ]
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700 pb-20">
+    <div className="space-y-10 animate-in fade-in duration-700 pb-20 px-0 sm:px-0">
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-0 sm:px-4">
         <div className="space-y-1 text-center sm:text-left">
           <div className="flex items-center justify-center sm:justify-start gap-3">
              <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Resumen</span>
@@ -202,15 +202,18 @@ export default function DashboardPage() {
       )}
 
       {/* KPI Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 px-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 px-0 sm:px-4">
         {kpiData.map((k, idx) => (
-          <div key={idx} className="group bg-white rounded-[24px] md:rounded-[32px] p-4 md:p-5 border border-gray-100 shadow-sm hover:shadow-2xl hover:border-fuchsia-100 transition-all duration-500 relative overflow-hidden">
+          <div key={idx} className={`group bg-white rounded-[24px] md:rounded-[32px] p-4 md:p-5 border border-gray-100 shadow-sm hover:shadow-2xl hover:border-fuchsia-100 transition-all duration-500 relative overflow-hidden ${k.mobileFull ? 'col-span-2 sm:col-span-1' : ''}`}>
             <div className="relative flex items-center gap-4">
-              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-${k.color}-50 text-${k.color}-600 flex items-center justify-center text-xl md:text-2xl transition-all duration-500 group-hover:scale-110 shrink-0`}>
+              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-${k.color}-50 text-${k.color}-600 flex items-center justify-center text-xl md:text-2xl transition-all duration-500 group-hover:scale-110 shrink-0 ${k.color === 'purple' ? 'shadow-lg shadow-purple-200/70 ring-1 ring-purple-100' : ''}`}>
                 {k.icon}
               </div>
               <div className="min-w-0">
-                <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest truncate">{k.label}</div>
+                <div className="text-[8px] md:text-[9px] font-black text-gray-800 md:text-gray-400 uppercase tracking-widest truncate">
+                  <span className="md:hidden">{k.mobileLabel || k.label}</span>
+                  <span className="hidden md:inline">{k.label}</span>
+                </div>
                 <div className="text-lg md:text-2xl font-black text-gray-900 tracking-tight truncate leading-none mt-1">{k.value}</div>
               </div>
             </div>
@@ -222,7 +225,7 @@ export default function DashboardPage() {
         {/* Main Column */}
         <div className="xl:col-span-8 space-y-6">
           {/* Clases de hoy */}
-          <section className="bg-white md:rounded-[32px] border-y md:border border-gray-100 shadow-sm overflow-hidden">
+          <section className="bg-white rounded-[28px] md:rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
             <div className="px-5 md:px-8 py-5 md:py-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center">
@@ -295,7 +298,7 @@ export default function DashboardPage() {
           </section>
 
           {/* Pagos Recientes */}
-          <section className="bg-white md:rounded-[32px] border-y md:border border-gray-100 shadow-sm overflow-hidden">
+          <section className="bg-white rounded-[28px] md:rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
             <div className="px-5 md:px-8 py-5 md:py-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
@@ -306,7 +309,7 @@ export default function DashboardPage() {
                   <p className="text-[9px] md:text-xs text-gray-400 font-bold uppercase tracking-widest">Finanzas</p>
                 </div>
               </div>
-              <Link to="/payments" className="text-[9px] md:text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:text-emerald-700 transition-colors bg-emerald-50 px-3 md:px-4 py-2 rounded-full">Ver Más</Link>
+              <Link to="/payments" className="inline-flex items-center gap-2 text-[9px] md:text-[10px] font-black text-emerald-700 uppercase tracking-widest hover:text-white transition-all bg-emerald-50 border border-emerald-100 hover:bg-emerald-600 px-3 md:px-4 py-2 rounded-full shadow-sm hover:shadow-lg hover:shadow-emerald-200/60">Ver Más</Link>
             </div>
 
             <div className="p-5 md:p-8">

@@ -331,8 +331,8 @@ export default function PaymentsTeachers() {
               <select
                 value={teacher}
                 onChange={e => setTeacher(e.target.value)}
-                className={`w-full pl-11 pr-4 py-3 rounded-xl md:rounded-2xl font-bold text-sm md:text-base border-2 transition-all outline-none appearance-none ${teacher
-                    ? 'bg-[linear-gradient(135deg,#c026d3_0%,#86198f_58%,#581c87_100%)] text-white border-fuchsia-300 shadow-[0_10px_22px_rgba(88,28,135,0.18)] focus:border-fuchsia-200'
+                className={`w-full pl-11 pr-4 py-3 rounded-xl md:rounded-2xl font-bold text-sm md:text-base border transition-all outline-none appearance-none ${teacher
+                    ? 'bg-[linear-gradient(135deg,#c026d3_0%,#86198f_58%,#581c87_100%)] text-white border-gray-700 shadow-[0_10px_22px_rgba(88,28,135,0.18)] focus:border-gray-600'
                     : 'bg-gray-50 text-gray-700 border-transparent focus:bg-white focus:border-fuchsia-100'
                   }`}
               >

@@ -404,7 +404,7 @@ export default function AttendanceKioskPage() {
       {/* Kiosk Header */}
       <header className="h-20 md:h-24 bg-black/45 backdrop-blur-md border-b border-zinc-800/70 flex items-center justify-between px-4 md:px-10 shrink-0 sticky top-0 z-10">
         <div className="flex items-center gap-3 md:gap-5 min-w-0">
-          <div className="h-12 w-12 md:h-14 md:w-14 rounded-full border border-zinc-700/70 bg-zinc-900/85 shadow-lg shadow-black/30 overflow-hidden flex items-center justify-center shrink-0 ring-2 ring-white/5">
+          <div className="h-12 w-12 md:h-14 md:w-14 rounded-full border border-white/85 bg-zinc-900/85 shadow-lg shadow-black/30 overflow-hidden flex items-center justify-center shrink-0 ring-2 ring-white/10">
             {tenantLogoSrc ? (
               <img src={tenantLogoSrc} alt={tenantInfo?.name || 'Logo estudio'} className="h-full w-full object-cover" />
             ) : (

@@ -163,7 +163,7 @@ export default function CourseDetailPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="relative bg-white md:rounded-[32px] shadow-sm border-y md:border border-gray-100 overflow-hidden mx-0 md:mx-4">
+      <div className="relative bg-white rounded-[28px] md:rounded-[32px] shadow-sm border border-gray-100 overflow-hidden mx-0 md:mx-4">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr,300px] items-start">
           {/* Info */}
           <div className="p-4 md:p-6 lg:p-7 space-y-4 md:space-y-5">
@@ -232,7 +232,7 @@ export default function CourseDetailPage() {
       </div>
 
       {/* Students Section */}
-      <div className="space-y-6 px-4">
+      <div className="space-y-6 px-0 md:px-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
            <div className="flex flex-col md:flex-row items-center gap-4">
               <h2 className="text-2xl font-black text-gray-900 text-center md:text-left">Lista de Alumnos</h2>
@@ -259,7 +259,7 @@ export default function CourseDetailPage() {
            </div>
         </div>
 
-        <div className="bg-white md:rounded-[40px] shadow-sm border-y md:border border-gray-100 overflow-hidden mx-0 md:-mx-4">
+        <div className="bg-white rounded-[28px] md:rounded-[40px] shadow-sm border border-gray-100 overflow-hidden mx-0 md:-mx-4">
           <table className="w-full">
             <thead className="hidden md:table-header-group">
               <tr className="bg-gray-50/50 text-left border-b border-gray-100">
@@ -270,15 +270,15 @@ export default function CourseDetailPage() {
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50 block md:table-row-group">
+            <tbody className="block space-y-3 p-3 md:space-y-0 md:p-0 md:divide-y md:divide-gray-50 md:table-row-group">
               {(data.students || []).map((s: StudentRow) => {
                 const isPaid = isPaidStatus(s.payment_status)
                 const isInactive = isInactiveStatus(s.payment_status)
                 const hasAtt = attendedToday.has(s.id) || !!s.attended_today
 
                 return (
-                  <tr key={s.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors">
-                    <td className="block md:table-cell px-6 md:px-8 py-3 md:py-4">
+                  <tr key={s.id} className="block w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:table-row hover:bg-fuchsia-50/20 transition-colors">
+                    <td className="block md:table-cell px-3 md:px-8 py-3 md:py-4">
                        <div className="flex items-center gap-2.5">
                           <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 overflow-hidden bg-fuchsia-100 text-fuchsia-600">
                              {s.photo_url ? (
@@ -298,7 +298,7 @@ export default function CourseDetailPage() {
                                })()}
                              </div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <div className="text-[9px] font-bold text-gray-400 uppercase">Alumno #{s.id}</div>
+                                <div className="hidden md:block text-[9px] font-bold text-gray-400 uppercase">Alumno #{s.id}</div>
                                 {s.enrollment_mode === 'single_class' && (
                                   <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md">
                                     Clase suelta
@@ -308,7 +308,7 @@ export default function CourseDetailPage() {
                           </div>
                        </div>
                     </td>
-                    <td className="block md:table-cell px-6 py-1.5 md:py-4 text-left md:text-center">
+                    <td className="block md:table-cell px-3 py-1.5 md:py-4 text-left md:text-center">
                         <span className={`inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-700' : isInactive ? 'bg-slate-100 text-slate-600' : 'bg-rose-100 text-rose-700'}`}>
                            {isPaid ? 'Al día' : isInactive ? 'Inactivo' : 'Pendiente'}
                         </span>
@@ -316,7 +316,7 @@ export default function CourseDetailPage() {
                     <td className="hidden md:table-cell px-6 py-4 text-center font-bold text-sm text-gray-600">
                        {s.renewal_date ? ymdToCL(s.renewal_date) : '---'}
                     </td>
-                    <td className="block md:table-cell px-6 py-1.5 md:py-4 text-left md:text-center">
+                    <td className="block md:table-cell px-3 py-1.5 md:py-4 text-left md:text-center">
                        <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Asistencia Hoy</div>
                        {hasAtt ? (
                          <div className="inline-flex items-center gap-1.5 text-emerald-600 font-black text-[10px] uppercase">
@@ -326,7 +326,7 @@ export default function CourseDetailPage() {
                          <span className="text-gray-300 font-bold text-[10px] uppercase tracking-widest">Ausente</span>
                        )}
                     </td>
-                    <td className="block md:table-cell px-6 md:px-8 py-3 md:py-4 text-left md:text-right">
+                    <td className="block md:table-cell px-3 md:px-8 py-3 md:py-4 text-left md:text-right">
                        <div className="flex items-center gap-2">
                           {!hasAtt && (
                             <button

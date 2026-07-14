@@ -178,7 +178,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-center sm:justify-start gap-3">
              <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Resumen</span>
              <div className="h-1 w-1 rounded-full bg-gray-300" />
-             <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{todayLabel}</span>
+             <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 md:text-gray-400 uppercase tracking-widest">{todayLabel}</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Panel de Control</h1>
           <p className="text-gray-500 font-medium text-sm md:text-base">Bienvenido a tu gestión diaria.</p>

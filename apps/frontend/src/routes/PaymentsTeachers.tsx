@@ -273,18 +273,32 @@ export default function PaymentsTeachers() {
             { label: 'Convenio', value: selectedAgg.agreement, icon: HiOutlineCheckCircle, classes: 'bg-amber-50 text-amber-600' },
           ].map((s, i) => (
             <div key={i} className={`bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm group hover:border-fuchsia-100 transition-all ${i === 0 ? 'col-span-2 lg:col-span-1' : ''}`}>
-              <div className={`p-2.5 w-9 h-9 md:w-10 md:h-10 rounded-xl ${s.classes} mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                <s.icon size={20} />
-              </div>
-              <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{s.label}</div>
-              <div className="text-base md:text-xl font-black text-gray-900 truncate">{fmtCLP.format(Number(s.value || 0))}</div>
+              {i === 0 ? (
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 w-10 h-10 md:w-10 md:h-10 rounded-2xl ${s.classes} flex items-center justify-center group-hover:scale-110 transition-transform shrink-0`}>
+                    <s.icon size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">{s.label}</div>
+                    <div className="text-lg md:text-xl font-black text-gray-900 truncate leading-none mt-1">{fmtCLP.format(Number(s.value || 0))}</div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className={`p-2.5 w-9 h-9 md:w-10 md:h-10 rounded-xl ${s.classes} mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                    <s.icon size={20} />
+                  </div>
+                  <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{s.label}</div>
+                  <div className="text-base md:text-xl font-black text-gray-900 truncate">{fmtCLP.format(Number(s.value || 0))}</div>
+                </>
+              )}
             </div>
           ))}
         </div>
       )}
 
       {/* Filters */}
-      <div className="bg-white p-6 md:p-8 md:rounded-[40px] border-y md:border border-gray-100 shadow-sm space-y-6 md:space-y-8 mx-0 md:mx-4">
+      <div className="bg-white p-4 md:p-8 rounded-[28px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-6 md:space-y-8 mx-1 md:mx-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-6 items-end">
           <div className="lg:col-span-3 space-y-2">
             <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Rango</label>

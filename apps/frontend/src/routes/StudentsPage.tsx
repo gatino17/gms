@@ -193,7 +193,7 @@ export default function StudentsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 px-4 md:px-0">
+    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 px-1 sm:px-4 md:px-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pt-4">
         <div className="space-y-1 text-center sm:text-left">
@@ -220,20 +220,20 @@ export default function StudentsPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5">
         {[
           { label: 'Total Activos', value: stats.total_active, icon: HiOutlineCheckCircle, color: 'emerald' },
           { label: 'Inactivos', value: stats.total_inactive, icon: HiOutlineXCircle, color: 'gray' },
           { label: 'Nuevos (Semana)', value: stats.new_this_week, icon: HiOutlineUserAdd, color: 'fuchsia' },
           { label: 'Sin Curso', value: stats.without_course, icon: HiOutlineCalendar, color: 'amber' },
-          { label: 'Género', value: `${stats.female}/${stats.male}`, icon: HiOutlineUserGroup, color: 'blue', isGender: true },
+          { label: 'Género', value: `${stats.female}/${stats.male}`, icon: HiOutlineUserGroup, color: 'blue', isGender: true, mobileFull: true },
         ].map((s, i) => (
-          <div key={i} className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className={`p-2.5 w-10 h-10 md:w-11 md:h-11 rounded-xl bg-${s.color}-50 text-${s.color}-600 flex items-center justify-center shrink-0`}>
-              <s.icon size={18} className="md:w-5 md:h-5" />
+          <div key={i} className={`bg-white p-3 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3 md:gap-4 ${s.mobileFull ? 'col-span-2 sm:col-span-1' : ''}`}>
+            <div className={`p-2 w-9 h-9 md:w-11 md:h-11 rounded-xl bg-${s.color}-50 text-${s.color}-600 flex items-center justify-center shrink-0`}>
+              <s.icon size={16} className="md:w-5 md:h-5" />
             </div>
             <div className="min-w-0">
-               <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest truncate">{s.label}</div>
+               <div className="text-[7px] md:text-[9px] font-black text-gray-700 md:text-gray-400 uppercase tracking-[0.16em] md:tracking-widest leading-tight whitespace-normal">{s.label}</div>
                {s.isGender ? (
                  <div className="mt-1 flex items-center gap-2">
                    <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-1 text-sm font-black text-pink-600">
@@ -269,7 +269,7 @@ export default function StudentsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white md:rounded-[32px] shadow-sm border-y md:border border-gray-100 overflow-hidden mx-0 md:mx-0">
+      <div className="bg-white rounded-[28px] md:rounded-[32px] shadow-sm border border-gray-100 overflow-hidden mx-0 md:mx-0">
         {loading ? (
           <div className="flex flex-col items-center py-20 gap-4">
              <div className="w-10 h-10 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
@@ -277,8 +277,8 @@ export default function StudentsPage() {
           </div>
         ) : (
           <div className="flex flex-col">
-            <div className="overflow-x-auto no-scrollbar">
-	              <table className="w-full border-collapse">
+            <div className="overflow-x-hidden md:overflow-x-auto no-scrollbar">
+	              <table className="w-full table-fixed md:table-auto border-collapse">
 	                <thead className="hidden md:table-header-group">
 	                  <tr className="bg-gray-50/50 text-left border-b border-gray-100">
 	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">N°</th>
@@ -300,9 +300,9 @@ export default function StudentsPage() {
 	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
 	                  </tr>
 	                </thead>
-	                <tbody className="divide-y divide-gray-50 block md:table-row-group">
+	                <tbody className="block space-y-3 p-3 md:space-y-0 md:p-0 md:divide-y md:divide-gray-50 md:table-row-group">
 	                  {data.map((s, index) => (
-	                    <tr key={s.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors group">
+	                    <tr key={s.id} className="block w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:table-row hover:bg-fuchsia-50/20 transition-colors group">
 	                      <td className="hidden md:table-cell px-4 py-4 text-center font-black text-xs text-gray-400">
 	                        {(page - 1) * pageSize + index + 1}
 	                      </td>
@@ -313,7 +313,7 @@ export default function StudentsPage() {
                           </div>
                           <div className="min-w-0">
                             <div className="font-black text-sm text-gray-900 group-hover:text-fuchsia-600 transition-colors truncate">{s.first_name} {s.last_name}</div>
-                            <div className="text-[9px] font-bold text-gray-400 uppercase">Alumno #{s.id}</div>
+                            <div className="hidden md:block text-[9px] font-bold text-gray-400 uppercase">Alumno #{s.id}</div>
                           </div>
                         </div>
                       </td>
@@ -346,7 +346,7 @@ export default function StudentsPage() {
                           <span className="text-[7px] font-bold text-gray-400 uppercase tracking-tighter">
                             {s.enrollment_count || 0} inscripciones
                           </span>
-	                          <span className={`inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${s.has_registration_fee ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+	                          <span className={`hidden md:inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${s.has_registration_fee ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
 	                            {s.has_registration_fee ? 'Con matrícula' : 'Sin matrícula'}
 	                          </span>
                         </div>
@@ -354,7 +354,7 @@ export default function StudentsPage() {
                       <td className="hidden md:table-cell px-6 py-4 text-center font-bold text-xs text-gray-500">
                         {ymdToCL(s.joined_at)}
                       </td>
-                      <td className="block md:table-cell px-6 py-3 md:py-4 text-left md:text-right">
+                      <td className="block md:table-cell px-5 pr-6 py-3 pb-4 md:px-6 md:py-4 text-left md:text-right">
                          <div className="flex items-center justify-start md:justify-end gap-2">
                            <button
                              onClick={() => { setSelectedStudent(s); setShowEnroll(true) }}

@@ -327,8 +327,15 @@ export default function PaymentsTeachers() {
           <div className="lg:col-span-3 space-y-2">
             <label className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Profesor</label>
             <div className="relative">
-              <HiOutlineUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <select value={teacher} onChange={e => setTeacher(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl md:rounded-2xl font-bold text-sm md:text-base text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none appearance-none">
+              <HiOutlineUser className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${teacher ? 'text-white' : 'text-gray-400'}`} />
+              <select
+                value={teacher}
+                onChange={e => setTeacher(e.target.value)}
+                className={`w-full pl-11 pr-4 py-3 rounded-xl md:rounded-2xl font-bold text-sm md:text-base border-2 transition-all outline-none appearance-none ${teacher
+                    ? 'bg-[linear-gradient(135deg,#c026d3_0%,#86198f_58%,#581c87_100%)] text-white border-fuchsia-300 shadow-[0_10px_22px_rgba(88,28,135,0.18)] focus:border-fuchsia-200'
+                    : 'bg-gray-50 text-gray-700 border-transparent focus:bg-white focus:border-fuchsia-100'
+                  }`}
+              >
                 <option value="">Todos los responsables</option>
                 {teachers.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
@@ -338,7 +345,7 @@ export default function PaymentsTeachers() {
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden relative min-h-[400px]">
+      <div className="bg-white rounded-[28px] shadow-sm border border-gray-100 overflow-hidden relative min-h-[400px]">
         {loading && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-4">
             <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
@@ -359,33 +366,34 @@ export default function PaymentsTeachers() {
               const teacherDisplay = displayTeacherName(t.name)
               const isEnrollmentCard = teacherDisplay === 'Matrículas'
               return (
-              <div key={idx} className={`p-6 rounded-3xl border transition-all group cursor-pointer ${isEnrollmentCard ? 'bg-amber-50 border-amber-200 hover:bg-amber-100/40 hover:border-amber-300' : 'bg-gray-50 border-transparent hover:border-fuchsia-200 hover:bg-white'}`} onClick={() => setTeacher(teacherDisplay)}>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black text-xl shrink-0 ${isEnrollmentCard ? 'bg-gradient-to-br from-amber-500 to-orange-600' : 'bg-gradient-to-br from-fuchsia-500 to-purple-600'}`}>
-                    {teacherDisplay?.[0] || 'M'}
+                <div key={idx} className={`p-6 rounded-3xl border transition-all group cursor-pointer ${isEnrollmentCard ? 'bg-amber-50 border-amber-200 hover:bg-amber-100/40 hover:border-amber-300' : 'bg-gray-50 border-transparent hover:border-fuchsia-200 hover:bg-white'}`} onClick={() => setTeacher(teacherDisplay)}>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black text-xl shrink-0 ${isEnrollmentCard ? 'bg-gradient-to-br from-amber-500 to-orange-600' : 'bg-gradient-to-br from-fuchsia-500 to-purple-600'}`}>
+                      {teacherDisplay?.[0] || 'M'}
+                    </div>
+                    <div className="min-w-0">
+                      <div className={`text-lg font-black truncate transition-colors ${isEnrollmentCard ? 'text-amber-900 group-hover:text-amber-700' : 'text-gray-900 group-hover:text-fuchsia-600'}`}>{teacherDisplay}</div>
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Resumen</div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className={`text-lg font-black truncate transition-colors ${isEnrollmentCard ? 'text-amber-900 group-hover:text-amber-700' : 'text-gray-900 group-hover:text-fuchsia-600'}`}>{teacherDisplay}</div>
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Resumen</div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Generado</span>
+                      <span className="text-lg font-black text-gray-900">{fmtCLP.format(Number(t.total || 0))}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200/50">
+                      <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-emerald-600">Efec.</span> {fmtCLP.format(Number(t.cash || 0))}</div>
+                      <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-sky-600">Tarj.</span> {fmtCLP.format(Number(t.card || 0))}</div>
+                      <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-indigo-600">Transf.</span> {fmtCLP.format(Number(t.transfer || 0))}</div>
+                      <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-amber-600">Conv.</span> {fmtCLP.format(Number(t.agreement || 0))}</div>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Generado</span>
-                    <span className="text-lg font-black text-gray-900">{fmtCLP.format(Number(t.total || 0))}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200/50">
-                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-emerald-600">Efec.</span> {fmtCLP.format(Number(t.cash || 0))}</div>
-                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-sky-600">Tarj.</span> {fmtCLP.format(Number(t.card || 0))}</div>
-                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-indigo-600">Transf.</span> {fmtCLP.format(Number(t.transfer || 0))}</div>
-                    <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1.5 truncate"><span className="shrink-0 text-amber-600">Conv.</span> {fmtCLP.format(Number(t.agreement || 0))}</div>
-                  </div>
-                </div>
-              </div>
-            )})}
+              )
+            })}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-hidden md:overflow-x-auto">
             <table className="w-full">
               <thead className="hidden md:table-header-group">
                 <tr className="bg-gray-50/50 text-left border-b border-gray-100">
@@ -408,40 +416,48 @@ export default function PaymentsTeachers() {
                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Notas</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 block md:table-row-group">
+              <tbody className="block space-y-3 p-3 md:space-y-0 md:p-0 md:divide-y md:divide-gray-100 md:table-row-group">
                 {pageRows.map((r, i) => (
-                  <tr key={i} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors group">
-                    <td className="block md:table-cell px-6 md:px-6 py-2 md:py-6">
-                      <div className="flex md:block items-center justify-between">
-                        <div className="md:hidden text-[8px] font-black text-gray-400 uppercase">N°</div>
-                        <div className="text-sm font-black text-gray-900">{(safePage - 1) * pageSize + i + 1}</div>
-                      </div>
+                  <tr key={i} className="block w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)] md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:table-row hover:bg-fuchsia-50/20 transition-colors group">
+                    <td className="hidden md:table-cell px-6 md:px-6 py-2 md:py-6">
+                      <div className="text-sm font-black text-gray-900">{(safePage - 1) * pageSize + i + 1}</div>
                     </td>
-                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6">
-                      <div className="flex md:block items-center justify-between">
-                        <div className="text-sm font-black text-gray-900">{toDDMMYYYY(r.payment_date)}</div>
-                        <div className="text-[10px] font-bold text-gray-400">ID #{r.id}</div>
+                    <td className="block md:table-cell px-4 md:px-8 py-4 md:py-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="md:hidden inline-flex px-2 py-0.5 rounded-full bg-fuchsia-50 text-fuchsia-600 text-[8px] font-black uppercase tracking-widest">
+                            N° {(safePage - 1) * pageSize + i + 1}
+                          </div>
+                          <div className="mt-1 text-sm font-black text-gray-900">{toDDMMYYYY(r.payment_date)}</div>
+                        </div>
+                        <div className="text-left md:text-right">
+                          <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Monto</div>
+                          <div className="text-base md:text-lg font-black text-gray-900">{fmtCLP.format(r.amount)}</div>
+                        </div>
                       </div>
+                      <div className="hidden md:block text-[10px] font-bold text-gray-400 mt-1">ID #{r.id}</div>
                     </td>
-                    <td className="block md:table-cell px-6 py-2 md:py-6">
+                    <td className="block md:table-cell px-4 py-2 md:py-6">
                       <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors truncate">{r.studentName}</div>
                       <div className="text-xs font-bold text-gray-500 truncate">{r.courseName}</div>
                     </td>
-                    <td className="block md:table-cell px-6 py-2 md:py-6">
-                      <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${(r.method === 'efectivo' || r.method === 'cash') ? 'bg-emerald-50 text-emerald-600' :
-                        (r.method === 'debito' || r.method === 'credito' || r.method === 'card') ? 'bg-sky-50 text-sky-600' :
-                          (r.method === 'transferencia' || r.method === 'transfer') ? 'bg-indigo-50 text-indigo-600' :
-                            'bg-amber-50 text-amber-600'
-                        }`}>
-                        {methodLabel(r.method)}
-                      </span>
+                    <td className="block md:table-cell px-4 py-2 md:py-6">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${(r.method === 'efectivo' || r.method === 'cash') ? 'bg-emerald-50 text-emerald-600' :
+                          (r.method === 'debito' || r.method === 'credito' || r.method === 'card') ? 'bg-sky-50 text-sky-600' :
+                            (r.method === 'transferencia' || r.method === 'transfer') ? 'bg-indigo-50 text-indigo-600' :
+                              'bg-amber-50 text-amber-600'
+                          }`}>
+                          {methodLabel(r.method)}
+                        </span>
+                      </div>
                       {(r.type || '').toLowerCase() === 'registration' && (
                         <div className="text-[9px] font-black text-fuchsia-600 mt-1 uppercase tracking-widest">
                           {(String(r.reference || '').toLowerCase().includes('anual') ? 'Matrícula anual' : 'Matrícula incorporación')}
                         </div>
                       )}
                     </td>
-                    <td className="block md:table-cell px-6 py-2 md:py-6">
+                    <td className="block md:table-cell px-4 py-2 md:py-6">
                       {(() => {
                         const period = getPeriodInfo(r)
                         return (
@@ -451,11 +467,10 @@ export default function PaymentsTeachers() {
                         )
                       })()}
                     </td>
-                    <td className="block md:table-cell px-6 py-2 md:py-6 text-left md:text-right">
-                      <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Monto</div>
+                    <td className="hidden md:table-cell px-6 py-2 md:py-6 text-left md:text-right">
                       <div className="text-base md:text-lg font-black text-gray-900">{fmtCLP.format(r.amount)}</div>
                     </td>
-                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6">
+                    <td className="block md:table-cell px-4 md:px-8 py-4 md:py-6">
                       <div className="text-[10px] text-gray-400 font-medium italic line-clamp-1">{r.notes || '-'}</div>
                     </td>
                   </tr>
@@ -485,5 +500,3 @@ export default function PaymentsTeachers() {
     </div>
   )
 }
-
-

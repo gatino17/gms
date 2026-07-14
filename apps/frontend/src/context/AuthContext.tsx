@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { api } from '../lib/api'
+import { api, AUTH_EXPIRED_EVENT } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 
 interface User {
@@ -47,6 +47,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
   const [isLoading, setIsLoading] = useState(true)
 
+  const clearSessionState = () => {
+    console.debug('[AuthContext] clearing session state', { prevTenant: tenantId })
+    setTenantId(null)
+    try {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+    } catch {}
+    delete api.defaults.headers.common.Authorization
+    setToken(null)
+    setUser(null)
+  }
+
   useEffect(() => {
     if (token) {
       api.defaults.headers.common.Authorization = `Bearer ${token}`
@@ -59,6 +71,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setIsLoading(false)
   }, [token])
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      clearSessionState()
+    }
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired as EventListener)
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired as EventListener)
+  }, [tenantId, setTenantId])
 
   useEffect(() => {
     console.debug('[AuthContext] token/user change', { hasToken: !!token, user })
@@ -118,15 +138,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const logout = () => {
-    // Limpia tenant para evitar arrastrar headers a la próxima sesion
-    console.debug('[AuthContext] logout clearing tenant', { prevTenant: tenantId })
-    setTenantId(null)
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    delete api.defaults.headers.common.Authorization
     console.debug('[AuthContext] logout')
-    setToken(null)
-    setUser(null)
+    clearSessionState()
   }
 
   return (
@@ -143,3 +156,4 @@ export const useAuth = () => {
   }
   return context
 }
+

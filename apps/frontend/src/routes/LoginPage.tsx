@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../lib/api';
+import { api, AUTH_EXPIRED_MESSAGE_KEY } from '../lib/api';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineArrowRight, HiOutlineShieldCheck } from 'react-icons/hi';
 
 export const LoginPage: React.FC = () => {
@@ -20,6 +20,16 @@ export const LoginPage: React.FC = () => {
             navigate(from, { replace: true });
         }
     }, [isAuthenticated, from, navigate]);
+
+    useEffect(() => {
+        try {
+            const expiredMessage = sessionStorage.getItem(AUTH_EXPIRED_MESSAGE_KEY);
+            if (expiredMessage) {
+                setError(expiredMessage);
+                sessionStorage.removeItem(AUTH_EXPIRED_MESSAGE_KEY);
+            }
+        } catch {}
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

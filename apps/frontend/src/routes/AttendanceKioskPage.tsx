@@ -48,6 +48,12 @@ type KioskCourse = {
   }[]
 }
 
+type KioskTenantInfo = {
+  id: number
+  name: string
+  logo_url?: string | null
+}
+
 export default function AttendanceKioskPage() {
   const FEEDBACK_DURATION_MS = 4000
   const COURSES_REFRESH_MS = 1000
@@ -55,6 +61,7 @@ export default function AttendanceKioskPage() {
   const { tenantId } = useTenant()
 
   const [courses, setCourses] = useState<KioskCourse[]>([])
+  const [tenantInfo, setTenantInfo] = useState<KioskTenantInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedCourse, setSelectedCourse] = useState<KioskCourse | null>(null)
   const [courseQuery, setCourseQuery] = useState('')
@@ -129,6 +136,25 @@ export default function AttendanceKioskPage() {
 
   useEffect(() => {
     loadTodayCourses()
+  }, [tenantId])
+
+  useEffect(() => {
+    const loadTenantInfo = async () => {
+      if (!tenantId) {
+        setTenantInfo(null)
+        return
+      }
+      try {
+        const { data } = await api.get<KioskTenantInfo>('/api/pms/tenants/me', {
+          headers: { 'X-Tenant-ID': tenantId },
+        })
+        setTenantInfo(data)
+      } catch (e) {
+        console.error('No se pudo cargar informacion del estudio', e)
+        setTenantInfo(null)
+      }
+    }
+    loadTenantInfo()
   }, [tenantId])
 
   useEffect(() => {
@@ -305,6 +331,8 @@ export default function AttendanceKioskPage() {
     hour12: false,
   }).format(now)
 
+  const tenantLogoSrc = toAbsoluteUrl(tenantInfo?.logo_url)
+  const tenantInitial = (tenantInfo?.name || 'P').trim().charAt(0).toUpperCase() || 'P'
   const nowDayDisplay = `${nowDayLabel.charAt(0).toUpperCase()}${nowDayLabel.slice(1)}`
   const nowDateDisplay = `${nowDateLabel.charAt(0).toUpperCase()}${nowDateLabel.slice(1)}`
 
@@ -375,11 +403,25 @@ export default function AttendanceKioskPage() {
     <div className="h-screen bg-gradient-to-br from-black via-zinc-950 to-zinc-900 text-zinc-100 flex flex-col font-sans overflow-hidden">
       {/* Kiosk Header */}
       <header className="h-20 md:h-24 bg-black/45 backdrop-blur-md border-b border-zinc-800/70 flex items-center justify-between px-4 md:px-10 shrink-0 sticky top-0 z-10">
-        <div>
-          <h1 className="text-3xl font-black text-white tracking-tight">Auto-Asistencia</h1>
-          <p className="text-fuchsia-400 font-bold uppercase tracking-widest text-sm mt-1">
-            Selecciona tu clase para registrarte
-          </p>
+        <div className="flex items-center gap-3 md:gap-5 min-w-0">
+          <div className="h-12 w-12 md:h-14 md:w-14 rounded-2xl border border-zinc-700/70 bg-zinc-900/85 shadow-lg shadow-black/30 overflow-hidden flex items-center justify-center shrink-0">
+            {tenantLogoSrc ? (
+              <img src={tenantLogoSrc} alt={tenantInfo?.name || 'Logo estudio'} className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-fuchsia-600 to-purple-700 text-white flex items-center justify-center text-xl md:text-2xl font-black">
+                {tenantInitial}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs font-black uppercase tracking-[0.38em] text-zinc-500 truncate">
+              {tenantInfo?.name || 'Estudio activo'}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight truncate">Auto-Asistencia</h1>
+            <p className="text-fuchsia-400 font-bold uppercase tracking-widest text-[11px] md:text-sm mt-1 truncate">
+              Selecciona tu clase para registrarte
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button

@@ -2,6 +2,12 @@ import axios, { AxiosError } from 'axios'
 
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
 const TENANT_KEY = 'tenantId'
+const TOKEN_KEY = 'token'
+const USER_KEY = 'user'
+export const AUTH_EXPIRED_EVENT = 'pms:auth-expired'
+export const AUTH_EXPIRED_MESSAGE_KEY = 'pms:auth-expired-message'
+
+let isHandlingAuthExpiration = false
 
 export const api = axios.create({
   baseURL: BASE_URL,
@@ -30,6 +36,42 @@ export function setTenant(tenantId: number | string) {
 export function clearTenant() {
   delete api.defaults.headers.common['X-Tenant-ID']
   try { localStorage.removeItem(TENANT_KEY) } catch {}
+}
+
+function clearClientSessionStorage() {
+  delete api.defaults.headers.common.Authorization
+  clearTenant()
+  try { localStorage.removeItem(TOKEN_KEY) } catch {}
+  try { localStorage.removeItem(USER_KEY) } catch {}
+}
+
+function isAuthEndpoint(url?: string) {
+  if (!url) return false
+  return url.includes('/login/access-token')
+}
+
+function isExpiredAuthError(err: AxiosError<any>, message: string) {
+  const status = err.response?.status
+  if (status === 401) return true
+  if (status !== 403) return false
+  const normalized = String(message || '').toLowerCase()
+  return normalized.includes('could not validate credentials')
+    || normalized.includes('token')
+    || normalized.includes('not authenticated')
+    || normalized.includes('credenciales')
+}
+
+function redirectToLoginOnExpiredAuth(message: string) {
+  if (isHandlingAuthExpiration) return
+  isHandlingAuthExpiration = true
+  clearClientSessionStorage()
+  try {
+    sessionStorage.setItem(AUTH_EXPIRED_MESSAGE_KEY, message || 'Tu sesión expiró. Vuelve a iniciar sesión.')
+  } catch {}
+  try {
+    window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { message } }))
+  } catch {}
+  window.location.replace('/login')
 }
 
 /** Interceptor: asegura que toda request lleve X-Tenant-ID. */
@@ -63,6 +105,9 @@ api.interceptors.response.use(
       msg = JSON.stringify(msg)
     }
     err.message = String(msg)
+    if (!isAuthEndpoint(err.config?.url) && isExpiredAuthError(err, err.message)) {
+      redirectToLoginOnExpiredAuth(err.message)
+    }
     return Promise.reject(err)
   }
 )

@@ -352,8 +352,8 @@ export default function PaymentsTeachers() {
                     : 'bg-gray-50 text-gray-700 border-transparent focus:bg-white focus:border-fuchsia-100'
                   }`}
               >
-                <option value="">Todos los responsables</option>
-                {teachers.map(t => <option key={t} value={t}>{t}</option>)}
+                <option className="bg-white text-gray-900" value="">Todos los responsables</option>
+                {teachers.map(t => <option className="bg-white text-gray-900" key={t} value={t}>{t}</option>)}
               </select>
             </div>
           </div>

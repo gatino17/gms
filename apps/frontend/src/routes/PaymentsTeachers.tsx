@@ -80,6 +80,22 @@ const methodLabel = (m: string) => ({
   convenio: 'Convenio', agreement: 'Convenio'
 }[m] || m)
 
+const typeLabel = (t?: string | null) => ({
+  monthly: 'Mensualidad',
+  single_class: 'Clase suelta',
+  rental: 'Arriendo',
+  registration: 'Matrícula',
+  agreement: 'Convenio',
+  convenio: 'Convenio',
+}[String(t || '')] || String(t || 'Pago'))
+
+const registrationVariantLabel = (p: Payment) => {
+  const joined = `${p.reference || ''} ${p.notes || ''}`.toLowerCase()
+  if (joined.includes('anual')) return 'Matrícula anual'
+  if (joined.includes('incorporación') || joined.includes('incorporacion')) return 'Matrícula incorporación'
+  return 'Matrícula'
+}
+
 const displayTeacherName = (name?: string | null) => {
   const clean = (name || '').trim()
   if (!clean) return 'Matrículas'
@@ -274,13 +290,13 @@ export default function PaymentsTeachers() {
           ].map((s, i) => (
             <div key={i} className={`bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm group hover:border-fuchsia-100 transition-all ${i === 0 ? 'col-span-2 lg:col-span-1' : ''}`}>
               {i === 0 ? (
-                <div className="flex items-center gap-3">
-                  <div className={`p-2.5 w-10 h-10 md:w-10 md:h-10 rounded-2xl ${s.classes} flex items-center justify-center group-hover:scale-110 transition-transform shrink-0`}>
+                <div className="flex items-center gap-3 lg:block">
+                  <div className={`p-2.5 w-10 h-10 md:w-10 md:h-10 rounded-2xl ${s.classes} flex items-center justify-center group-hover:scale-110 transition-transform shrink-0 lg:mb-3`}>
                     <s.icon size={20} />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">{s.label}</div>
-                    <div className="text-lg md:text-xl font-black text-gray-900 truncate leading-none mt-1">{fmtCLP.format(Number(s.value || 0))}</div>
+                    <div className="text-[9px] md:text-[10px] font-black text-gray-700 uppercase tracking-widest">{s.label}</div>
+                    <div className="text-lg md:text-xl font-black text-gray-900 truncate leading-none lg:leading-normal mt-1">{fmtCLP.format(Number(s.value || 0))}</div>
                   </div>
                 </div>
               ) : (
@@ -288,7 +304,7 @@ export default function PaymentsTeachers() {
                   <div className={`p-2.5 w-9 h-9 md:w-10 md:h-10 rounded-xl ${s.classes} mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
                     <s.icon size={20} />
                   </div>
-                  <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{s.label}</div>
+                  <div className="text-[8px] md:text-[10px] font-black text-gray-700 uppercase tracking-widest truncate">{s.label}</div>
                   <div className="text-base md:text-xl font-black text-gray-900 truncate">{fmtCLP.format(Number(s.value || 0))}</div>
                 </>
               )}
@@ -430,7 +446,7 @@ export default function PaymentsTeachers() {
                           </div>
                           <div className="mt-1 text-sm font-black text-gray-900">{toDDMMYYYY(r.payment_date)}</div>
                         </div>
-                        <div className="text-left md:text-right">
+                        <div className="text-left md:hidden">
                           <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Monto</div>
                           <div className="text-base md:text-lg font-black text-gray-900">{fmtCLP.format(r.amount)}</div>
                         </div>
@@ -450,12 +466,15 @@ export default function PaymentsTeachers() {
                           }`}>
                           {methodLabel(r.method)}
                         </span>
+                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${(r.type || '').toLowerCase() === 'monthly' ? 'bg-fuchsia-50 text-fuchsia-600' :
+                          (r.type || '').toLowerCase() === 'single_class' ? 'bg-amber-100 text-amber-700' :
+                            (r.type || '').toLowerCase() === 'registration' ? 'bg-rose-100 text-rose-700' :
+                              (r.type || '').toLowerCase() === 'agreement' || (r.type || '').toLowerCase() === 'convenio' ? 'bg-cyan-50 text-cyan-700' :
+                                'bg-gray-100 text-gray-500'
+                          }`}>
+                          {(r.type || '').toLowerCase() === 'registration' ? registrationVariantLabel(r) : typeLabel(r.type)}
+                        </span>
                       </div>
-                      {(r.type || '').toLowerCase() === 'registration' && (
-                        <div className="text-[9px] font-black text-fuchsia-600 mt-1 uppercase tracking-widest">
-                          {(String(r.reference || '').toLowerCase().includes('anual') ? 'Matrícula anual' : 'Matrícula incorporación')}
-                        </div>
-                      )}
                     </td>
                     <td className="block md:table-cell px-4 py-2 md:py-6">
                       {(() => {

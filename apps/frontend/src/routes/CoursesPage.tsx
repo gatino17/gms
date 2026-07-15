@@ -383,7 +383,7 @@ export default function CoursesPage() {
                              <div className="w-7 h-7 rounded-full bg-fuchsia-50 text-fuchsia-600 flex items-center justify-center font-black text-[10px]">
                                 {c.student_count || 0}
                              </div>
-                             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Alumnos</span>
+                             <span className="text-[9px] font-black text-gray-900 uppercase tracking-widest">Alumnos</span>
                           </div>
                           <div className="flex items-center gap-2">
                              <HiOutlineLocationMarker className="text-fuchsia-300" size={12} />
@@ -392,7 +392,7 @@ export default function CoursesPage() {
                        </div>
 
                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                          <div className="flex items-center gap-2 text-[9px] font-black text-gray-900 uppercase tracking-widest">
                              <HiOutlineClock className="text-fuchsia-600" size={12} /> Horarios
                           </div>
                           <div className="space-y-1">
@@ -411,7 +411,7 @@ export default function CoursesPage() {
 
                        <div className="pt-3 border-t border-gray-50 flex items-center justify-between">
                           <div className="flex flex-col">
-                             <span className="text-[8px] font-black text-gray-400 uppercase leading-none mb-1">
+                             <span className="text-[8px] font-black text-fuchsia-600 uppercase leading-none mb-1">
                                 {c.course_type === 'choreography' ? 'Total Proyecto' : 'Mensual'}
                              </span>
                              <span className="text-base font-black text-gray-900 leading-none">{fmtCLP.format(Number(c.price || 0))}</span>
@@ -421,7 +421,7 @@ export default function CoursesPage() {
                           </div>
                           <div className="text-right min-w-0">
                              <div className="text-[9px] font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors truncate">{c.teacher_name || 'Sin Instructor'}</div>
-                             <div className="text-[8px] font-bold text-gray-400 uppercase leading-none">Instructor</div>
+                             <div className="text-[8px] font-bold text-fuchsia-600 uppercase leading-none">Instructor</div>
                           </div>
                        </div>
                     </div>

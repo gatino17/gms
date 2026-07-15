@@ -571,13 +571,13 @@ export default function PaymentsPage() {
         ].map((s, i) => (
           <div key={i} className={`bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm group hover:border-fuchsia-100 transition-all ${i === 0 ? 'col-span-2 lg:col-span-1' : ''}`}>
             {i === 0 ? (
-              <div className="flex items-center gap-3">
-                <div className={`p-2.5 w-10 h-10 md:w-10 md:h-10 rounded-2xl ${s.classes} flex items-center justify-center group-hover:scale-110 transition-transform shrink-0`}>
+              <div className="flex items-center gap-3 lg:block">
+                <div className={`p-2.5 w-10 h-10 md:w-10 md:h-10 rounded-2xl ${s.classes} flex items-center justify-center group-hover:scale-110 transition-transform shrink-0 lg:mb-3`}>
                   <s.icon size={20} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">{s.label}</div>
-                  <div className="text-lg md:text-xl font-black text-gray-900 truncate leading-none mt-1">{fmtCLP.format(Number(s.value || 0))}</div>
+                  <div className="text-[9px] md:text-[10px] font-black text-gray-700 uppercase tracking-widest">{s.label}</div>
+                  <div className="text-lg md:text-xl font-black text-gray-900 truncate leading-none lg:leading-normal mt-1">{fmtCLP.format(Number(s.value || 0))}</div>
                 </div>
               </div>
             ) : (
@@ -585,7 +585,7 @@ export default function PaymentsPage() {
                 <div className={`p-2.5 w-9 h-9 md:w-10 md:h-10 rounded-xl ${s.classes} mb-2 md:mb-3 flex items-center justify-center group-hover:scale-110 transition-transform`}>
                   <s.icon size={20} />
                 </div>
-                <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</div>
+                <div className="text-[8px] md:text-[10px] font-black text-gray-700 uppercase tracking-widest">{s.label}</div>
                 <div className="text-base md:text-xl font-black text-gray-900 truncate">{fmtCLP.format(Number(s.value || 0))}</div>
               </>
             )}
@@ -644,7 +644,7 @@ export default function PaymentsPage() {
                 <button
                   key={v}
                   onClick={() => setViewMode(v)}
-                  className={`flex-1 py-2 px-2 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === v ? 'bg-white text-fuchsia-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                  className={`flex-1 py-2 px-2 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === v ? 'bg-fuchsia-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   {v === 'detalle' ? 'Lista' : v === 'resumen-diario' ? 'Día' : 'Profe'}
                 </button>
@@ -703,7 +703,7 @@ export default function PaymentsPage() {
         )}
 
         {viewMode === 'detalle' && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-hidden md:overflow-x-auto">
             <table className="w-full">
               <thead className="hidden md:table-header-group">
                 <tr className="bg-gray-50/50 text-left border-b border-gray-100">
@@ -744,7 +744,7 @@ export default function PaymentsPage() {
                           </div>
                           <div className="mt-1 text-sm font-black text-gray-900">{toDDMMYYYY(p.payment_date)}</div>
                         </div>
-                        <div className="text-left md:text-right">
+                        <div className="text-left md:hidden">
                           <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Monto</div>
                           <div className="text-base md:text-lg font-black text-gray-900">{fmtCLP.format(p.amount)}</div>
                         </div>
@@ -840,7 +840,7 @@ export default function PaymentsPage() {
 
         {/* Daily Summary View */}
         {viewMode === 'resumen-diario' && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-hidden md:overflow-x-auto">
             <table className="w-full">
               <thead className="hidden md:table-header-group">
                 <tr className="bg-gray-50/50 text-left border-b border-gray-100">
@@ -852,27 +852,51 @@ export default function PaymentsPage() {
                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Día</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 block md:table-row-group">
+              <tbody className="block space-y-4 p-3 md:space-y-0 md:p-0 md:divide-y md:divide-gray-50 md:table-row-group">
                 {dailyRows.map(r => (
-                  <tr key={r.date} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors">
-                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6 font-black text-gray-900">{toDDMMYYYY(r.date)}</td>
-                    <td className="block md:table-cell px-6 py-1 md:py-6 text-left md:text-right font-bold text-emerald-600">
-                      <span className="md:hidden text-[8px] font-black text-gray-400 uppercase mr-2">Efect:</span>
-                      {fmtCLP.format(r.cash)}
+                  <tr key={r.date} className="block w-full overflow-hidden rounded-[24px] border border-gray-100 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.06)] md:p-0 md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:table-row hover:bg-fuchsia-50/20 transition-colors">
+                    <td className="block md:table-cell px-0 md:px-8 pb-4 md:py-6 font-black text-gray-900">
+                      <div className="md:hidden flex items-center justify-between border-b border-gray-100 pb-3">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-fuchsia-600">Fecha</span>
+                        <span className="text-base font-black text-gray-950">{toDDMMYYYY(r.date)}</span>
+                      </div>
+                      <span className="hidden md:inline">{toDDMMYYYY(r.date)}</span>
                     </td>
-                    <td className="block md:table-cell px-6 py-1 md:py-6 text-left md:text-right font-bold text-sky-600">
-                      <span className="md:hidden text-[8px] font-black text-gray-400 uppercase mr-2">Tarj:</span>
-                      {fmtCLP.format(r.card)}
+                    <td className="block md:table-cell px-0 md:px-6 py-1.5 md:py-6 text-left md:text-right font-bold text-emerald-600">
+                      <div className="md:hidden flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-gray-700">Efectivo</span>
+                        <span>{fmtCLP.format(r.cash)}</span>
+                      </div>
+                      <span className="hidden md:inline">{fmtCLP.format(r.cash)}</span>
                     </td>
-                    <td className="block md:table-cell px-6 py-1 md:py-6 text-left md:text-right font-bold text-indigo-600">
-                      <span className="md:hidden text-[8px] font-black text-gray-400 uppercase mr-2">Trans:</span>
-                      {fmtCLP.format(r.transfer)}
+                    <td className="block md:table-cell px-0 md:px-6 py-1.5 md:py-6 text-left md:text-right font-bold text-sky-600">
+                      <div className="md:hidden flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-gray-700">Tarjeta</span>
+                        <span>{fmtCLP.format(r.card)}</span>
+                      </div>
+                      <span className="hidden md:inline">{fmtCLP.format(r.card)}</span>
                     </td>
-                    <td className="block md:table-cell px-6 py-1 md:py-6 text-left md:text-right font-bold text-amber-600">
-                      <span className="md:hidden text-[8px] font-black text-gray-400 uppercase mr-2">Conv:</span>
-                      {fmtCLP.format(r.agreement)}
+                    <td className="block md:table-cell px-0 md:px-6 py-1.5 md:py-6 text-left md:text-right font-bold text-indigo-600">
+                      <div className="md:hidden flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-gray-700">Transf.</span>
+                        <span>{fmtCLP.format(r.transfer)}</span>
+                      </div>
+                      <span className="hidden md:inline">{fmtCLP.format(r.transfer)}</span>
                     </td>
-                    <td className="block md:table-cell px-6 py-3 md:py-6 text-left md:text-right font-black text-gray-900 text-lg">{fmtCLP.format(r.total)}</td>
+                    <td className="block md:table-cell px-0 md:px-6 py-1.5 md:py-6 text-left md:text-right font-bold text-amber-600">
+                      <div className="md:hidden flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-gray-700">Convenio</span>
+                        <span>{fmtCLP.format(r.agreement)}</span>
+                      </div>
+                      <span className="hidden md:inline">{fmtCLP.format(r.agreement)}</span>
+                    </td>
+                    <td className="block md:table-cell px-0 md:px-8 pt-4 md:py-6 text-left md:text-right font-black text-gray-900 text-lg">
+                      <div className="md:hidden flex items-center justify-between rounded-2xl border border-fuchsia-100 bg-fuchsia-50/70 px-3 py-3">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-fuchsia-700">Total día</span>
+                        <span className="text-xl font-black text-gray-950">{fmtCLP.format(r.total)}</span>
+                      </div>
+                      <span className="hidden md:inline">{fmtCLP.format(r.total)}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -882,28 +906,37 @@ export default function PaymentsPage() {
 
         {/* Teacher Summary View */}
         {viewMode === 'resumen-profesor' && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-hidden md:overflow-x-auto">
             <table className="w-full">
-              <thead>
+              <thead className="hidden md:table-header-group">
                 <tr className="bg-gray-50/50 text-left border-b border-gray-100">
                   <th className="px-4 md:px-8 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Profesor</th>
                   <th className="px-4 md:px-6 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total Generado</th>
                   <th className="hidden md:table-cell px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Participación</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {teacherRows.map(r => (
-                  <tr key={r.name} className="hover:bg-fuchsia-50/20 transition-colors">
-                    <td className="px-4 md:px-8 py-4 md:py-6 font-black text-gray-900 text-sm md:text-base">{r.name}</td>
-                    <td className="px-4 md:px-6 py-4 md:py-6 text-right font-black text-gray-900 text-base md:text-lg">{fmtCLP.format(r.total)}</td>
-                    <td className="hidden md:table-cell px-6 py-6 text-right">
-                      <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                        <div className="bg-fuchsia-600 h-full rounded-full" style={{ width: `${(r.total / stats.total_amount) * 100}%` }} />
-                      </div>
-                      <div className="text-[10px] font-black text-fuchsia-600 mt-1">{((r.total / stats.total_amount) * 100).toFixed(1)}%</div>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="block space-y-3 p-3 md:space-y-0 md:p-0 md:divide-y md:divide-gray-50 md:table-row-group">
+                {teacherRows.map(r => {
+                  const pct = stats.total_amount ? (r.total / stats.total_amount) * 100 : 0
+                  return (
+                    <tr key={r.name} className="block w-full overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] md:p-0 md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:table-row hover:bg-fuchsia-50/20 transition-colors">
+                      <td className="block md:table-cell px-0 md:px-8 pb-3 md:py-6">
+                        <div className="md:hidden text-[8px] font-black text-gray-500 uppercase tracking-widest mb-1">Profesor</div>
+                        <div className="font-black text-fuchsia-600 md:text-gray-900 text-base md:text-base truncate">{r.name}</div>
+                      </td>
+                      <td className="block md:table-cell px-0 md:px-6 py-2 md:py-6 text-left md:text-right">
+                        <div className="md:hidden text-[8px] font-black text-gray-500 uppercase tracking-widest mb-1">Total generado</div>
+                        <div className="font-black text-gray-950 text-lg md:text-lg">{fmtCLP.format(r.total)}</div>
+                      </td>
+                      <td className="block md:table-cell px-0 md:px-6 pt-3 md:py-6 text-left md:text-right">
+                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                          <div className="bg-fuchsia-600 h-full rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <div className="text-[10px] font-black text-fuchsia-600 mt-1">{pct.toFixed(1)}%</div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

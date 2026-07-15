@@ -515,10 +515,10 @@ export default function CourseStatusPage() {
     }
   }
   return (
-    <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-20 px-4 md:px-0">
+    <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-20 px-1 md:px-0">
       {/* Header & Controls */}
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 pt-4">
-        <div className="space-y-1 text-center sm:text-left">
+        <div className="space-y-1 text-center sm:text-left px-2 md:px-0">
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Gestion Academica</span>
            <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Estado de Cursos</h1>
            <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center sm:justify-start gap-4 mt-4">
@@ -533,7 +533,7 @@ export default function CourseStatusPage() {
            </div>
         </div>
 
-        <div className="w-full xl:w-auto flex flex-col gap-3 bg-white p-3 rounded-[24px] border border-gray-100 shadow-xl shadow-gray-100/50">
+        <div className="w-full xl:w-auto flex flex-col gap-3 bg-white p-2.5 md:p-3 rounded-[24px] border border-gray-100 shadow-xl shadow-gray-100/50">
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
               <div className="relative group min-w-0">
                  <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-fuchsia-500 transition-colors" size={16} />
@@ -580,7 +580,7 @@ export default function CourseStatusPage() {
                     {courses.map((row) => (
                        <div key={row.course.id} className={`bg-white border border-gray-100 transition-all duration-500 hover:shadow-2xl hover:shadow-gray-200/50 ${viewMode === 'summary' ? 'rounded-[32px] p-6 md:p-8' : 'rounded-[32px] overflow-hidden'}`}>
                           {/* Card Header / Summary Header */}
-                          <div className={`flex flex-col gap-4 ${viewMode === 'summary' ? 'mb-6' : 'px-5 md:px-8 py-5 md:py-6 bg-gray-50/50 border-b border-gray-100'}`}>
+                          <div className={`flex flex-col gap-4 ${viewMode === 'summary' ? 'mb-6' : 'px-4 md:px-8 py-5 md:py-6 bg-gray-50/50 border-b border-gray-100'}`}>
                              <div className="flex items-center gap-4 min-w-0">
                                 <div className={`flex items-center justify-center bg-gradient-to-br from-fuchsia-600 to-purple-700 text-white font-black shadow-xl shadow-fuchsia-100 transition-transform duration-500 group-hover:scale-110 ${viewMode === 'summary' ? 'w-12 h-12 rounded-[20px] text-lg' : 'w-14 h-14 rounded-[22px] text-xl'}`}>
                                    {row.course.name[0]}
@@ -655,7 +655,7 @@ export default function CourseStatusPage() {
                           )}
                           {/* Detailed/Compact Table */}
                           {(viewMode === 'detailed' || viewMode === 'pending') && (
-                             <div className="overflow-x-auto no-scrollbar">
+                             <div className="overflow-x-auto md:overflow-visible no-scrollbar">
                                 <table className="w-full">
                                    <thead className="hidden md:table-header-group">
                                       <tr className="text-left text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/30">
@@ -666,7 +666,7 @@ export default function CourseStatusPage() {
                                          <th className="pr-12 pl-6 py-5 text-right">Contacto</th>
                                       </tr>
                                    </thead>
-                                   <tbody className="divide-y divide-gray-50 block md:table-row-group">
+                                   <tbody className="block md:table-row-group space-y-3 md:space-y-0 px-2 pb-4 md:px-0 md:pb-0 md:divide-y md:divide-gray-50">
                                        {row.students.map((s) => {
                                           const isPaid = isPaidStatus(s.payment_status)
                                           const isInactive = isInactiveStatus(s.payment_status)
@@ -674,8 +674,8 @@ export default function CourseStatusPage() {
                                           const progress = s.expected_count && s.expected_count > 0 ? Math.min(100, (s.attendance_count || 0) / s.expected_count * 100) : 0
 
                                           return (
-                                            <tr key={s.id} className="block md:table-row hover:bg-gray-50/80 transition-all group">
-                                               <td className="block md:table-cell pl-8 md:pl-12 pr-6 py-6">
+                                            <tr key={s.id} className="block md:table-row rounded-[26px] md:rounded-none border border-gray-100 md:border-0 bg-white md:bg-transparent shadow-sm md:shadow-none overflow-hidden hover:bg-white md:hover:bg-gray-50/80 transition-all group">
+                                               <td className="block md:table-cell px-4 md:pl-12 md:pr-6 pt-5 pb-3 md:py-6">
                                                   <div className="flex items-center gap-4">
                                                      <div className="w-12 h-12 rounded-2xl bg-fuchsia-50 overflow-hidden flex items-center justify-center text-fuchsia-600 font-black shrink-0 border border-fuchsia-100 shadow-sm">
                                                         {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
@@ -689,7 +689,7 @@ export default function CourseStatusPage() {
                                                        </div>
                                                       </div>
                                                 </td>
-                                               <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6">
+                                               <td className="block md:table-cell px-4 md:px-6 py-3 md:py-6">
                                                   <div className="w-full md:w-32 max-w-[220px] md:max-w-none mx-auto">
                                                      <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase mb-2">
                                                         <span className="md:hidden">Asistencia: </span>
@@ -708,7 +708,7 @@ export default function CourseStatusPage() {
                                                      )}
                                                   </div>
                                                </td>
-                                               <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6 text-left md:text-center">
+                                               <td className="block md:table-cell px-4 md:px-6 py-3 md:py-6 text-left md:text-center">
                                                    <span className="md:hidden text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">Cobro</span>
                                                    <div className="inline-flex flex-col items-start md:items-center gap-1.5">
                                                       <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${isSingleClass ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-sky-50 text-sky-700 border-sky-100'}`}>
@@ -722,7 +722,7 @@ export default function CourseStatusPage() {
                                                       </span>
                                                    </div>
                                                </td>
-                                               <td className="block md:table-cell px-8 md:px-6 py-4 md:py-6 text-left md:text-center">
+                                               <td className="block md:table-cell px-4 md:px-6 py-3 md:py-6 text-left md:text-center">
                                                    <span className="md:hidden text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">Estado de Pago</span>
                                                    {isPaid ? (
                                                      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-100">
@@ -753,20 +753,21 @@ export default function CourseStatusPage() {
                                                      </button>
                                                    )}
                                                </td>
-                                               <td className="block md:table-cell pr-8 md:pr-12 pl-8 py-4 md:py-6 text-right">
+                                               <td className="block md:table-cell px-4 md:pr-12 md:pl-8 pt-3 pb-5 md:py-6 text-right">
                                                   <div className="flex items-center justify-start md:justify-end gap-3">
                                                       <button
                                                         onClick={() => handleWhatsAppTest(s.id, row.course.id)}
                                                         disabled={!!waTestLoadingByStudent[waKey(row.course.id, s.id)]}
-                                                        className="flex items-center justify-center px-3 py-3 md:p-3 rounded-2xl transition-all w-12 md:w-12 md:flex-none border bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-100 disabled:opacity-60 shrink-0"
+                                                        className="flex items-center justify-center gap-2 px-5 py-3 md:p-3 rounded-2xl transition-all flex-1 md:flex-none md:w-12 border bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-100 disabled:opacity-60"
                                                         title="Enviar WhatsApp"
                                                       >
                                                         <HiOutlinePhone size={18} />
+                                                        <span className="md:hidden text-[10px] font-black uppercase tracking-widest">WhatsApp</span>
                                                       </button>
                                                       {waTestResultByStudent[waKey(row.course.id, s.id)]?.message && (
                                                         <span className={`hidden md:inline text-[10px] font-bold ${waStatusColorClass(waTestResultByStudent[waKey(row.course.id, s.id)]?.message)}`}>{waTestResultByStudent[waKey(row.course.id, s.id)].message}</span>
                                                       )}
-                                                     <button onClick={() => navigate(`/students/${s.id}`)} className="flex items-center justify-center gap-3 px-5 py-3 md:p-3 bg-gray-50 text-gray-400 border border-gray-100 hover:text-fuchsia-600 hover:bg-white hover:border-fuchsia-100 hover:shadow-lg hover:shadow-fuchsia-100 rounded-2xl transition-all flex-1 md:flex-none">
+                                                     <button onClick={() => navigate(`/students/${s.id}`)} className="flex items-center justify-center gap-3 px-4 py-3 md:p-3 bg-gray-50 text-gray-400 border border-gray-100 hover:text-fuchsia-600 hover:bg-white hover:border-fuchsia-100 hover:shadow-lg hover:shadow-fuchsia-100 rounded-2xl transition-all w-14 md:w-auto md:flex-none shrink-0">
                                                        <HiOutlineChevronRight size={18} />
                                                      </button>
                                                   </div>

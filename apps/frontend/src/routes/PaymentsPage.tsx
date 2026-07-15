@@ -112,6 +112,7 @@ export default function PaymentsPage() {
   const { tenantId } = useTenant()
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<Payment[]>([])
+  const [summaryData, setSummaryData] = useState<Payment[]>([])
   const [courses, setCourses] = useState<Record<number, CourseRef>>({})
   const [students, setStudents] = useState<Record<number, StudentRef>>({})
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
@@ -200,7 +201,38 @@ export default function PaymentsPage() {
     }
   }
 
+  const loadSummaryData = async () => {
+    try {
+      const all: Payment[] = []
+      let offset = 0
+      const limit = 1000
+
+      while (true) {
+        const params: any = {
+          limit,
+          offset,
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined,
+          q: q || undefined,
+          method: fMethod || undefined,
+          type: fType || undefined,
+          date_sort: dateSort,
+        }
+        const res = await api.get('/api/pms/payments', { params })
+        const chunk: Payment[] = res.data?.items || []
+        all.push(...chunk)
+        if (chunk.length < limit) break
+        offset += limit
+      }
+
+      setSummaryData(all)
+    } catch {
+      setSummaryData([])
+    }
+  }
+
   useEffect(() => { load() }, [tenantId, page, pageSize, dateFrom, dateTo, fMethod, fType, dateSort, reloadKey])
+  useEffect(() => { loadSummaryData() }, [tenantId, dateFrom, dateTo, q, fMethod, fType, dateSort, reloadKey])
 
   // Debounced Search
   useEffect(() => {
@@ -486,9 +518,11 @@ export default function PaymentsPage() {
   // Pero para mantener la rapidez solicitada, usaremos lo que hay en 'data' o sugeriremos usar el Excel para el total real si hay mucha data.
   // Sin embargo, para que se vea Pro, calcularemos lo posible con los datos cargados.)
 
+  const summaryRowsData = summaryData.length ? summaryData : visibleData
+
   const dailyRows = useMemo(() => {
     const map: Record<string, any> = {}
-    visibleData.forEach(p => {
+    summaryRowsData.forEach(p => {
       const d = p.payment_date
       if (!map[d]) map[d] = { date: d, cash: 0, card: 0, transfer: 0, agreement: 0, total: 0 }
 
@@ -503,11 +537,11 @@ export default function PaymentsPage() {
       map[d].total += amt
     })
     return Object.values(map).sort((a, b) => b.date.localeCompare(a.date))
-  }, [visibleData])
+  }, [summaryRowsData])
 
   const teacherRows = useMemo(() => {
     const map: Record<string, any> = {}
-    visibleData.forEach(p => {
+    summaryRowsData.forEach(p => {
       const name =
         (p.type || '').toLowerCase() === 'registration'
           ? 'Matrícula'
@@ -524,7 +558,7 @@ export default function PaymentsPage() {
       map[name].total += amt
     })
     return Object.values(map).sort((a, b) => b.total - a.total)
-  }, [visibleData, courses])
+  }, [summaryRowsData, courses])
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20 px-1 sm:px-0">

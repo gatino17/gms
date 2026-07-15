@@ -116,13 +116,13 @@ export default function CalendarPage() {
            <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Calendario</h1>
            <p className="text-gray-500 font-medium text-xs md:text-sm">Distribución horaria y salas.</p>
         </div>
-        <div className="flex w-full max-w-sm sm:w-auto sm:max-w-none px-4 py-2.5 md:px-6 md:py-3 bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 items-center justify-center sm:justify-start gap-3 mx-2 sm:mx-0">
-           <div className="p-2 md:p-2.5 bg-fuchsia-50 text-fuchsia-600 rounded-lg md:rounded-xl shrink-0">
+        <div className="flex w-full max-w-sm sm:w-auto sm:max-w-none px-4 py-2.5 md:px-6 md:py-3 bg-[linear-gradient(135deg,#c026d3_0%,#86198f_58%,#581c87_100%)] rounded-xl md:rounded-2xl shadow-[0_10px_22px_rgba(88,28,135,0.18)] border border-gray-700 items-center justify-center sm:justify-start gap-3 mx-2 sm:mx-0">
+           <div className="p-2 md:p-2.5 bg-white/15 text-white rounded-lg md:rounded-xl shrink-0 border border-white/20">
               <HiOutlineCalendar size={18} />
            </div>
            <div>
-              <div className="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest">Mes Actual</div>
-              <div className="text-sm md:text-base font-black text-gray-900 uppercase">{new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}</div>
+              <div className="text-[8px] md:text-[9px] font-black text-white/70 uppercase tracking-widest">Mes Actual</div>
+              <div className="text-sm md:text-base font-black text-white uppercase">{new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}</div>
            </div>
         </div>
       </div>
@@ -133,7 +133,7 @@ export default function CalendarPage() {
             <button 
               key={i} 
               onClick={() => setSelectedDay(i)}
-              className={`min-w-0 py-2 rounded-xl transition-all flex flex-col items-center gap-0.5 ${selectedDay === i ? 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-100' : 'text-gray-400 hover:bg-gray-50'}`}
+              className={`min-w-0 py-2 rounded-xl transition-all flex flex-col items-center gap-0.5 ${selectedDay === i ? 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-100' : 'text-gray-800 hover:bg-gray-50'}`}
             >
                <span className="text-[7px] font-black uppercase tracking-widest">{d.slice(0,3)}</span>
                <span className="text-[13px] font-black leading-none">{i + 1}</span>
@@ -153,11 +153,11 @@ export default function CalendarPage() {
               {/* Header Days */}
               <div className="grid border-b border-gray-100 bg-gray-50/50 sticky top-0 z-20 backdrop-blur-xl grid-cols-[60px_1fr] md:grid-cols-[80px_repeat(7,1fr)]">
                 <div className="p-3 md:p-4 flex items-center justify-center border-r border-gray-100">
-                  <HiOutlineClock className="text-gray-300" size={20} />
+                  <HiOutlineClock className="text-fuchsia-600" size={20} />
                 </div>
                 {DAY_NAMES.map((d, i) => (
                   <div key={i} className={`p-3 md:p-6 text-center border-r border-gray-100 last:border-0 ${selectedDay !== i ? 'hidden md:block' : 'block'}`}>
-                    <div className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">{d}</div>
+                    <div className="text-[8px] md:text-[10px] font-black text-gray-800 uppercase tracking-[0.2em] mb-1">{d}</div>
                     <div className={`h-1 w-6 md:h-1.5 md:w-12 mx-auto rounded-full bg-fuchsia-600 opacity-20`} />
                   </div>
                 ))}
@@ -169,7 +169,7 @@ export default function CalendarPage() {
                   <div key={h} className="grid group grid-cols-[60px_1fr] md:grid-cols-[80px_repeat(7,1fr)]">
                     {/* Time Column */}
                     <div className="p-2 md:p-3 flex items-start justify-center border-r border-gray-100 bg-gray-50/20 group-hover:bg-fuchsia-50/30 transition-colors">
-                      <span className="mt-1 md:mt-2 px-1.5 py-1 md:px-2.5 md:py-1 bg-white rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black text-gray-500 shadow-sm border border-gray-100">
+                      <span className="mt-1 md:mt-2 px-1.5 py-1 md:px-2.5 md:py-1 bg-fuchsia-50 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black text-fuchsia-700 shadow-sm border border-fuchsia-100">
                         {String(h).padStart(2, '0')}:00
                       </span>
                     </div>

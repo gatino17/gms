@@ -120,7 +120,7 @@ export default function SettingsPage() {
       })()
       if (resolvedTenantId == null) {
         setLoading(false)
-        setError('Selecciona un tenant para cargar la configuraciÃ³n.')
+        setError('Selecciona un tenant para cargar la configuración.')
         return
       }
       setLoading(true)
@@ -144,7 +144,7 @@ export default function SettingsPage() {
         }
         await loadRooms(resolvedTenantId)
       } catch (e: any) {
-        setError(e?.message || 'No se pudo cargar la configuraciÃ³n.')
+        setError(e?.message || 'No se pudo cargar la configuración.')
       } finally {
         setLoading(false)
       }
@@ -274,7 +274,7 @@ export default function SettingsPage() {
 
   const handleSavePin = async () => {
     if (settings.attendance_pin && settings.attendance_pin.length !== 4) {
-      alert('El PIN debe tener exactamente 4 dÃ­gitos.')
+      alert('El PIN debe tener exactamente 4 dígitos.')
       return
     }
     await saveGlobalSettings({ attendance_pin: settings.attendance_pin })
@@ -292,7 +292,7 @@ export default function SettingsPage() {
       enrollment_fee_kind: settings.enrollment_fee_kind || 'incorporation',
       enrollment_fee_renewal: settings.enrollment_fee_renewal || 'never',
     })
-    alert('ConfiguraciÃ³n de matrÃ­cula actualizada correctamente.')
+    alert('Configuración de matrícula actualizada correctamente.')
   }
 
   if (loading) {
@@ -307,23 +307,23 @@ export default function SettingsPage() {
   const logoSrc = toAbsoluteUrl(settings.logo_url)
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 pb-20 animate-in fade-in duration-700 px-3 md:px-0">
+    <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 pb-20 animate-in fade-in duration-700 px-1 md:px-0">
       {/* Header */}
       <div className="space-y-2 px-1 md:px-0">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">ConfiguraciÃ³n</span>
+          <span className="text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Configuración</span>
           <div className="h-1 w-1 rounded-full bg-gray-300" />
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Panel de Control</span>
         </div>
         <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Ajustes del Estudio</h1>
-        <p className="text-sm md:text-base text-gray-500 font-medium">Gestiona la identidad de tu academia y la infraestructura fÃ­sica.</p>
+        <p className="text-sm md:text-base text-gray-500 font-medium">Gestiona la identidad de tu academia y la infraestructura física.</p>
       </div>
 
       {/* Profile Card */}
       <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm overflow-hidden relative group">
         <div className="absolute top-0 right-0 w-64 h-64 bg-fuchsia-500/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-fuchsia-500/10 transition-all duration-700" />
         
-        <div className="p-6 md:p-10 relative flex flex-col md:flex-row gap-6 md:gap-10 items-center">
+        <div className="p-4 md:p-10 relative flex flex-col md:flex-row gap-6 md:gap-10 items-center">
           <div className="relative group/logo">
              <div className="h-28 w-28 md:h-40 md:w-40 rounded-[28px] md:rounded-[40px] bg-gray-50 border-4 border-white shadow-2xl flex items-center justify-center overflow-hidden transition-transform duration-500 group-hover/logo:scale-105">
                 {logoSrc ? (
@@ -340,7 +340,7 @@ export default function SettingsPage() {
           <div className="flex-1 space-y-4 md:space-y-6 text-center md:text-left">
             <div>
               <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{settings.name || 'Estudio sin nombre'}</h2>
-              <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mt-1">{settings.city || 'Ciudad'}, {settings.country || 'PaÃ­s'}</p>
+              <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mt-1">{settings.city || 'Ciudad'}, {settings.country || 'País'}</p>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 md:gap-3 justify-center md:justify-start w-full">
@@ -368,7 +368,7 @@ export default function SettingsPage() {
             
             <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-gray-50/50 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-gray-100 group-hover:bg-white transition-colors">
-                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">DirecciÃ³n FÃ­sica</div>
+                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Dirección Física</div>
                  <div className="text-sm font-black text-gray-700 flex items-center gap-2">
                    <HiOutlineLocationMarker className="text-fuchsia-400" /> {settings.address || '--'}
                  </div>
@@ -385,18 +385,18 @@ export default function SettingsPage() {
       </div>
 
       {/* Communication Card */}
-      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-4 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
              <HiOutlineChatAlt2 className="text-2xl" />
           </div>
           <div>
             <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Mensaje WhatsApp</h2>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">MensajerÃ­a AutomÃ¡tica</p>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Mensajería Automática</p>
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
+        <div className="bg-gray-50/50 p-4 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between px-1 md:px-2 gap-2">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vista previa del mensaje aprobado</span>
             <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Referencial</span>
@@ -425,7 +425,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Global Config Section (Currency + Region) */}
-      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-4 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
              <HiOutlineCog className="text-2xl" />
@@ -436,7 +436,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
+        <div className="bg-gray-50/50 p-4 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8 items-end">
               <div className="space-y-3">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">País / Región</label>
@@ -478,7 +478,7 @@ export default function SettingsPage() {
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
-              <div className="p-5 bg-white rounded-2xl border border-gray-100 flex items-center gap-4">
+              <div className="p-4 md:p-5 bg-white rounded-2xl border border-gray-100 flex items-center gap-4">
                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-black text-sm">
                     {settings.phone_prefix || regionPreset.prefix}
                  </div>
@@ -487,7 +487,7 @@ export default function SettingsPage() {
                     <p className="text-sm font-black text-gray-700">Se usará como referencia para alumnos y WhatsApp.</p>
                  </div>
               </div>
-              <div className="p-5 bg-white rounded-2xl border border-gray-100 flex items-center gap-4">
+              <div className="p-4 md:p-5 bg-white rounded-2xl border border-gray-100 flex items-center gap-4">
                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-black text-lg">
                     {settings.currency === 'USD' ? 'US$' : settings.currency === 'EUR' ? '€' : settings.currency === 'PEN' ? 'S/' : '$'}
                  </div>
@@ -516,18 +516,18 @@ export default function SettingsPage() {
         </div>
       </div>
       {/* Enrollment Fee Section */}
-      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-4 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
              <HiOutlineCog className="text-2xl" />
           </div>
           <div>
-            <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">MatrÃ­cula</h2>
+            <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Matrícula</h2>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Reglas de cobro inicial</p>
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
+        <div className="bg-gray-50/50 p-4 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
           <label className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100">
             <input
               type="checkbox"
@@ -536,14 +536,14 @@ export default function SettingsPage() {
               className="h-5 w-5 accent-rose-600"
             />
             <div>
-              <div className="text-sm font-black text-gray-800">Cobrar matrÃ­cula</div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Activa cobro adicional en inscripciÃ³n inicial</div>
+              <div className="text-sm font-black text-gray-800">Cobrar matrícula</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Activa cobro adicional en inscripción inicial</div>
             </div>
           </label>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2 px-1 md:px-0">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Monto matrÃ­cula</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Monto matrícula</label>
               <input
                 type="number"
                 min="0"
@@ -568,19 +568,19 @@ export default function SettingsPage() {
               </select>
             </div>
             <div className="space-y-2 px-1 md:px-0">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de matrÃ­cula</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de matrícula</label>
               <select
                 value={settings.enrollment_fee_kind || 'incorporation'}
                 onChange={(e) => setSettings(s => ({ ...s, enrollment_fee_kind: e.target.value as 'incorporation' | 'annual' }))}
                 className="w-full px-6 py-4 bg-white border-2 border-transparent focus:border-rose-100 rounded-2xl font-bold text-gray-700 outline-none transition-all shadow-sm appearance-none"
                 disabled={!settings.enrollment_fee_enabled}
               >
-                <option value="incorporation">IncorporaciÃ³n</option>
+                <option value="incorporation">Incorporación</option>
                 <option value="annual">Anual</option>
               </select>
             </div>
             <div className="space-y-2 px-1 md:px-0">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">RenovaciÃ³n de matrÃ­cula</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Renovación de matrícula</label>
               <select
                 value={settings.enrollment_fee_renewal || 'never'}
                 onChange={(e) => setSettings(s => ({ ...s, enrollment_fee_renewal: e.target.value as 'never' | 'yearly' }))}
@@ -588,7 +588,7 @@ export default function SettingsPage() {
                 disabled={!settings.enrollment_fee_enabled}
               >
                 <option value="never">Por siempre (una sola vez)</option>
-                <option value="yearly">RenovaciÃ³n anual</option>
+                <option value="yearly">Renovación anual</option>
               </select>
             </div>
           </div>
@@ -602,8 +602,8 @@ export default function SettingsPage() {
               disabled={!settings.enrollment_fee_enabled}
             />
             <div>
-              <div className="text-sm font-black text-gray-800">Permitir omitir matrÃ­cula al cobrar</div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ãštil para becas, promociones o excepciÃ³n administrativa</div>
+              <div className="text-sm font-black text-gray-800">Permitir omitir matrícula al cobrar</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Útil para becas, promociones o excepción administrativa</div>
             </div>
           </label>
 
@@ -613,13 +613,13 @@ export default function SettingsPage() {
               disabled={isSavingMsg}
               className="px-8 py-3.5 bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50"
             >
-              Guardar MatrÃ­cula
+              Guardar Matrícula
             </button>
           </div>
         </div>
       </div>
       {/* Social Media Section */}
-      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-4 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center">
              <HiOutlineSparkles className="text-2xl" />
@@ -630,7 +630,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-8">
+        <div className="bg-gray-50/50 p-4 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-8">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
               <div className="space-y-2 px-1 md:px-0">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Instagram (@usuario)</label>
@@ -682,7 +682,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Attendance Mode Section */}
-      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-8">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-4 md:p-10 space-y-6 md:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
              <HiOutlineUserGroup className="text-2xl" />
@@ -693,10 +693,10 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-gray-50/50 p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
+        <div className="bg-gray-50/50 p-4 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-100 space-y-5 md:space-y-6">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8 items-end">
               <div className="space-y-3">
-                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">PIN de Seguridad (4 dÃ­gitos)</label>
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">PIN de Seguridad (4 dígitos)</label>
                  <input 
                     type="password"
                     maxLength={4}
@@ -722,13 +722,13 @@ export default function SettingsPage() {
            
            <div className="px-4 py-3 bg-white rounded-xl border border-gray-100 shadow-sm mt-4">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
-                ðŸ’¡ Este PIN se utilizarÃ¡ para salir de la pantalla de auto-asistencia y evitar que los alumnos ingresen a tu panel de administraciÃ³n. Si olvidas el PIN, puedes usar tu contraseÃ±a de administrador como respaldo.
+                Nota: Este PIN se utilizará para salir de la pantalla de auto-asistencia y evitar que los alumnos ingresen a tu panel de administración. Si olvidas el PIN, puedes usar tu contraseña de administrador como respaldo.
               </p>
            </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-6 md:p-10 space-y-6 md:space-y-10">
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-4 md:p-10 space-y-6 md:space-y-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -736,7 +736,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Infraestructura</h2>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">GestiÃ³n de Salas y Espacios</p>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Gestión de Salas y Espacios</p>
             </div>
           </div>
           <button
@@ -760,7 +760,7 @@ export default function SettingsPage() {
              />
           </div>
           <div className="space-y-2 px-1 md:px-0">
-             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">UbicaciÃ³n / Piso</label>
+             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Ubicación / Piso</label>
              <input
                className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl font-bold text-gray-700 outline-none transition-all"
                placeholder="Ej: Segundo Piso"
@@ -769,7 +769,7 @@ export default function SettingsPage() {
              />
           </div>
           <div className="space-y-2 px-1 md:px-0">
-             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Capacidad MÃ¡xima</label>
+             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Capacidad Máxima</label>
              <input
                className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl font-bold text-gray-700 outline-none transition-all"
                placeholder="Ej: 15"
@@ -792,7 +792,7 @@ export default function SettingsPage() {
                 <p className="text-xs font-black text-gray-300 uppercase tracking-[0.2em]">No hay salas registradas</p>
              </div>
           ) : rooms.map((r) => (
-            <div key={r.id} className="bg-gray-50/50 border border-gray-100 rounded-3xl p-6 hover:bg-white hover:shadow-xl hover:border-emerald-100 transition-all group">
+            <div key={r.id} className="bg-gray-50/50 border border-gray-100 rounded-3xl p-4 md:p-6 hover:bg-white hover:shadow-xl hover:border-emerald-100 transition-all group">
                <div className="flex items-start justify-between mb-4">
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-black">
                      {r.name[0]}
@@ -808,7 +808,7 @@ export default function SettingsPage() {
                  <div className="text-lg font-black text-gray-900 group-hover:text-emerald-600 transition-colors">{r.name}</div>
                  <div className="flex flex-col gap-1 mt-2">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                       <HiOutlineLocationMarker /> {r.location || 'Sin ubicaciÃ³n'}
+                       <HiOutlineLocationMarker /> {r.location || 'Sin ubicación'}
                     </div>
                     <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                        <HiOutlineUserGroup /> {r.capacity || 'Capacidad libre'} cupos

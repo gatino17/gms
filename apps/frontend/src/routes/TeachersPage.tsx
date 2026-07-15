@@ -164,14 +164,14 @@ export default function TeachersPage() {
       </div>
 
       {/* Table Content */}
-      <div className="bg-white md:rounded-[40px] shadow-sm border-y md:border border-gray-100 overflow-hidden mx-0 md:mx-4">
+      <div className="bg-white rounded-[28px] md:rounded-[40px] shadow-sm border border-gray-100 overflow-hidden mx-1 md:mx-4">
         {loading ? (
           <div className="flex flex-col items-center py-20 gap-4">
              <div className="w-12 h-12 border-4 border-fuchsia-100 border-t-fuchsia-600 rounded-full animate-spin" />
              <span className="font-bold text-fuchsia-600/60 uppercase tracking-widest text-xs">Sincronizando...</span>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-hidden md:overflow-x-auto">
             <table className="w-full">
               <thead className="hidden md:table-header-group">
                 <tr className="bg-gray-50/50 text-left border-b border-gray-100">
@@ -182,10 +182,10 @@ export default function TeachersPage() {
                   <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 block md:table-row-group">
+              <tbody className="block space-y-3 p-3 md:space-y-0 md:p-0 md:divide-y md:divide-gray-50 md:table-row-group">
                 {data.map((t) => (
-                  <tr key={t.id} className="block md:table-row hover:bg-fuchsia-50/20 transition-colors group">
-                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6">
+                  <tr key={t.id} className="block w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)] md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:table-row hover:bg-fuchsia-50/20 transition-colors group">
+                    <td className="block md:table-cell px-4 md:px-8 py-4 md:py-6">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white flex items-center justify-center font-black overflow-hidden border-2 border-white shadow-sm shrink-0">
                           {t.photo_url ? <img src={toAbsoluteUrl(t.photo_url)} className="w-full h-full object-cover" /> : initials(t.name)}
@@ -196,7 +196,7 @@ export default function TeachersPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="block md:table-cell px-6 py-2 md:py-6">
+                    <td className="block md:table-cell px-4 md:px-6 py-2 md:py-6">
                       <div className="flex flex-col sm:flex-row md:flex-col gap-2 md:gap-1">
                         <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
                           <HiOutlineMail className="text-fuchsia-400 shrink-0" /> <span className="truncate max-w-[200px]">{t.email || '-'}</span>
@@ -206,7 +206,7 @@ export default function TeachersPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="block md:table-cell px-6 py-3 md:py-6">
+                    <td className="block md:table-cell px-4 md:px-6 py-3 md:py-6">
                       <div className="flex flex-wrap gap-1.5">
                         {stylesToChips(t.styles).map((chip, idx) => (
                           <span key={idx} className="px-2 md:px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest bg-fuchsia-50 text-fuchsia-600 border border-fuchsia-100">
@@ -219,8 +219,8 @@ export default function TeachersPage() {
                     <td className="hidden md:table-cell px-6 py-6 text-center font-bold text-sm text-gray-500">
                       {t.join_date ? new Date(t.join_date).toLocaleDateString('es-CL') : '-'}
                     </td>
-                    <td className="block md:table-cell px-6 md:px-8 py-4 md:py-6 text-left md:text-right">
-                      <div className="flex items-center justify-start md:justify-end gap-2">
+                    <td className="block md:table-cell px-4 md:px-8 py-4 md:py-6 text-left md:text-right">
+                      <div className="flex items-center justify-start md:justify-end gap-2 pt-2 border-t border-gray-50 md:border-0 md:pt-0">
                         <button
                           onClick={() => { setSelectedTeacher(t); setShowEdit(true) }}
                           className="flex-1 md:flex-none p-3 bg-fuchsia-50 text-fuchsia-600 rounded-xl hover:bg-fuchsia-100 transition-all flex items-center justify-center gap-2"

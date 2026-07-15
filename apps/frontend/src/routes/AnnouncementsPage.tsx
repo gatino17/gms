@@ -82,9 +82,9 @@ export default function AnnouncementsPage() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 px-4 md:px-0">
+      <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 px-1 md:px-0">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4 md:px-0 pt-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-2 md:px-0 pt-4">
           <div className="space-y-1 text-center sm:text-left">
              <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Comunicación</span>
              <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Anuncios</h1>
@@ -100,7 +100,7 @@ export default function AnnouncementsPage() {
         </div>
 
         {error && (
-          <div className="mx-4 md:mx-0 p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-bold flex items-center gap-2">
+          <div className="mx-2 md:mx-0 p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-bold flex items-center gap-2">
              <HiOutlineX size={14} className="cursor-pointer" onClick={() => setError(null)} />
              {error}
           </div>
@@ -112,7 +112,7 @@ export default function AnnouncementsPage() {
              <span className="font-bold text-fuchsia-600/60 uppercase tracking-widest text-xs">Sincronizando tablero...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 md:px-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 px-1 md:px-0">
             {items.map((a) => (
               <div key={a.id} className="group bg-white rounded-2xl md:rounded-[28px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col">
                  <div className="relative h-32 md:h-36 bg-gray-50 cursor-pointer overflow-hidden" onClick={() => a.image_url && setPreviewImage(toAbsoluteUrl(a.image_url) ?? null)}>
@@ -131,12 +131,12 @@ export default function AnnouncementsPage() {
                     </div>
                  </div>
 
-                 <div className="p-5 md:p-6 space-y-3 flex-1 flex flex-col">
+                 <div className="p-4 md:p-6 space-y-3 flex-1 flex flex-col">
                     <h3 className="text-base md:text-lg font-black text-gray-900 leading-tight line-clamp-2">{a.title}</h3>
                     <p className="text-[11px] md:text-xs text-gray-500 font-medium line-clamp-3 flex-1">{a.body}</p>
                     
                     <div className="pt-3 md:pt-4 border-t border-gray-50 space-y-3">
-                       <div className="flex items-center gap-2 text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100">
+                       <div className="flex items-center gap-2 text-[8px] md:text-[9px] font-black text-gray-800 uppercase tracking-widest bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100">
                           <HiOutlineCalendar size={12} className="text-fuchsia-400" />
                           {fmtDisplayDate(a.start_date)} - {fmtDisplayDate(a.end_date)}
                        </div>

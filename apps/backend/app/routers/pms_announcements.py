@@ -74,6 +74,7 @@ async def create_announcement(
         title=payload.title,
         subtitle=payload.subtitle,
         body=payload.body,
+        announcement_type=payload.announcement_type or "important",
         start_date=payload.start_date,
         end_date=payload.end_date,
         image_url=payload.image_url,
@@ -132,7 +133,7 @@ async def update_announcement(
     if not obj:
         raise HTTPException(status_code=404, detail="Anuncio no encontrado")
 
-    for field, value in payload.dict().items():
+    for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(obj, field, value)
     obj.updated_at = datetime.utcnow()
     await db.commit()

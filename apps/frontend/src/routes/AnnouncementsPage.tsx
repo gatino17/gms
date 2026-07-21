@@ -14,6 +14,7 @@ type Announcement = {
   title: string
   subtitle?: string
   body?: string
+  announcement_type?: string
   start_date?: string
   end_date?: string
   image_url?: string
@@ -21,6 +22,18 @@ type Announcement = {
   is_active?: boolean
   created_at?: string
 }
+
+const ANNOUNCEMENT_TYPES = [
+  { value: 'important', label: 'Aviso importante', badge: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100' },
+  { value: 'promotion', label: 'Promocion', badge: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+  { value: 'event', label: 'Evento', badge: 'bg-blue-50 text-blue-700 border-blue-100' },
+  { value: 'schedule', label: 'Cambio de horario', badge: 'bg-amber-50 text-amber-700 border-amber-100' },
+  { value: 'payment', label: 'Recordatorio de pago', badge: 'bg-purple-50 text-purple-700 border-purple-100' },
+  { value: 'holiday', label: 'Feriado', badge: 'bg-rose-50 text-rose-700 border-rose-100' },
+]
+
+const announcementType = (value?: string) =>
+  ANNOUNCEMENT_TYPES.find((item) => item.value === value) || ANNOUNCEMENT_TYPES[0]
 
 export default function AnnouncementsPage() {
   const [items, setItems] = useState<Announcement[]>([])
@@ -52,7 +65,10 @@ export default function AnnouncementsPage() {
     if (!draft.title) return
     setError(null)
     try {
-      const res = await api.post<Announcement>("/api/pms/announcements", draft)
+      const res = await api.post<Announcement>("/api/pms/announcements", {
+        announcement_type: 'important',
+        ...draft,
+      })
       setItems(prev => [res.data, ...prev].slice(0, MAX_ITEMS))
       setDraft({})
       setShowModal(false)
@@ -132,6 +148,9 @@ export default function AnnouncementsPage() {
                  </div>
 
                  <div className="p-4 md:p-6 space-y-3 flex-1 flex flex-col">
+                    <span className={`w-fit rounded-full border px-2.5 py-1 text-[8px] md:text-[9px] font-black uppercase tracking-widest ${announcementType(a.announcement_type).badge}`}>
+                      {announcementType(a.announcement_type).label}
+                    </span>
                     <h3 className="text-base md:text-lg font-black text-gray-900 leading-tight line-clamp-2">{a.title}</h3>
                     <p className="text-[11px] md:text-xs text-gray-500 font-medium line-clamp-3 flex-1">{a.body}</p>
                     
@@ -170,6 +189,18 @@ export default function AnnouncementsPage() {
 
               <div className="p-5 md:p-6 space-y-5 overflow-y-auto flex-1 min-h-0 custom-scrollbar bg-gray-50/30">
                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                       <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">Tipo de aviso</label>
+                       <select
+                         className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 py-2.5 rounded-xl font-bold text-sm text-gray-700 outline-none transition-all shadow-sm"
+                         value={draft.announcement_type || 'important'}
+                         onChange={e=>setDraft({...draft, announcement_type:e.target.value})}
+                       >
+                         {ANNOUNCEMENT_TYPES.map((type) => (
+                           <option key={type.value} value={type.value}>{type.label}</option>
+                         ))}
+                       </select>
+                    </div>
                     <div className="space-y-1.5">
                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">Título</label>
                        <input className="w-full bg-white border-2 border-transparent focus:border-fuchsia-200 px-4 py-2.5 rounded-xl font-bold text-sm text-gray-700 outline-none transition-all shadow-sm" value={draft.title || ''} onChange={e=>setDraft({...draft, title:e.target.value})} placeholder="Ej: Nueva Temporada 2026" />

@@ -7,6 +7,7 @@ interface User {
   email: string
   full_name?: string
   is_superuser?: boolean
+  role?: string
   tenant_id?: number
 }
 
@@ -117,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: userInfo?.email || user?.email || '',
       full_name: userInfo?.full_name ?? user?.full_name,
       is_superuser: isSuper,
+      role: userInfo?.role || user?.role || 'admin',
       tenant_id: userInfo?.tenant_id ?? user?.tenant_id,
     }
     setUser(nextUser)

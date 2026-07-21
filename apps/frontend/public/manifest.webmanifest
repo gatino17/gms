@@ -1,0 +1,24 @@
+{
+  "name": "GMS Mobile",
+  "short_name": "GMS",
+  "description": "Portal mobile para alumnos y profesores.",
+  "start_url": "/mobile",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#090912",
+  "theme_color": "#c026d3",
+  "icons": [
+    {
+      "src": "/gms-soluciones-digitales.jpg",
+      "sizes": "640x640",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Logo_gms.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon",
+      "purpose": "any"
+    }
+  ]
+}

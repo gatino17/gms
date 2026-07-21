@@ -20,6 +20,15 @@ import { RequireSuperuser } from './components/RequireSuperuser'
 import { LoginPage } from './routes/LoginPage'
 import AttendanceKioskPage from './routes/AttendanceKioskPage'
 import LandingPage from './routes/LandingPage'
+import MobileLayout from './mobile/MobileLayout'
+import { MobileIndexRedirect, MobileRequireSession } from './mobile/MobileApp'
+import MobileLogin from './mobile/routes/MobileLogin'
+import MobileHome from './mobile/routes/MobileHome'
+import StudentPortal from './mobile/routes/StudentPortal'
+import TeacherPortal from './mobile/routes/TeacherPortal'
+import MobileAnnouncements from './mobile/routes/MobileAnnouncements'
+import MobilePayments from './mobile/routes/MobilePayments'
+import StaffLogin from './mobile/routes/StaffLogin'
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +38,41 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/mobile',
+    element: <MobileIndexRedirect />,
+  },
+  {
+    path: '/mobile/login',
+    element: <MobileLogin />,
+  },
+  {
+    path: '/mobile/:studioSlug',
+    element: <MobileLogin />,
+  },
+  {
+    path: '/mobile/staff',
+    element: <StaffLogin />,
+  },
+  {
+    path: '/mobile/staff/:studioSlug',
+    element: <StaffLogin />,
+  },
+  {
+    element: <MobileRequireSession />,
+    children: [
+      {
+        element: <MobileLayout />,
+        children: [
+          { path: '/mobile/home', element: <MobileHome /> },
+          { path: '/mobile/student', element: <StudentPortal /> },
+          { path: '/mobile/teacher', element: <TeacherPortal /> },
+          { path: '/mobile/announcements', element: <MobileAnnouncements /> },
+          { path: '/mobile/payments', element: <MobilePayments /> },
+        ],
+      },
+    ],
   },
   {
     element: <PrivateRoute />,

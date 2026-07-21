@@ -462,6 +462,9 @@ async def request_portal_code(payload: dict, db: AsyncSession = Depends(get_db_s
     student = res.scalars().first()
     if not student:
         raise HTTPException(status_code=404, detail="Alumno no encontrado para ese email")
+    tenant = await db.get(Tenant, student.tenant_id)
+    if not tenant or not tenant.mobile_enabled or not tenant.student_portal_enabled:
+        raise HTTPException(status_code=403, detail="Portal de alumnos no habilitado para este estudio")
     key = (email, tenant_id or student.tenant_id)
     code = f"{secrets.randbelow(1000000):06d}"
     _portal_codes[key] = {
@@ -508,6 +511,9 @@ async def portal_login(payload: dict, db: AsyncSession = Depends(get_db_session)
     student = sres.scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=404, detail="Alumno no encontrado")
+    tenant = await db.get(Tenant, tid)
+    if not tenant or not tenant.mobile_enabled or not tenant.student_portal_enabled:
+        raise HTTPException(status_code=403, detail="Portal de alumnos no habilitado para este estudio")
     token = security.create_access_token(
         student.id,
         extra={"role": "student", "tenant_id": tid}
@@ -534,6 +540,9 @@ async def portal_me(
 ):
     if current_student.tenant_id is None:
         raise HTTPException(status_code=400, detail="Alumno sin tenant asignado")
+    tenant = await db.get(Tenant, current_student.tenant_id)
+    if not tenant or not tenant.mobile_enabled or not tenant.student_portal_enabled:
+        raise HTTPException(status_code=403, detail="Portal de alumnos no habilitado para este estudio")
     # reutilizar el resumen del portal existente con el tenant real del alumno
     return await student_portal_summary(
         current_student.id,

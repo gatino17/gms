@@ -12,7 +12,10 @@ import {
   HiOutlineTrash, 
   HiOutlineCog,
   HiOutlineSparkles,
-  HiOutlineUserGroup
+  HiOutlineUserGroup,
+  HiOutlineDeviceMobile,
+  HiOutlineClipboardCopy,
+  HiOutlineCheckCircle
 } from 'react-icons/hi'
 
 const whatsappTemplateOptions = [
@@ -35,6 +38,7 @@ const whatsappTemplateOptions = [
 type TenantSettings = {
   id: number
   name: string
+  slug?: string | null
   contact_email?: string | null
   address?: string | null
   country?: string | null
@@ -56,6 +60,10 @@ type TenantSettings = {
   enrollment_fee_allow_waive?: boolean
   enrollment_fee_kind?: 'incorporation' | 'annual' | null
   enrollment_fee_renewal?: 'never' | 'yearly' | null
+  mobile_enabled?: boolean
+  teacher_portal_enabled?: boolean
+  student_portal_enabled?: boolean
+  online_payments_enabled?: boolean
 }
 
 type RoomItem = {
@@ -70,6 +78,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<TenantSettings>({
     id: 0,
     name: '',
+    slug: '',
     contact_email: '',
     address: '',
     country: '',
@@ -91,6 +100,10 @@ export default function SettingsPage() {
     enrollment_fee_allow_waive: false,
     enrollment_fee_kind: 'incorporation',
     enrollment_fee_renewal: 'never',
+    mobile_enabled: false,
+    teacher_portal_enabled: false,
+    student_portal_enabled: false,
+    online_payments_enabled: false,
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -102,6 +115,7 @@ export default function SettingsPage() {
   const [roomsError, setRoomsError] = useState<string | null>(null)
   const [isSavingMsg, setIsSavingMsg] = useState(false)
   const [activeTemplateSid, setActiveTemplateSid] = useState<string>(whatsappTemplateOptions[0].sid)
+  const [mobileCopyMessage, setMobileCopyMessage] = useState('')
 
   const activeTemplate =
     whatsappTemplateOptions.find((option) => option.sid === activeTemplateSid) || whatsappTemplateOptions[0]
@@ -110,6 +124,16 @@ export default function SettingsPage() {
     settings.name || 'Tu Estudio'
   )
   const regionPreset = findRegionPreset(settings.country, settings.currency, settings.phone_prefix)
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+  const mobileSlug = settings.slug || (settings.id ? `tenant-${settings.id}` : '')
+  const studentPortalLink = mobileSlug ? `${appOrigin}/mobile/${mobileSlug}` : ''
+  const teacherPortalLink = mobileSlug ? `${appOrigin}/mobile/staff/${mobileSlug}` : ''
+  const mobileModules = [
+    { label: 'Portal Mobile', enabled: !!settings.mobile_enabled },
+    { label: 'Alumnos', enabled: !!settings.student_portal_enabled },
+    { label: 'Profesores', enabled: !!settings.teacher_portal_enabled },
+    { label: 'Pagos Online', enabled: !!settings.online_payments_enabled },
+  ]
 
   useEffect(() => {
     const load = async () => {
@@ -295,6 +319,17 @@ export default function SettingsPage() {
     alert('Configuración de matrícula actualizada correctamente.')
   }
 
+  const copyMobileLink = async (label: string, link: string) => {
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(link)
+      setMobileCopyMessage(`${label} copiado`)
+      window.setTimeout(() => setMobileCopyMessage(''), 2500)
+    } catch {
+      setMobileCopyMessage('No se pudo copiar el link')
+    }
+  }
+
   if (loading) {
     return (
       <div className="py-40 text-center space-y-4">
@@ -382,6 +417,76 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Mobile Portal Card */}
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-4 md:p-10 space-y-5 md:space-y-7">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-fuchsia-50 text-fuchsia-600 flex items-center justify-center shrink-0">
+             <HiOutlineDeviceMobile className="text-2xl" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Portal Mobile</h2>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Accesos del estudio</p>
+          </div>
+          <span className={`hidden md:inline-flex rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest ${settings.mobile_enabled ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
+            {settings.mobile_enabled ? 'Activo' : 'Inactivo'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {mobileModules.map((item) => (
+            <div key={item.label} className={`rounded-2xl border px-4 py-3 ${item.enabled ? 'border-fuchsia-100 bg-fuchsia-50/60' : 'border-gray-100 bg-gray-50'}`}>
+              <div className="flex items-center gap-2">
+                <HiOutlineCheckCircle className={item.enabled ? 'text-fuchsia-600' : 'text-gray-300'} />
+                <span className={`text-[10px] font-black uppercase tracking-widest ${item.enabled ? 'text-gray-900' : 'text-gray-400'}`}>{item.label}</span>
+              </div>
+              <p className={`mt-2 text-xs font-black ${item.enabled ? 'text-fuchsia-600' : 'text-gray-400'}`}>{item.enabled ? 'Habilitado' : 'No activo'}</p>
+            </div>
+          ))}
+        </div>
+
+        {settings.mobile_enabled ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-[24px] border border-gray-100 bg-gray-50/60 p-4 space-y-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Link alumnos</p>
+                <p className="mt-1 break-all text-xs font-bold text-gray-700">{settings.student_portal_enabled ? studentPortalLink : 'Portal alumnos no habilitado'}</p>
+              </div>
+              <button
+                type="button"
+                disabled={!settings.student_portal_enabled || !studentPortalLink}
+                onClick={() => copyMobileLink('Link alumnos', studentPortalLink)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-fuchsia-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:bg-gray-200 disabled:text-gray-400"
+              >
+                <HiOutlineClipboardCopy /> Copiar alumnos
+              </button>
+            </div>
+
+            <div className="rounded-[24px] border border-gray-100 bg-gray-50/60 p-4 space-y-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Link profesores</p>
+                <p className="mt-1 break-all text-xs font-bold text-gray-700">{settings.teacher_portal_enabled ? teacherPortalLink : 'Portal profesores no habilitado'}</p>
+              </div>
+              <button
+                type="button"
+                disabled={!settings.teacher_portal_enabled || !teacherPortalLink}
+                onClick={() => copyMobileLink('Link profesores', teacherPortalLink)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gray-950 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:bg-gray-200 disabled:text-gray-400"
+              >
+                <HiOutlineClipboardCopy /> Copiar profesores
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-[24px] border border-gray-100 bg-gray-50 p-5">
+            <p className="text-sm font-bold text-gray-500">El portal mobile aun no esta habilitado para este estudio.</p>
+          </div>
+        )}
+
+        {mobileCopyMessage ? (
+          <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-emerald-600">{mobileCopyMessage}</p>
+        ) : null}
       </div>
 
       {/* Communication Card */}

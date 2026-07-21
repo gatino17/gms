@@ -22,10 +22,15 @@ type StudioForm = {
   max_sessions: string
   plan_start_date: string
   plan_renewal_date: string
+  mobile_enabled: boolean
+  teacher_portal_enabled: boolean
+  student_portal_enabled: boolean
+  online_payments_enabled: boolean
 }
 
 type StudioUpdateForm = {
   name: string
+  slug: string
   email: string
   password: string
   address: string
@@ -45,6 +50,10 @@ type StudioUpdateForm = {
   plan_start_date: string
   plan_renewal_date: string
   max_sessions: string
+  mobile_enabled: boolean
+  teacher_portal_enabled: boolean
+  student_portal_enabled: boolean
+  online_payments_enabled: boolean
 }
 
 type TenantPlan = {
@@ -118,6 +127,10 @@ type Studio = {
   max_sessions?: number | null
   whatsapp_consumption_usd?: number | null
   whatsapp_budget_usd?: number | null
+  mobile_enabled?: boolean
+  teacher_portal_enabled?: boolean
+  student_portal_enabled?: boolean
+  online_payments_enabled?: boolean
 }
 
 const defaultForm: StudioForm = {
@@ -140,10 +153,15 @@ const defaultForm: StudioForm = {
   max_sessions: '3',
   plan_start_date: '',
   plan_renewal_date: '',
+  mobile_enabled: false,
+  teacher_portal_enabled: false,
+  student_portal_enabled: false,
+  online_payments_enabled: false,
 }
 
 const defaultEditForm: StudioUpdateForm = {
   name: '',
+  slug: '',
   email: '',
   password: '',
   address: '',
@@ -163,6 +181,10 @@ const defaultEditForm: StudioUpdateForm = {
   plan_start_date: '',
   plan_renewal_date: '',
   max_sessions: '3',
+  mobile_enabled: false,
+  teacher_portal_enabled: false,
+  student_portal_enabled: false,
+  online_payments_enabled: false,
 }
 
 const normalizeOptional = (value: string) => {
@@ -174,6 +196,15 @@ const normalizeDateInput = (value?: string | null) => {
   return String(value).slice(0, 10)
 }
 const toInputDate = (value: Date) => value.toISOString().slice(0, 10)
+const normalizeSlugInput = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80)
 const computeRenewalFromStart = (startDate: string, cycle: 'monthly' | 'annual') => {
   if (!startDate) return ''
   const base = new Date(`${startDate}T00:00:00`)
@@ -558,6 +589,7 @@ export default function StudiosPage() {
         normalizeDateInput(editTarget.plan_renewal_date) || computeRenewalFromStart(resolvedStartDate, resolvedCycle)
       setEditForm({
         name: editTarget.name,
+        slug: editTarget.slug,
         email: editTarget.contact_email ?? '',
         password: '',
         address: editTarget.address ?? '',
@@ -577,6 +609,10 @@ export default function StudiosPage() {
         plan_start_date: resolvedStartDate,
         plan_renewal_date: resolvedRenewalDate,
         max_sessions: String(editTarget.max_sessions ?? 3),
+        mobile_enabled: !!editTarget.mobile_enabled,
+        teacher_portal_enabled: !!editTarget.teacher_portal_enabled,
+        student_portal_enabled: !!editTarget.student_portal_enabled,
+        online_payments_enabled: !!editTarget.online_payments_enabled,
       })
       setEditMessage(null)
       setEditError(null)
@@ -618,6 +654,13 @@ export default function StudiosPage() {
     setForm((prev) => ({ ...prev, [field]: value as any }))
   }
 
+  const mobileModuleOptions = [
+    { key: 'mobile_enabled', label: 'Portal Mobile', desc: 'Habilita la experiencia mobile/PWA del tenant.' },
+    { key: 'teacher_portal_enabled', label: 'Portal Profesores', desc: 'Permite crear accesos mobile para profesores.' },
+    { key: 'student_portal_enabled', label: 'Portal Alumnos', desc: 'Permite acceso de alumnos a progreso, pagos y anuncios.' },
+    { key: 'online_payments_enabled', label: 'Pagos Online', desc: 'Prepara el tenant para cobros desde mobile.' },
+  ] as const
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setIsSubmitting(true)
@@ -645,6 +688,10 @@ export default function StudiosPage() {
         max_sessions: form.max_sessions ? Number(form.max_sessions) : 3,
         plan_start_date: normalizeDateInput(form.plan_start_date) || null,
         plan_renewal_date: normalizeDateInput(form.plan_renewal_date) || null,
+        mobile_enabled: !!form.mobile_enabled,
+        teacher_portal_enabled: !!form.teacher_portal_enabled,
+        student_portal_enabled: !!form.student_portal_enabled,
+        online_payments_enabled: !!form.online_payments_enabled,
       })
       if (createLogoFile) {
         try {
@@ -677,6 +724,7 @@ export default function StudiosPage() {
     try {
       const { data } = await api.put<Studio>(`/api/pms/tenants/${editTarget.id}`, {
         name: editForm.name.trim(),
+        slug: normalizeSlugInput(editForm.slug),
         email: editForm.email.trim(),
         ...(editForm.password.trim() ? { password: editForm.password.trim() } : {}),
         address: normalizeOptional(editForm.address),
@@ -696,6 +744,10 @@ export default function StudiosPage() {
         max_sessions: editForm.max_sessions ? Number(editForm.max_sessions) : 3,
         plan_start_date: normalizeDateInput(editForm.plan_start_date) || null,
         plan_renewal_date: normalizeDateInput(editForm.plan_renewal_date) || null,
+        mobile_enabled: !!editForm.mobile_enabled,
+        teacher_portal_enabled: !!editForm.teacher_portal_enabled,
+        student_portal_enabled: !!editForm.student_portal_enabled,
+        online_payments_enabled: !!editForm.online_payments_enabled,
       })
       setEditMessage('Estudio actualizado correctamente.')
       setSuccess('Estudio actualizado correctamente.')
@@ -1388,6 +1440,38 @@ export default function StudiosPage() {
             </div>
 
             <div className="pt-2 border-t border-gray-100">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Modulos Mobile</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {mobileModuleOptions.map((option) => {
+                  const checked = !!form[option.key]
+                  return (
+                    <label key={option.key} className={`cursor-pointer rounded-2xl border p-4 transition-all ${checked ? 'border-fuchsia-200 bg-fuchsia-50 shadow-sm' : 'border-gray-100 bg-gray-50/60 hover:bg-white'}`}>
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const value = e.target.checked
+                            setForm((prev) => ({
+                              ...prev,
+                              [option.key]: value,
+                              mobile_enabled: option.key === 'mobile_enabled' ? value : (value ? true : prev.mobile_enabled),
+                            }))
+                          }}
+                          className="mt-1 h-4 w-4 accent-fuchsia-600"
+                        />
+                        <div>
+                          <div className="text-xs font-black text-gray-900 uppercase tracking-widest">{option.label}</div>
+                          <p className="mt-1 text-[10px] font-bold text-gray-500 leading-relaxed">{option.desc}</p>
+                        </div>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100">
               <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Redes Sociales</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
             <div className="space-y-2">
@@ -1525,6 +1609,7 @@ export default function StudiosPage() {
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estudio / Admin</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ubicacion</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Plan contratado</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mobile</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sesiones</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Consumo WhatsApp</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Logo</th>
@@ -1536,17 +1621,23 @@ export default function StudiosPage() {
                   <tr key={studio.id} className="block md:table-row hover:bg-fuchsia-50/10 transition-colors">
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
                       <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Tenant ID</div>
-                      <span className="font-mono text-xs font-black text-fuchsia-600 bg-fuchsia-50 px-3 py-1.5 rounded-lg">{studio.slug}</span>
+                      <div className="flex flex-col items-start gap-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">#{studio.id}</span>
+                        <span className="font-mono text-xs font-black text-fuchsia-600 bg-fuchsia-50 px-3 py-1.5 rounded-lg">{studio.slug}</span>
+                      </div>
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Estudio / Admin</div>
                       <div className="font-black text-gray-900 text-sm">{studio.name}</div>
                       <div className="text-[10px] font-bold text-gray-400 truncate">{studio.contact_email}</div>
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Ubicacion</div>
                       <div className="text-xs font-black text-gray-700">{studio.address || 'Sin direccion'}</div>
                       <div className="text-[10px] font-bold text-gray-400">{studio.city}, {studio.country}</div>
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Plan contratado</div>
                       <div className="text-sm font-black text-gray-900">{studio.plan_label_snapshot || studio.plan_name || 'Sin plan'}</div>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <span className="text-[11px] font-black text-gray-600">
@@ -1573,6 +1664,18 @@ export default function StudiosPage() {
                       })()}
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Mobile</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${studio.mobile_enabled ? 'text-fuchsia-700 bg-fuchsia-50 border-fuchsia-200' : 'text-gray-400 bg-gray-50 border-gray-100'}`}>
+                          {studio.mobile_enabled ? 'Activo' : 'Inactivo'}
+                        </span>
+                        {studio.teacher_portal_enabled && <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-purple-700 bg-purple-50 border border-purple-100">Profe</span>}
+                        {studio.student_portal_enabled && <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-sky-700 bg-sky-50 border border-sky-100">Alumno</span>}
+                        {studio.online_payments_enabled && <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-100">Pagos</span>}
+                      </div>
+                    </td>
+                    <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Sesiones</div>
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
                         (studio.active_sessions || 0) >= (studio.max_sessions || 3)
                           ? 'text-rose-700 bg-rose-50 border-rose-200'
@@ -1584,6 +1687,7 @@ export default function StudiosPage() {
                       </span>
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                      <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Consumo WhatsApp</div>
                       <div className="text-xs font-black text-gray-800">
                         {formatUsdUsage(studio.whatsapp_consumption_usd || 0)} / {formatUsd(studio.whatsapp_budget_usd || 20)}
                       </div>
@@ -1596,6 +1700,7 @@ export default function StudiosPage() {
                       </div>
                     </td>
                     <td className="block md:table-cell px-6 py-4 md:py-6 align-middle text-center">
+                        <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1 text-left">Logo</div>
                         <div className="flex justify-center">
                           {studio.logo_url ? (
                             <img
@@ -1611,6 +1716,7 @@ export default function StudiosPage() {
                         </div>
                       </td>
                       <td className="block md:table-cell px-6 py-4 md:py-6 align-middle">
+                        <div className="md:hidden text-[8px] font-black text-gray-400 uppercase mb-1">Acciones</div>
                         <div className="flex items-center justify-center gap-3">
                           <button
                             type="button"
@@ -1690,6 +1796,18 @@ export default function StudiosPage() {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Nombre del estudio</label>
                         <input type="text" value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} required className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Slug Portal Mobile</label>
+                        <input
+                          type="text"
+                          value={editForm.slug}
+                          onChange={(e) => setEditForm((prev) => ({ ...prev, slug: normalizeSlugInput(e.target.value) }))}
+                          required
+                          className="w-full px-5 py-3 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:bg-white border-2 border-transparent focus:border-fuchsia-100 transition-all outline-none"
+                          placeholder="puerto-montt-salsa"
+                        />
+                        <p className="px-2 text-[10px] font-bold text-gray-400 break-all">Link: /mobile/{editForm.slug || 'slug-del-estudio'}</p>
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Correo administrador</label>
@@ -1829,6 +1947,38 @@ export default function StudiosPage() {
                         />
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 mb-3">Modulos Mobile</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                      {mobileModuleOptions.map((option) => {
+                        const checked = !!editForm[option.key]
+                        return (
+                          <label key={option.key} className={`cursor-pointer rounded-2xl border p-4 transition-all ${checked ? 'border-fuchsia-200 bg-fuchsia-50 shadow-sm' : 'border-gray-100 bg-gray-50/60 hover:bg-white'}`}>
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  const value = e.target.checked
+                                  setEditForm((prev) => ({
+                                    ...prev,
+                                    [option.key]: value,
+                                    mobile_enabled: option.key === 'mobile_enabled' ? value : (value ? true : prev.mobile_enabled),
+                                  }))
+                                }}
+                                className="mt-1 h-4 w-4 accent-fuchsia-600"
+                              />
+                              <div>
+                                <div className="text-xs font-black text-gray-900 uppercase tracking-widest">{option.label}</div>
+                                <p className="mt-1 text-[10px] font-bold text-gray-500 leading-relaxed">{option.desc}</p>
+                              </div>
+                            </div>
+                          </label>
+                        )
+                      })}
                     </div>
                   </div>
 

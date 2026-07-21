@@ -28,6 +28,7 @@ class User(Base):
     full_name: Mapped[Optional[str]] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    role: Mapped[str] = mapped_column(String(20), default="admin", nullable=False, index=True)
     tenant_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -83,6 +84,10 @@ class Tenant(Base):
     enrollment_fee_allow_waive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     enrollment_fee_kind: Mapped[Optional[str]] = mapped_column(String(20), default="incorporation")
     enrollment_fee_renewal: Mapped[Optional[str]] = mapped_column(String(20), default="never")
+    mobile_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    teacher_portal_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    student_portal_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    online_payments_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
 
     plan: Mapped[Optional["TenantPlan"]] = relationship("TenantPlan")
@@ -144,8 +149,12 @@ class Teacher(Base):
     birthdate: Mapped[Optional[date]] = mapped_column(Date)  # fecha de nacimiento
     styles: Mapped[Optional[str]] = mapped_column(Text())    # estilos que sabe (texto libre)
     photo_url: Mapped[Optional[str]] = mapped_column(String(255))
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    portal_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    user: Mapped[Optional[User]] = relationship("User")
 
 
 class Room(Base):
@@ -294,6 +303,7 @@ class Announcement(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     subtitle: Mapped[Optional[str]] = mapped_column(String(255))
     body: Mapped[Optional[str]] = mapped_column(Text())
+    announcement_type: Mapped[Optional[str]] = mapped_column(String(30), default="important")
     image_url: Mapped[Optional[str]] = mapped_column(String(255))
     link_url: Mapped[Optional[str]] = mapped_column(String(255))
     start_date: Mapped[Optional[date]] = mapped_column(Date)

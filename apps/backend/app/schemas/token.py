@@ -17,6 +17,7 @@ class TokenUser(BaseModel):
     email: Optional[str] = None
     full_name: Optional[str] = None
     is_superuser: bool = False
+    role: str = "admin"
     tenant_id: Optional[int] = None
 
     class Config:

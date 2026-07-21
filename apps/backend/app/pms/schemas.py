@@ -43,8 +43,26 @@ class TenantOut(BaseModel):
     enrollment_fee_allow_waive: bool = False
     enrollment_fee_kind: Optional[str] = "incorporation"
     enrollment_fee_renewal: Optional[str] = "never"
+    mobile_enabled: bool = False
+    teacher_portal_enabled: bool = False
+    student_portal_enabled: bool = False
+    online_payments_enabled: bool = False
     created_at: datetime
     admin_is_superuser: Optional[bool] = None
+
+    class Config:
+        from_attributes = True
+
+
+class TenantMobilePublicOut(BaseModel):
+    id: int
+    name: str
+    slug: str
+    logo_url: Optional[str] = None
+    mobile_enabled: bool = False
+    teacher_portal_enabled: bool = False
+    student_portal_enabled: bool = False
+    online_payments_enabled: bool = False
 
     class Config:
         from_attributes = True
@@ -79,11 +97,16 @@ class TenantCreate(BaseModel):
     enrollment_fee_allow_waive: Optional[bool] = False
     enrollment_fee_kind: Optional[str] = "incorporation"
     enrollment_fee_renewal: Optional[str] = "never"
+    mobile_enabled: Optional[bool] = False
+    teacher_portal_enabled: Optional[bool] = False
+    student_portal_enabled: Optional[bool] = False
+    online_payments_enabled: Optional[bool] = False
     is_superuser: bool = False
 
 
 class TenantUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=150)
+    slug: Optional[str] = Field(default=None, min_length=3, max_length=80)
     email: Optional[EmailStr] = None
     password: Optional[str] = Field(default=None, min_length=6)  # Si viene, actualiza la clave del admin
     address: Optional[str] = Field(default=None, max_length=255)
@@ -113,6 +136,10 @@ class TenantUpdate(BaseModel):
     enrollment_fee_allow_waive: Optional[bool] = None
     enrollment_fee_kind: Optional[str] = None
     enrollment_fee_renewal: Optional[str] = None
+    mobile_enabled: Optional[bool] = None
+    teacher_portal_enabled: Optional[bool] = None
+    student_portal_enabled: Optional[bool] = None
+    online_payments_enabled: Optional[bool] = None
     is_superuser: Optional[bool] = None
 
 
@@ -347,6 +374,7 @@ class AnnouncementBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     subtitle: Optional[str] = Field(default=None, max_length=255)
     body: Optional[str] = None
+    announcement_type: Optional[str] = Field(default="important", max_length=30)
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     image_url: Optional[str] = Field(default=None, max_length=255)
@@ -359,8 +387,17 @@ class AnnouncementCreate(AnnouncementBase):
     pass
 
 
-class AnnouncementUpdate(AnnouncementBase):
-    pass
+class AnnouncementUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    subtitle: Optional[str] = Field(default=None, max_length=255)
+    body: Optional[str] = None
+    announcement_type: Optional[str] = Field(default=None, max_length=30)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    image_url: Optional[str] = Field(default=None, max_length=255)
+    link_url: Optional[str] = Field(default=None, max_length=255)
+    is_active: Optional[bool] = None
+    sort_order: Optional[int] = None
 
 
 class AnnouncementOut(AnnouncementBase):

@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, delete
 from pathlib import Path
 import secrets
+import re
+import unicodedata
 
 from app.pms.models import Tenant, TenantPlan, AppSetting, WhatsAppMessageLog
 from app.pms.deps import (
@@ -17,6 +19,7 @@ from app.pms.deps import (
 )
 from app.pms.schemas import (
     TenantOut,
+    TenantMobilePublicOut,
     TenantCreate,
     TenantUpdate,
     TenantSelfUpdate,
@@ -58,6 +61,30 @@ def _resolve_tenant_plan_snapshot(tenant: Tenant) -> None:
 def _next_renewal_for_cycle(cycle: str, base_date: date | None = None) -> date:
     today = base_date or date.today()
     return today + timedelta(days=365 if cycle == "annual" else 30)
+
+
+def _slugify(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value or "")
+    ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", ascii_value.lower()).strip("-")
+    slug = re.sub(r"-{2,}", "-", slug)
+    return (slug[:80] or "estudio").strip("-") or "estudio"
+
+
+async def _unique_tenant_slug(db: AsyncSession, base_value: str, tenant_id: int | None = None) -> str:
+    base = _slugify(base_value)
+    candidate = base
+    suffix = 2
+    while True:
+        query = select(Tenant.id).where(func.lower(Tenant.slug) == candidate.lower())
+        if tenant_id is not None:
+            query = query.where(Tenant.id != tenant_id)
+        exists = await db.scalar(query)
+        if not exists:
+            return candidate
+        suffix_text = f"-{suffix}"
+        candidate = f"{base[:80 - len(suffix_text)]}{suffix_text}"
+        suffix += 1
 
 
 @router.get("", response_model=list[TenantOut])
@@ -193,15 +220,7 @@ async def create_tenant(
     if existing_user:
         raise HTTPException(status_code=400, detail="El correo ya esta registrado")
 
-    max_id = await db.scalar(select(func.max(Tenant.id)))
-    counter = (max_id or 0) + 1
-    base_slug = f"tenant-{counter}"
-
-    slug_exists = await db.scalar(select(Tenant).where(Tenant.slug == base_slug))
-    while slug_exists:
-        counter += 1
-        base_slug = f"tenant-{counter}"
-        slug_exists = await db.scalar(select(Tenant).where(Tenant.slug == base_slug))
+    base_slug = await _unique_tenant_slug(db, payload.name)
 
     selected_plan = await db.get(TenantPlan, payload.plan_id) if payload.plan_id else None
     if payload.plan_id and not selected_plan:
@@ -241,6 +260,10 @@ async def create_tenant(
         enrollment_fee_allow_waive=bool(payload.enrollment_fee_allow_waive),
         enrollment_fee_kind=payload.enrollment_fee_kind or "incorporation",
         enrollment_fee_renewal=payload.enrollment_fee_renewal or "never",
+        mobile_enabled=bool(payload.mobile_enabled),
+        teacher_portal_enabled=bool(payload.teacher_portal_enabled),
+        student_portal_enabled=bool(payload.student_portal_enabled),
+        online_payments_enabled=bool(payload.online_payments_enabled),
     )
     db.add(tenant)
     await db.flush()
@@ -251,6 +274,7 @@ async def create_tenant(
         full_name=payload.name.strip(),
         is_active=True,
         is_superuser=payload.is_superuser,
+        role="admin",
         tenant_id=tenant.id,
     )
     db.add(user)
@@ -273,6 +297,21 @@ async def get_current_tenant(
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
     tenant.plan = await db.get(TenantPlan, tenant.plan_id) if tenant.plan_id else None
     _resolve_tenant_plan_snapshot(tenant)
+    return tenant
+
+
+@router.get("/public/{slug}", response_model=TenantMobilePublicOut)
+async def get_public_mobile_tenant(
+    slug: str,
+    db: AsyncSession = Depends(get_db_session),
+):
+    clean_slug = (slug or "").strip().lower()
+    if not clean_slug:
+        raise HTTPException(status_code=400, detail="Slug requerido")
+    res = await db.execute(select(Tenant).where(func.lower(Tenant.slug) == clean_slug))
+    tenant = res.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Estudio no encontrado")
     return tenant
 
 
@@ -415,6 +454,9 @@ async def update_tenant(
         if admin_user:
             admin_user.full_name = tenant.name
 
+    if "slug" in data and data["slug"]:
+        tenant.slug = await _unique_tenant_slug(db, data["slug"], tenant_id=tenant_id)
+
     if "address" in data:
         tenant.address = data["address"]
     if "country" in data:
@@ -508,6 +550,24 @@ async def update_tenant(
         tenant.enrollment_fee_kind = data["enrollment_fee_kind"]
     if "enrollment_fee_renewal" in data:
         tenant.enrollment_fee_renewal = data["enrollment_fee_renewal"]
+    if "mobile_enabled" in data:
+        tenant.mobile_enabled = bool(data["mobile_enabled"])
+        if not tenant.mobile_enabled:
+            tenant.teacher_portal_enabled = False
+            tenant.student_portal_enabled = False
+            tenant.online_payments_enabled = False
+    if "teacher_portal_enabled" in data:
+        tenant.teacher_portal_enabled = bool(data["teacher_portal_enabled"])
+        if tenant.teacher_portal_enabled:
+            tenant.mobile_enabled = True
+    if "student_portal_enabled" in data:
+        tenant.student_portal_enabled = bool(data["student_portal_enabled"])
+        if tenant.student_portal_enabled:
+            tenant.mobile_enabled = True
+    if "online_payments_enabled" in data:
+        tenant.online_payments_enabled = bool(data["online_payments_enabled"])
+        if tenant.online_payments_enabled:
+            tenant.mobile_enabled = True
     if "is_superuser" in data:
         if admin_user is None:
             admin_user = await db.scalar(

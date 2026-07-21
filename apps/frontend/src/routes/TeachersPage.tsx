@@ -11,6 +11,8 @@ import {
   HiOutlinePencil,
   HiOutlineTrash,
   HiOutlineTag,
+  HiOutlineKey,
+  HiOutlineLockClosed,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
   HiOutlineX
@@ -29,6 +31,8 @@ type Teacher = {
   birthdate?: string | null
   styles?: string | null
   photo_url?: string | null
+  user_id?: number | null
+  portal_enabled?: boolean
 }
 
 type TeacherStats = {
@@ -51,6 +55,8 @@ export default function TeachersPage() {
   const [showEdit, setShowEdit] = useState(false)
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [portalLoadingId, setPortalLoadingId] = useState<number | null>(null)
+  const [portalAccess, setPortalAccess] = useState<{ email: string; password?: string | null; message: string } | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -96,6 +102,45 @@ export default function TeachersPage() {
     }
   }
 
+  const handleCreatePortalAccess = async (teacher: Teacher) => {
+    setPortalLoadingId(teacher.id)
+    setError(null)
+    setPortalAccess(null)
+    try {
+      const { data } = await api.post(`/api/pms/teachers/${teacher.id}/portal/access`, { enabled: true })
+      setPortalAccess({
+        email: data.email,
+        password: data.password,
+        message: data.message || 'Acceso mobile creado correctamente.',
+      })
+      await load()
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'No se pudo crear el acceso mobile')
+    } finally {
+      setPortalLoadingId(null)
+    }
+  }
+
+  const handleDisablePortalAccess = async (teacher: Teacher) => {
+    if (!confirm('Desactivar acceso mobile de este profesor?')) return
+    setPortalLoadingId(teacher.id)
+    setError(null)
+    setPortalAccess(null)
+    try {
+      const { data } = await api.delete(`/api/pms/teachers/${teacher.id}/portal/access`)
+      setPortalAccess({
+        email: data.email,
+        password: null,
+        message: data.message || 'Acceso mobile desactivado.',
+      })
+      await load()
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'No se pudo desactivar el acceso mobile')
+    } finally {
+      setPortalLoadingId(null)
+    }
+  }
+
   const initials = (name?: string) => {
     if (!name) return 'PR'
     const parts = name.trim().split(/\s+/)
@@ -132,6 +177,24 @@ export default function TeachersPage() {
       {error && (
         <div className="p-4 bg-rose-50 border border-rose-100 rounded-3xl text-rose-600 font-bold flex items-center gap-3">
           <HiOutlineX className="shrink-0" /> {error}
+        </div>
+      )}
+
+      {portalAccess && (
+        <div className="mx-4 rounded-3xl border border-fuchsia-100 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600">Acceso mobile profesor</p>
+              <h3 className="mt-1 text-lg font-black text-gray-900">{portalAccess.message}</h3>
+              <p className="mt-2 text-sm font-bold text-gray-600">Usuario: {portalAccess.email}</p>
+              {portalAccess.password ? (
+                <p className="mt-1 text-sm font-black text-gray-900">Clave temporal: <span className="font-mono text-fuchsia-600">{portalAccess.password}</span></p>
+              ) : null}
+            </div>
+            <button type="button" onClick={() => setPortalAccess(null)} className="rounded-2xl bg-gray-50 p-2 text-gray-400 hover:bg-gray-100">
+              <HiOutlineX />
+            </button>
+          </div>
         </div>
       )}
 
@@ -192,7 +255,16 @@ export default function TeachersPage() {
                         </div>
                         <div>
                           <div className="font-black text-gray-900 group-hover:text-fuchsia-600 transition-colors">{t.name}</div>
-                          <div className="text-[10px] font-bold text-gray-400 uppercase">Profesor #{t.id}</div>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Profesor #{t.id}</span>
+                            <span className={`rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-widest ${
+                              t.portal_enabled
+                                ? 'border-emerald-100 bg-emerald-50 text-emerald-600'
+                                : 'border-gray-100 bg-gray-50 text-gray-400'
+                            }`}>
+                              {t.portal_enabled ? 'Mobile activo' : 'Sin mobile'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -227,6 +299,24 @@ export default function TeachersPage() {
                         >
                           <HiOutlinePencil size={18} /> <span className="md:hidden text-[10px] font-black uppercase tracking-widest">Editar</span>
                         </button>
+                        <button
+                          onClick={() => handleCreatePortalAccess(t)}
+                          disabled={portalLoadingId === t.id || !t.email}
+                          className="flex-1 md:flex-none p-3 bg-slate-950 text-white rounded-xl hover:bg-fuchsia-700 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                          title={t.portal_enabled ? 'Resetear acceso mobile' : 'Crear acceso mobile'}
+                        >
+                          <HiOutlineKey size={18} /> <span className="md:hidden text-[10px] font-black uppercase tracking-widest">{t.portal_enabled ? 'Reset' : 'Mobile'}</span>
+                        </button>
+                        {t.portal_enabled && (
+                          <button
+                            onClick={() => handleDisablePortalAccess(t)}
+                            disabled={portalLoadingId === t.id}
+                            className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-gray-700 hover:bg-gray-100 transition-all flex items-center justify-center"
+                            title="Desactivar acceso mobile"
+                          >
+                            <HiOutlineLockClosed size={18} />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(t.id)}
                           className="p-3 bg-rose-50 text-rose-400 rounded-xl hover:text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center"

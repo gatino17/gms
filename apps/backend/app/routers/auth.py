@@ -36,6 +36,8 @@ async def login_access_token(
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    if getattr(user, "role", "admin") == "teacher":
+        raise HTTPException(status_code=403, detail="Acceso disponible solo desde el portal de profesores")
 
     if user.tenant_id is not None:
         tenant = await db.get(models.Tenant, user.tenant_id)
@@ -100,6 +102,7 @@ async def login_access_token(
             email=user.email,
             full_name=user.full_name,
             is_superuser=user.is_superuser,
+            role=getattr(user, "role", "admin") or "admin",
             tenant_id=user.tenant_id,
         ),
     }

@@ -400,7 +400,7 @@ export default function AttendanceKioskPage() {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-black via-zinc-950 to-zinc-900 text-zinc-100 flex flex-col font-sans overflow-hidden">
+    <div className="h-[100dvh] bg-gradient-to-br from-black via-zinc-950 to-zinc-900 text-zinc-100 flex flex-col font-sans overflow-hidden">
       {/* Kiosk Header */}
       <header className="h-20 md:h-24 bg-black/45 backdrop-blur-md border-b border-zinc-800/70 flex items-center justify-between px-4 md:px-10 shrink-0 sticky top-0 z-10">
         <div className="flex items-center gap-3 md:gap-5 min-w-0">
@@ -443,8 +443,8 @@ export default function AttendanceKioskPage() {
 
       {/* Main Content */}
       <main
-        className={`flex-1 min-h-0 p-4 md:p-6 lg:p-8 flex flex-col items-center relative overflow-hidden ${
-          selectedCourse ? 'justify-start pt-4 md:pt-6' : 'justify-center'
+        className={`flex-1 min-h-0 p-4 md:p-6 lg:p-8 flex flex-col items-center relative overflow-y-auto overflow-x-hidden custom-scrollbar overscroll-contain ${
+          selectedCourse ? 'justify-start pt-4 md:pt-6' : 'justify-start'
         }`}
       >
         {/* Success Overlay */}
@@ -503,7 +503,7 @@ export default function AttendanceKioskPage() {
 
         {/* Step 1: Select Course */}
 	        {!selectedCourse && !feedbackMsg && (
-	          <div className="w-full max-w-7xl h-full min-h-0 flex flex-col">
+	          <div className="w-full max-w-7xl min-h-full flex flex-col">
 	            <div className="mb-4 md:mb-5 text-center shrink-0">
 	              <div className="relative overflow-hidden rounded-[30px] border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black px-4 py-4 md:px-6 md:py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
 	                <div className="absolute -left-10 top-0 h-28 w-28 rounded-full bg-fuchsia-600/15 blur-3xl" />
@@ -542,7 +542,7 @@ export default function AttendanceKioskPage() {
                 <h2 className="text-3xl font-black text-zinc-400">No hay cursos que coincidan con la búsqueda.</h2>
               </div>
             ) : (
-              <div className="flex-1 min-h-0 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 content-start auto-rows-max overflow-visible pt-1">
+              <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 content-start auto-rows-max overflow-visible pt-1 pb-6">
                 {filteredCourses.map((row) => (
 		                  <button
 		                    key={row.course.id}
@@ -637,7 +637,7 @@ export default function AttendanceKioskPage() {
 
         {/* Step 2: Select Student */}
         {selectedCourse && !feedbackMsg && (
-          <div className="w-full max-w-7xl h-full min-h-0 flex flex-col">
+          <div className="w-full max-w-7xl min-h-full flex flex-col">
             <div className="flex items-center gap-4 mb-4 md:mb-6 shrink-0">
               <button
                 onClick={() => {
@@ -681,7 +681,7 @@ export default function AttendanceKioskPage() {
                 <p className="text-2xl text-zinc-400 font-black">No hay alumnos que coincidan con la búsqueda.</p>
               </div>
             ) : (
-              <div className="flex-1 min-h-0 grid grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 content-start auto-rows-max overflow-hidden">
+              <div className="flex-1 min-h-0 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 content-start auto-rows-max overflow-visible pb-6">
                 {filteredStudents.map((s) => {
                   const initial = s.first_name ? s.first_name[0].toUpperCase() : '?'
                   const isMarkedToday = todayMarkedIds.includes(s.id)

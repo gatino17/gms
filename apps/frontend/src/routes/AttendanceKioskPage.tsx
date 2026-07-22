@@ -122,6 +122,21 @@ export default function AttendanceKioskPage() {
 
   const todayDayIndex = (now.getDay() + 6) % 7
 
+  const timeToMinutes = (time?: string | null) => {
+    if (!time) return Number.POSITIVE_INFINITY
+    const [hh, mm] = String(time).slice(0, 5).split(':').map(Number)
+    if (!Number.isFinite(hh) || !Number.isFinite(mm)) return Number.POSITIVE_INFINITY
+    return hh * 60 + mm
+  }
+
+  const getCourseOrderMinutes = (course: KioskCourse['course']) => {
+    const slots = getCourseSlots(course)
+    const todaySlots = slots.filter((slot) => slot.d === todayDayIndex)
+    const candidates = todaySlots.length ? todaySlots : slots
+    const values = candidates.map((slot) => timeToMinutes(slot.st)).filter((value) => Number.isFinite(value))
+    return values.length ? Math.min(...values) : Number.POSITIVE_INFINITY
+  }
+
   const formatAttendanceTime = (iso?: string) => {
     if (!iso) return ''
     const dt = new Date(iso)
@@ -336,12 +351,19 @@ export default function AttendanceKioskPage() {
   const nowDayDisplay = `${nowDayLabel.charAt(0).toUpperCase()}${nowDayLabel.slice(1)}`
   const nowDateDisplay = `${nowDateLabel.charAt(0).toUpperCase()}${nowDateLabel.slice(1)}`
 
-  const filteredCourses = courses.filter((row) => {
-    const q = courseQuery.trim().toLowerCase()
-    if (!q) return true
-    const target = `${row.course.name} ${row.teacher?.name ?? ''}`.toLowerCase()
-    return target.includes(q)
-  })
+  const filteredCourses = courses
+    .filter((row) => {
+      const q = courseQuery.trim().toLowerCase()
+      if (!q) return true
+      const target = `${row.course.name} ${row.teacher?.name ?? ''}`.toLowerCase()
+      return target.includes(q)
+    })
+    .sort((a, b) => {
+      const aTime = getCourseOrderMinutes(a.course)
+      const bTime = getCourseOrderMinutes(b.course)
+      if (aTime !== bTime) return aTime - bTime
+      return a.course.name.localeCompare(b.course.name, 'es')
+    })
 
   const filteredStudents = (selectedCourse?.students || []).filter((s) => {
     const q = studentQuery.trim().toLowerCase()
@@ -420,6 +442,7 @@ export default function AttendanceKioskPage() {
             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight truncate">Auto-Asistencia</h1>
             <p className="text-fuchsia-400 font-bold uppercase tracking-widest text-[11px] md:text-sm mt-1 truncate">
               Selecciona tu clase para registrarte
+              <span className="hidden md:inline text-zinc-400"> · Disponible 30 min antes y hasta el termino de la clase</span>
             </p>
           </div>
         </div>
@@ -575,7 +598,7 @@ export default function AttendanceKioskPage() {
                                         : 'bg-rose-100 text-rose-700'
                                     }`}>
                                       {row.course.attendance_window_open && <HiOutlineCheckCircle className="text-emerald-600" size={12} />}
-                                      Curso
+                                      {row.course.attendance_window_open ? 'Curso' : 'Fuera de horario'}
                                     </div>
 		                        <h3 className="text-lg md:text-xl font-black text-zinc-900 group-hover:text-fuchsia-700 transition-colors leading-tight line-clamp-2">
 		                          {row.course.name}
@@ -621,11 +644,6 @@ export default function AttendanceKioskPage() {
                               }`}>
 		                          {getWeeklyFrequencyLabel(row.course)}
                               </p>
-                              {row.course.attendance_window_message && (
-                                <p className="text-[10px] leading-relaxed font-bold text-zinc-500 max-w-[240px]">
-                                  {row.course.attendance_window_message}
-                                </p>
-                              )}
                             </div>
 		                    )}
 		                  </button>

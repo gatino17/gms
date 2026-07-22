@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { HiOutlineCake, HiOutlineCash, HiOutlineChartBar, HiOutlineCheckCircle, HiOutlineClock, HiOutlineSparkles, HiOutlineSpeakerphone, HiOutlineX } from 'react-icons/hi'
+import { HiOutlineCake, HiOutlineCheckCircle, HiOutlineClock, HiOutlineSparkles, HiOutlineSpeakerphone, HiOutlineX } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
@@ -539,25 +539,27 @@ export default function MobileHome() {
       </MobileCard>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="mobile-border-primary rounded-[24px] border bg-white p-4 shadow-lg shadow-slate-200/70">
-          <HiOutlineChartBar className="mobile-text-primary mb-3" size={24} />
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Asistencia</p>
-          <p className="mt-1 text-2xl font-black">{Math.round(summary?.attendance?.percent || 0)}%</p>
-        </div>
         <div className="rounded-[24px] border border-emerald-100 bg-white p-4 shadow-lg shadow-slate-200/70">
-          <HiOutlineCheckCircle className="mb-3 text-emerald-500" size={24} />
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cursos</p>
-          <p className="mt-1 text-2xl font-black">{summary?.classes_active || 0}</p>
-        </div>
-        <div className="rounded-[24px] border border-blue-100 bg-white p-4 shadow-lg shadow-slate-200/70">
-          <HiOutlineCash className="mb-3 text-blue-500" size={24} />
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pagos 90d</p>
-          <p className="mt-1 text-xl font-black">${Number(summary?.payments?.total_last_90 || 0).toLocaleString('es-CL')}</p>
+          <div className="flex min-h-[76px] items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cursos</p>
+              <p className="mt-1 text-3xl font-black text-slate-950">{summary?.classes_active || 0}</p>
+            </div>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-500">
+              <HiOutlineCheckCircle size={24} />
+            </span>
+          </div>
         </div>
         <div className={`rounded-[24px] border bg-white p-4 shadow-lg shadow-slate-200/70 ${studentIsActive ? 'border-emerald-100' : 'border-rose-100'}`}>
-          <HiOutlineCheckCircle className={`mb-3 ${studentIsActive ? 'text-emerald-500' : 'text-rose-500'}`} size={24} />
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</p>
-          <p className={`mt-1 text-xl font-black ${studentIsActive ? 'text-emerald-600' : 'text-rose-600'}`}>{studentIsActive ? 'Activo' : 'Inactivo'}</p>
+          <div className="flex min-h-[76px] items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</p>
+              <p className={`mt-1 text-xl font-black ${studentIsActive ? 'text-emerald-600' : 'text-rose-600'}`}>{studentIsActive ? 'Activo' : 'Inactivo'}</p>
+            </div>
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${studentIsActive ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+              <HiOutlineCheckCircle size={24} />
+            </span>
+          </div>
         </div>
       </div>
       {announcementPanel}

@@ -19,7 +19,7 @@ type Announcement = {
 }
 
 const TYPE_CONFIG: Record<string, { label: string; badge: string; icon: string }> = {
-  important: { label: 'Aviso importante', badge: 'bg-slate-950 text-white', icon: 'bg-fuchsia-50 text-fuchsia-600' },
+  important: { label: 'Aviso importante', badge: 'bg-slate-950 text-white', icon: 'mobile-bg-primary-soft mobile-text-primary' },
   promotion: { label: 'Promocion', badge: 'bg-emerald-600 text-white', icon: 'bg-emerald-50 text-emerald-600' },
   event: { label: 'Evento', badge: 'bg-blue-600 text-white', icon: 'bg-blue-50 text-blue-600' },
   schedule: { label: 'Cambio de horario', badge: 'bg-amber-500 text-white', icon: 'bg-amber-50 text-amber-600' },
@@ -96,8 +96,8 @@ export default function MobileAnnouncements() {
   if (loading) {
     return (
       <div className="py-16 text-center">
-        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-fuchsia-100 border-t-fuchsia-600" />
-        <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-fuchsia-600">Cargando avisos...</p>
+        <div className="mobile-spinner mx-auto h-10 w-10 animate-spin rounded-full border-4" />
+        <p className="mobile-text-primary mt-4 text-[10px] font-black uppercase tracking-widest">Cargando avisos...</p>
       </div>
     )
   }
@@ -127,7 +127,7 @@ export default function MobileAnnouncements() {
                     <HiOutlineSpeakerphone size={24} />
                   </div>
                 )}
-                <span className="absolute bottom-2 left-2 h-2 w-10 rounded-full bg-gradient-to-r from-fuchsia-500 to-white" />
+                <span className="mobile-gradient-primary absolute bottom-2 left-2 h-2 w-10 rounded-full" />
               </div>
               <div className="min-w-0 flex-1 py-1">
                 <div className="flex items-start justify-between gap-2">
@@ -136,10 +136,10 @@ export default function MobileAnnouncements() {
                   </span>
                 </div>
                 <h3 className="mt-2 line-clamp-2 text-base font-black leading-tight text-slate-950">{item.title}</h3>
-                {item.subtitle ? <p className="mt-1 line-clamp-1 text-xs font-black text-fuchsia-600">{item.subtitle}</p> : null}
+                {item.subtitle ? <p className="mobile-text-primary mt-1 line-clamp-1 text-xs font-black">{item.subtitle}</p> : null}
                 {item.body ? <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-slate-600">{item.body}</p> : null}
                 <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                  <HiOutlineCalendar className="text-fuchsia-500" />
+                  <HiOutlineCalendar className="mobile-text-primary" />
                   {announcementValidityText(item, user?.role)}
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { HiOutlineMail, HiOutlineShieldCheck } from 'react-icons/hi'
 import { mobileApi, setMobileSession, setMobileTenant, setMobileTenantInfo, type MobileTenantInfo } from '../services/mobileApi'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileAuthBackground from '../components/MobileAuthBackground'
+import { mobileThemeStyle } from '../../lib/mobileTheme'
 
 export default function MobileLogin() {
   const navigate = useNavigate()
@@ -82,7 +83,7 @@ export default function MobileLogin() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[#090912] px-5 py-8 text-white">
+    <div className="mobile-bg-header relative min-h-screen px-5 py-8 text-white" style={mobileThemeStyle(tenantInfo?.mobile_theme)}>
       <MobileAuthBackground />
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-64px)] max-w-md flex-col justify-center">
         <div className="mb-8 text-center">
@@ -91,19 +92,19 @@ export default function MobileLogin() {
               <img src="/gms-soluciones-digitales.jpg" alt="GMS Soluciones Digitales" className="h-full w-full object-cover" />
             </div>
             <div className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-500 shadow-lg shadow-fuchsia-500/50" />
-              <span className="h-px w-2 bg-fuchsia-500/80" />
-              <span className="h-2.5 w-2.5 rounded-full border border-fuchsia-300 bg-fuchsia-500 shadow-lg shadow-fuchsia-500/50" />
-              <span className="h-px w-3 bg-gradient-to-r from-fuchsia-500 to-white/60" />
+              <span className="mobile-auth-dot h-1.5 w-1.5 rounded-full" />
+              <span className="mobile-bg-primary h-px w-2 opacity-80" />
+              <span className="mobile-auth-dot h-2.5 w-2.5 rounded-full border border-white/40" />
+              <span className="mobile-gradient-primary h-px w-3" />
               <span className="h-1.5 w-1.5 rounded-full bg-white/80" />
               <span className="h-px w-2 bg-white/40" />
-              <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-300" />
+              <span className="mobile-auth-dot-soft h-1.5 w-1.5 rounded-full" />
             </div>
-            <div className="h-28 w-28 overflow-hidden rounded-full border-2 border-white bg-white shadow-2xl shadow-fuchsia-700/25">
+            <div className="h-28 w-28 overflow-hidden rounded-full border-2 border-white bg-white shadow-2xl shadow-slate-950/25">
               <img src={tenantLogoSrc || '/gms-soluciones-digitales.jpg'} alt={tenantInfo?.name || 'Estudio'} className="h-full w-full object-cover" />
             </div>
           </div>
-          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-fuchsia-300">{tenantInfo?.name || 'GMS Mobile'}</p>
+          <p className="mobile-text-accent text-[11px] font-black uppercase tracking-[0.3em]">{tenantInfo?.name || 'GMS Mobile'}</p>
           <h1 className="mt-2 text-4xl font-black leading-none">Portal de alumnos.</h1>
           <p className="mt-4 text-sm font-semibold leading-6 text-slate-300">
             Ingresa con tu correo para revisar asistencia, pagos, cursos y novedades de tu estudio.
@@ -111,8 +112,8 @@ export default function MobileLogin() {
         </div>
 
         <div className="rounded-[34px] border border-white/10 bg-white p-5 text-slate-950 shadow-2xl">
-          <div className="mb-5 rounded-2xl bg-fuchsia-50 px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-fuchsia-600">Acceso alumno</p>
+          <div className="mobile-bg-primary-soft mb-5 rounded-2xl px-4 py-3">
+            <p className="mobile-text-primary text-[10px] font-black uppercase tracking-[0.24em]">Acceso alumno</p>
             <p className="mt-1 text-xs font-bold text-slate-600">Recibiras un codigo temporal para entrar.</p>
           </div>
 
@@ -120,7 +121,7 @@ export default function MobileLogin() {
             <label className="block">
               <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Email</span>
               <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <HiOutlineMail className="text-fuchsia-500" size={20} />
+                <HiOutlineMail className="mobile-text-primary" size={20} />
                 <input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -138,7 +139,7 @@ export default function MobileLogin() {
                 value={tenantId}
                 onChange={(e) => setTenantId(e.target.value)}
                 inputMode="numeric"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-fuchsia-400"
+                className="mobile-border-primary w-full rounded-2xl border bg-slate-50 px-4 py-3 text-sm font-bold outline-none"
                 placeholder="Solo si el alumno existe en mas de un estudio"
               />
             </label> : (
@@ -163,7 +164,7 @@ export default function MobileLogin() {
                   />
                 </div>
                 {debugCode ? (
-                  <p className="mt-2 rounded-xl bg-fuchsia-50 px-3 py-2 text-xs font-bold text-fuchsia-700">
+                  <p className="mobile-bg-primary-soft mobile-text-primary mt-2 rounded-xl px-3 py-2 text-xs font-bold">
                     Codigo de prueba: {debugCode}
                   </p>
                 ) : null}
@@ -175,13 +176,13 @@ export default function MobileLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/20 transition hover:bg-fuchsia-700 disabled:opacity-60"
+              className="mobile-bg-primary mobile-shadow-primary w-full rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-widest text-white transition hover:brightness-95 disabled:opacity-60"
             >
               {loading ? 'Procesando...' : step === 'request' ? 'Solicitar codigo' : 'Ingresar'}
             </button>
           </form>
           <div className="mt-5 border-t border-slate-100 pt-4 text-center">
-            <Link to={studioSlug ? `/mobile/staff/${studioSlug}` : '/mobile/staff'} className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 hover:text-fuchsia-600">
+            <Link to={studioSlug ? `/mobile/staff/${studioSlug}` : '/mobile/staff'} className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 hover:text-slate-950">
               Acceso equipo
             </Link>
           </div>

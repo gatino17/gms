@@ -418,6 +418,7 @@ async def student_portal_summary(
             "city": getattr(tenant, "city", None),
             "phone": getattr(tenant, "phone", None),
             "logo_url": getattr(tenant, "logo_url", None),
+            "mobile_theme": getattr(tenant, "mobile_theme", None) or "gms_default",
         },
         "student": {
             "id": student.id,

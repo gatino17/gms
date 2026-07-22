@@ -47,6 +47,7 @@ class TenantOut(BaseModel):
     teacher_portal_enabled: bool = False
     student_portal_enabled: bool = False
     online_payments_enabled: bool = False
+    mobile_theme: Optional[str] = "gms_default"
     created_at: datetime
     admin_is_superuser: Optional[bool] = None
 
@@ -63,6 +64,7 @@ class TenantMobilePublicOut(BaseModel):
     teacher_portal_enabled: bool = False
     student_portal_enabled: bool = False
     online_payments_enabled: bool = False
+    mobile_theme: Optional[str] = "gms_default"
 
     class Config:
         from_attributes = True
@@ -101,6 +103,7 @@ class TenantCreate(BaseModel):
     teacher_portal_enabled: Optional[bool] = False
     student_portal_enabled: Optional[bool] = False
     online_payments_enabled: Optional[bool] = False
+    mobile_theme: Optional[str] = Field(default="gms_default", max_length=30)
     is_superuser: bool = False
 
 
@@ -140,6 +143,7 @@ class TenantUpdate(BaseModel):
     teacher_portal_enabled: Optional[bool] = None
     student_portal_enabled: Optional[bool] = None
     online_payments_enabled: Optional[bool] = None
+    mobile_theme: Optional[str] = Field(default=None, max_length=30)
     is_superuser: Optional[bool] = None
 
 
@@ -165,6 +169,7 @@ class TenantSelfUpdate(BaseModel):
     enrollment_fee_allow_waive: Optional[bool] = None
     enrollment_fee_kind: Optional[str] = None
     enrollment_fee_renewal: Optional[str] = None
+    mobile_theme: Optional[str] = Field(default=None, max_length=30)
 
 
 class StudentBase(BaseModel):

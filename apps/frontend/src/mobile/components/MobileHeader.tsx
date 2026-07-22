@@ -19,14 +19,14 @@ export default function MobileHeader({ user, tenant }: Props) {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-white/10 bg-[#090912]/90 px-5 py-4 backdrop-blur-xl">
+    <header className="mobile-bg-header sticky top-0 z-20 border-b border-white/10 px-5 py-4 backdrop-blur-xl">
       <div className="mx-auto flex max-w-md items-center justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white text-fuchsia-600 shadow-lg shadow-fuchsia-950/20">
+          <div className="mobile-text-primary flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white shadow-lg shadow-slate-950/20">
             {tenantLogoSrc ? <img src={tenantLogoSrc} alt={tenantInfo?.name || 'Estudio'} className="h-full w-full object-cover" /> : <HiOutlineSparkles size={22} />}
           </div>
           <div>
-            <p className="max-w-[210px] truncate text-[10px] font-black uppercase tracking-[0.24em] text-fuchsia-300">{tenantInfo?.name || 'Portal Mobile'}</p>
+            <p className="mobile-text-accent max-w-[210px] truncate text-[10px] font-black uppercase tracking-[0.24em]">{tenantInfo?.name || 'Portal Mobile'}</p>
             <h1 className="max-w-[190px] truncate text-lg font-black text-white">{mobileUserName(user)}</h1>
           </div>
         </div>

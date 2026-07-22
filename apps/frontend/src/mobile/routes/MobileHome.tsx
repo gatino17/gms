@@ -44,7 +44,7 @@ interface Announcement {
 }
 
 const ANNOUNCEMENT_TYPE_CONFIG: Record<string, { label: string; badge: string; icon: string }> = {
-  important: { label: 'Aviso importante', badge: 'bg-slate-950 text-white', icon: 'bg-fuchsia-50 text-fuchsia-600' },
+  important: { label: 'Aviso importante', badge: 'bg-slate-950 text-white', icon: 'mobile-bg-primary-soft mobile-text-primary' },
   promotion: { label: 'Promocion', badge: 'bg-emerald-600 text-white', icon: 'bg-emerald-50 text-emerald-600' },
   event: { label: 'Evento', badge: 'bg-blue-600 text-white', icon: 'bg-blue-50 text-blue-600' },
   schedule: { label: 'Cambio de horario', badge: 'bg-amber-500 text-white', icon: 'bg-amber-50 text-amber-600' },
@@ -240,14 +240,14 @@ export default function MobileHome() {
     <section className="space-y-3">
       <div className="flex items-center justify-between px-1">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-fuchsia-600">Comunicados</p>
+          <p className="mobile-text-primary text-[10px] font-black uppercase tracking-[0.24em]">Comunicados</p>
           <h2 className="text-lg font-black text-slate-950">Avisos activos</h2>
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-slate-950 px-3 py-1 text-[10px] font-black text-white">
             {activeAnnouncementIndex + 1} / {sliderAnnouncements.length}
           </span>
-          <span className="rounded-full bg-fuchsia-50 px-3 py-1 text-[10px] font-black text-fuchsia-600">{announcements.length}</span>
+          <span className="mobile-bg-primary-soft mobile-text-primary rounded-full px-3 py-1 text-[10px] font-black">{announcements.length}</span>
         </div>
       </div>
       {(() => {
@@ -256,14 +256,14 @@ export default function MobileHome() {
         return (
           <article
             key={currentAnnouncement.id}
-            className="mobile-announcement-slide overflow-hidden rounded-[32px] border border-white bg-white shadow-[0_26px_52px_rgba(15,23,42,0.22),0_14px_26px_rgba(217,70,239,0.18)] ring-1 ring-fuchsia-100/70"
+            className="mobile-announcement-slide overflow-hidden rounded-[32px] border border-white bg-white shadow-[0_26px_52px_rgba(15,23,42,0.22),0_14px_26px_rgba(15,23,42,0.10)] ring-1 ring-slate-100"
           >
             <div className="relative min-h-[330px] overflow-hidden bg-slate-950">
               {image ? (
                 <>
                   <img src={image} alt={currentAnnouncement.title} className="absolute inset-0 h-full w-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/28 to-slate-950/10" />
-                  <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-fuchsia-950/55 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950/60 to-transparent" />
                 </>
               ) : (
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.7),transparent_34%),linear-gradient(135deg,#020617,#581c87_55%,#111827)]" />
@@ -276,18 +276,18 @@ export default function MobileHome() {
                   Nuevo
                 </span>
               </div>
-              <div className="absolute right-4 top-4 rounded-2xl bg-white/95 p-2 text-fuchsia-600 shadow-xl shadow-black/20">
+              <div className="mobile-text-primary absolute right-4 top-4 rounded-2xl bg-white/95 p-2 shadow-xl shadow-black/20">
                 <HiOutlineSpeakerphone size={18} />
               </div>
               <div className="absolute inset-x-0 bottom-0 p-5 text-white">
                 <h3 className="text-2xl font-black leading-tight drop-shadow-lg">{currentAnnouncement.title}</h3>
-                {currentAnnouncement.subtitle ? <p className="mt-1 text-sm font-black text-fuchsia-100 drop-shadow">{currentAnnouncement.subtitle}</p> : null}
+                {currentAnnouncement.subtitle ? <p className="mt-1 text-sm font-black text-white/90 drop-shadow">{currentAnnouncement.subtitle}</p> : null}
                 {currentAnnouncement.body ? <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-white/85">{currentAnnouncement.body}</p> : null}
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <p className="rounded-full border border-white/15 bg-white/18 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-black/20 backdrop-blur-md">
                     {announcementValidityText(currentAnnouncement, user?.role)}
                   </p>
-                  <span className="h-2 w-12 shrink-0 rounded-full bg-gradient-to-r from-fuchsia-400 to-white" />
+                  <span className="mobile-gradient-primary h-2 w-12 shrink-0 rounded-full" />
                 </div>
               </div>
             </div>
@@ -302,7 +302,7 @@ export default function MobileHome() {
               type="button"
               onClick={() => setAnnouncementSlide(index)}
               className={`h-2.5 rounded-full transition-all ${
-                index === activeAnnouncementIndex ? 'w-8 bg-fuchsia-600 shadow-lg shadow-fuchsia-200' : 'w-2.5 bg-slate-200'
+                index === activeAnnouncementIndex ? 'mobile-bg-primary mobile-shadow-primary w-8' : 'w-2.5 bg-slate-200'
               }`}
               aria-label={`Ver aviso ${index + 1}`}
             />
@@ -312,7 +312,7 @@ export default function MobileHome() {
       {announcements.length > 3 ? (
         <Link
           to="/mobile/announcements"
-          className="flex items-center justify-center rounded-2xl border border-fuchsia-100 bg-fuchsia-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-fuchsia-700"
+          className="mobile-bg-primary-soft mobile-text-primary mobile-border-primary flex items-center justify-center rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-widest"
         >
           Ver todos los avisos
         </Link>
@@ -325,29 +325,29 @@ export default function MobileHome() {
       <div className="space-y-4">
         <MobileCard eyebrow="Profesor" title={`Hola, ${teacherFirstName}`}>
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-fuchsia-300 shadow-lg shadow-fuchsia-100">
+              <span className="mobile-bg-header mobile-text-accent mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-lg shadow-slate-200">
               <HiOutlineSparkles size={18} />
             </span>
             <div>
-              <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-fuchsia-600">Mensaje del dia</p>
+              <p className="mobile-text-primary mb-1 text-[10px] font-black uppercase tracking-[0.22em]">Mensaje del dia</p>
               <p className="text-base font-black leading-6 text-slate-950">{dailyMessage}</p>
             </div>
           </div>
         </MobileCard>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-[24px] border border-fuchsia-100 bg-white p-4 shadow-lg shadow-slate-200/70">
-            <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600">Cursos</p>
+          <div className="mobile-border-primary rounded-[24px] border bg-white p-4 shadow-lg shadow-slate-200/70">
+            <p className="mobile-text-primary text-[10px] font-black uppercase tracking-widest">Cursos</p>
             <p className="mt-1 text-3xl font-black">{teacherSummary?.course_count || 0}</p>
           </div>
           <div className="rounded-[24px] border border-slate-100 bg-slate-950 p-4 text-white shadow-lg shadow-slate-200/70">
-            <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-200">Alumnos</p>
+            <p className="mobile-text-accent text-[10px] font-black uppercase tracking-widest">Alumnos</p>
             <p className="mt-1 text-3xl font-black">{teacherSummary?.student_count || 0}</p>
           </div>
         </div>
         {birthdayStudents.length ? (
           <section className="relative overflow-hidden rounded-[30px] border border-yellow-100 bg-gradient-to-br from-white via-rose-50/70 to-yellow-50 shadow-2xl shadow-rose-100/80">
             <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-yellow-200/50 blur-2xl" />
-            <div className="pointer-events-none absolute -bottom-8 left-6 h-24 w-24 rounded-full bg-fuchsia-200/40 blur-3xl" />
+            <div className="mobile-auth-glow pointer-events-none absolute -bottom-8 left-6 h-24 w-24 rounded-full blur-3xl" />
             <HiOutlineSparkles className="pointer-events-none absolute left-5 top-5 text-2xl text-yellow-300 drop-shadow-[0_8px_10px_rgba(234,179,8,0.35)]" />
             <HiOutlineSparkles className="pointer-events-none absolute right-16 top-4 rotate-12 text-xl text-yellow-400 drop-shadow-[0_7px_9px_rgba(234,179,8,0.32)]" />
             <HiOutlineSparkles className="pointer-events-none absolute right-5 top-20 -rotate-12 text-3xl text-yellow-300 drop-shadow-[0_12px_14px_rgba(234,179,8,0.34)]" />
@@ -397,8 +397,8 @@ export default function MobileHome() {
       </MobileCard>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-[24px] border border-fuchsia-100 bg-white p-4 shadow-lg shadow-slate-200/70">
-          <HiOutlineChartBar className="mb-3 text-fuchsia-600" size={24} />
+        <div className="mobile-border-primary rounded-[24px] border bg-white p-4 shadow-lg shadow-slate-200/70">
+          <HiOutlineChartBar className="mobile-text-primary mb-3" size={24} />
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Asistencia</p>
           <p className="mt-1 text-2xl font-black">{Math.round(summary?.attendance?.percent || 0)}%</p>
         </div>

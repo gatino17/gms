@@ -54,3 +54,61 @@ body {
 .mobile-announcement-slide {
   animation: mobileAnnouncementReveal 720ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+.mobile-bg-header {
+  background-color: var(--mobile-header, #090912);
+}
+
+.mobile-bg-primary {
+  background-color: var(--mobile-primary, #c026d3);
+}
+
+.mobile-bg-primary-soft {
+  background-color: var(--mobile-primary-soft, #fdf4ff);
+}
+
+.mobile-text-primary {
+  color: var(--mobile-primary, #c026d3);
+}
+
+.mobile-text-accent {
+  color: var(--mobile-accent, #f0abfc);
+}
+
+.mobile-border-primary {
+  border-color: color-mix(in srgb, var(--mobile-primary, #c026d3) 28%, white);
+}
+
+.mobile-shadow-primary {
+  box-shadow: 0 14px 28px var(--mobile-primary-shadow, rgba(192, 38, 211, 0.28));
+}
+
+.mobile-gradient-primary {
+  background-image: linear-gradient(90deg, var(--mobile-primary, #c026d3), var(--mobile-accent, #f0abfc));
+}
+
+.mobile-spinner {
+  border-color: color-mix(in srgb, var(--mobile-primary, #c026d3) 18%, white);
+  border-top-color: var(--mobile-primary, #c026d3);
+}
+
+.mobile-auth-glow {
+  background-color: color-mix(in srgb, var(--mobile-primary, #c026d3) 22%, transparent);
+}
+
+.mobile-auth-dot {
+  background-color: var(--mobile-primary, #c026d3);
+  box-shadow: 0 10px 24px var(--mobile-primary-shadow, rgba(192, 38, 211, 0.28));
+}
+
+.mobile-auth-dot-soft {
+  background-color: var(--mobile-accent, #f0abfc);
+}
+
+.mobile-auth-ring {
+  border-color: color-mix(in srgb, var(--mobile-primary, #c026d3) 18%, transparent);
+}
+
+.mobile-auth-line {
+  background-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mobile-primary, #c026d3) 38%, transparent), transparent);
+}

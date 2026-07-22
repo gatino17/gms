@@ -3,6 +3,7 @@ import { HiOutlineBell, HiOutlineCash, HiOutlineHome, HiOutlineUserGroup } from 
 import MobileHeader from './components/MobileHeader'
 import { getMobileTenantInfo, getMobileUser, mobileApi, setMobileTenantInfo, type MobileTenantInfo } from './services/mobileApi'
 import { useEffect, useState } from 'react'
+import { mobileThemeStyle } from '../lib/mobileTheme'
 
 const navItems = [
   { to: '/mobile/home', label: 'Inicio', icon: <HiOutlineHome /> },
@@ -36,7 +37,7 @@ export default function MobileLayout() {
   }, [user?.id, user?.role])
 
   return (
-    <div className="min-h-screen bg-[#f7f8fb] text-slate-950">
+    <div className="min-h-screen bg-[#f7f8fb] text-slate-950" style={mobileThemeStyle(tenantInfo?.mobile_theme)}>
       <MobileHeader user={user} tenant={tenantInfo} />
       <main className="mx-auto min-h-[calc(100vh-148px)] max-w-md px-4 py-5 pb-28">
         <Outlet />
@@ -50,7 +51,7 @@ export default function MobileLayout() {
               className={({ isActive }) =>
                 `flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-black uppercase tracking-wider transition ${
                   isActive
-                    ? 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-500/25'
+                    ? 'mobile-bg-primary mobile-shadow-primary text-white'
                     : 'text-slate-500 hover:bg-slate-100 hover:text-slate-950'
                 }`
               }

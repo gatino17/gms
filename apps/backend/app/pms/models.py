@@ -88,6 +88,7 @@ class Tenant(Base):
     teacher_portal_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     student_portal_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     online_payments_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    mobile_theme: Mapped[Optional[str]] = mapped_column(String(30), default="gms_default")
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
 
     plan: Mapped[Optional["TenantPlan"]] = relationship("TenantPlan")

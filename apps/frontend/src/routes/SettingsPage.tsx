@@ -2,6 +2,7 @@
 import { api, toAbsoluteUrl, getTenant } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import { REGION_PRESETS, findRegionPreset, sanitizePhonePrefix } from '../lib/phone'
+import { MOBILE_THEME_PRESETS, getMobileTheme, type MobileThemeKey } from '../lib/mobileTheme'
 import { 
   HiOutlineOfficeBuilding, 
   HiOutlineMail, 
@@ -64,6 +65,7 @@ type TenantSettings = {
   teacher_portal_enabled?: boolean
   student_portal_enabled?: boolean
   online_payments_enabled?: boolean
+  mobile_theme?: MobileThemeKey | string | null
 }
 
 type RoomItem = {
@@ -104,6 +106,7 @@ export default function SettingsPage() {
     teacher_portal_enabled: false,
     student_portal_enabled: false,
     online_payments_enabled: false,
+    mobile_theme: 'gms_default',
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -134,6 +137,7 @@ export default function SettingsPage() {
     { label: 'Profesores', enabled: !!settings.teacher_portal_enabled },
     { label: 'Pagos Online', enabled: !!settings.online_payments_enabled },
   ]
+  const activeMobileTheme = getMobileTheme(settings.mobile_theme)
 
   useEffect(() => {
     const load = async () => {
@@ -319,6 +323,11 @@ export default function SettingsPage() {
     alert('Configuración de matrícula actualizada correctamente.')
   }
 
+  const handleSaveMobileTheme = async () => {
+    await saveGlobalSettings({ mobile_theme: settings.mobile_theme || 'gms_default' })
+    alert('Tema mobile actualizado correctamente.')
+  }
+
   const copyMobileLink = async (label: string, link: string) => {
     if (!link) return
     try {
@@ -483,6 +492,72 @@ export default function SettingsPage() {
             <p className="text-sm font-bold text-gray-500">El portal mobile aun no esta habilitado para este estudio.</p>
           </div>
         )}
+
+        <div className="rounded-[28px] border border-gray-100 bg-gray-50/60 p-4 md:p-6 space-y-5">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-fuchsia-600">Tema Mobile</p>
+              <h3 className="mt-1 text-lg font-black text-gray-900">Colores del portal</h3>
+              <p className="mt-1 text-xs font-bold text-gray-500">
+                Elige una identidad visual para header, botones y acentos principales del mobile.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white bg-white p-3 shadow-sm min-w-[180px]">
+              <div className="h-9 rounded-xl px-3 py-2 text-[9px] font-black uppercase tracking-widest text-white" style={{ background: activeMobileTheme.header }}>
+                Header
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="h-8 flex-1 rounded-xl px-3 py-2 text-center text-[9px] font-black uppercase tracking-widest text-white" style={{ background: activeMobileTheme.primary }}>
+                  Boton
+                </span>
+                <span className="h-8 w-8 rounded-xl border border-gray-100" style={{ background: activeMobileTheme.primarySoft }} />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {MOBILE_THEME_PRESETS.map((theme) => {
+              const selected = (settings.mobile_theme || 'gms_default') === theme.key
+              return (
+                <button
+                  key={theme.key}
+                  type="button"
+                  onClick={() => setSettings((current) => ({ ...current, mobile_theme: theme.key }))}
+                  className={`rounded-2xl border p-4 text-left transition-all ${
+                    selected ? 'border-gray-900 bg-white shadow-xl shadow-gray-200' : 'border-gray-100 bg-white/70 hover:border-gray-200'
+                  }`}
+                >
+                  <div className="mb-3 flex items-center gap-1.5">
+                    {[theme.header, theme.primary, theme.primarySoft].map((color) => (
+                      <span key={color} className="h-6 w-6 rounded-full border border-white shadow-sm" style={{ background: color }} />
+                    ))}
+                  </div>
+                  <p className="text-xs font-black text-gray-900">{theme.label}</p>
+                  <p className="mt-1 text-[10px] font-bold leading-4 text-gray-400">{theme.description}</p>
+                  {selected ? (
+                    <p className="mt-3 rounded-full bg-gray-950 px-3 py-1 text-center text-[9px] font-black uppercase tracking-widest text-white">
+                      Activo
+                    </p>
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
+              El tema predeterminado conserva el diseño actual de GMS.
+            </p>
+            <button
+              type="button"
+              onClick={handleSaveMobileTheme}
+              disabled={isSavingMsg}
+              className="rounded-2xl bg-gray-950 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-gray-200 transition hover:bg-fuchsia-700 disabled:opacity-50"
+            >
+              Guardar tema
+            </button>
+          </div>
+        </div>
 
         {mobileCopyMessage ? (
           <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-emerald-600">{mobileCopyMessage}</p>

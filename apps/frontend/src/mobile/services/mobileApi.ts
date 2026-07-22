@@ -27,6 +27,7 @@ export interface MobileTenantInfo {
   teacher_portal_enabled: boolean
   student_portal_enabled: boolean
   online_payments_enabled: boolean
+  mobile_theme?: string | null
 }
 
 export const mobileApi = axios.create({

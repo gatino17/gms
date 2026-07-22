@@ -264,6 +264,7 @@ async def create_tenant(
         teacher_portal_enabled=bool(payload.teacher_portal_enabled),
         student_portal_enabled=bool(payload.student_portal_enabled),
         online_payments_enabled=bool(payload.online_payments_enabled),
+        mobile_theme=payload.mobile_theme or "gms_default",
     )
     db.add(tenant)
     await db.flush()
@@ -568,6 +569,8 @@ async def update_tenant(
         tenant.online_payments_enabled = bool(data["online_payments_enabled"])
         if tenant.online_payments_enabled:
             tenant.mobile_enabled = True
+    if "mobile_theme" in data:
+        tenant.mobile_theme = data["mobile_theme"] or "gms_default"
     if "is_superuser" in data:
         if admin_user is None:
             admin_user = await db.scalar(

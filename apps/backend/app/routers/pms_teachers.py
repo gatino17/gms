@@ -237,6 +237,7 @@ async def _teacher_portal_summary(teacher: Teacher, db: AsyncSession) -> dict:
             "logo_url": getattr(tenant, "logo_url", None),
             "city": getattr(tenant, "city", None),
             "country": getattr(tenant, "country", None),
+            "mobile_theme": getattr(tenant, "mobile_theme", None) or "gms_default",
         },
         "teacher": {
             "id": teacher.id,
@@ -294,6 +295,7 @@ async def teacher_portal_login(
             "name": tenant.name,
             "slug": tenant.slug,
             "logo_url": tenant.logo_url,
+            "mobile_theme": tenant.mobile_theme or "gms_default",
         },
         "teacher": {
             "id": teacher.id,

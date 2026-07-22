@@ -167,8 +167,8 @@ export default function TeacherPortal() {
   if (loading) {
     return (
       <div className="py-16 text-center">
-        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-fuchsia-100 border-t-fuchsia-600" />
-        <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-fuchsia-600">Cargando cursos...</p>
+        <div className="mobile-spinner mx-auto h-10 w-10 animate-spin rounded-full border-4" />
+        <p className="mobile-text-primary mt-4 text-[10px] font-black uppercase tracking-widest">Cargando cursos...</p>
       </div>
     )
   }
@@ -177,12 +177,12 @@ export default function TeacherPortal() {
     <div className="space-y-4">
       <MobileCard eyebrow="Profesor" title={summary?.teacher?.name || 'Mis cursos'}>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-fuchsia-50 p-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600">Cursos</p>
+          <div className="mobile-bg-primary-soft rounded-2xl p-4">
+            <p className="mobile-text-primary text-[10px] font-black uppercase tracking-widest">Cursos</p>
             <p className="mt-1 text-2xl font-black text-slate-950">{summary?.course_count || 0}</p>
           </div>
           <div className="rounded-2xl bg-slate-950 p-4 text-white">
-            <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-200">Alumnos</p>
+            <p className="mobile-text-accent text-[10px] font-black uppercase tracking-widest">Alumnos</p>
             <p className="mt-1 text-2xl font-black">{summary?.student_count || 0}</p>
           </div>
         </div>
@@ -202,13 +202,13 @@ export default function TeacherPortal() {
               className="w-full p-4 text-left"
             >
               <div className="flex gap-4">
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-3xl bg-gradient-to-br from-fuchsia-500 to-purple-700 text-white shadow-lg shadow-fuchsia-500/20">
+                <div className="mobile-bg-primary mobile-shadow-primary h-20 w-20 shrink-0 overflow-hidden rounded-3xl text-white">
                   {courseImage ? <img src={courseImage} alt={course.name} className="h-full w-full object-cover" /> : (
                     <div className="flex h-full w-full items-center justify-center text-2xl font-black">{course.name.slice(0, 1).toUpperCase()}</div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-fuchsia-600">Curso</p>
+                  <p className="mobile-text-primary text-[10px] font-black uppercase tracking-[0.22em]">Curso</p>
                   <h3 className="mt-1 text-lg font-black leading-tight text-slate-950">{course.name}</h3>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-600">
@@ -221,7 +221,7 @@ export default function TeacherPortal() {
                       <IoMale /> {counts.male}
                     </span>
                     {course.room_name ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-50 px-2.5 py-1 text-[10px] font-black text-fuchsia-600">
+                      <span className="mobile-bg-primary-soft mobile-text-primary inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black">
                         <HiOutlineLocationMarker /> {course.room_name}
                       </span>
                     ) : null}
@@ -230,7 +230,7 @@ export default function TeacherPortal() {
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {scheduleItems(course).map((item) => (
-                  <span key={item} className="inline-flex items-center gap-1 rounded-2xl border border-fuchsia-100 bg-fuchsia-50 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-fuchsia-700">
+                  <span key={item} className="mobile-bg-primary-soft mobile-text-primary mobile-border-primary inline-flex items-center gap-1 rounded-2xl border px-3 py-2 text-[10px] font-black uppercase tracking-wider">
                     <HiOutlineCalendar /> {item}
                   </span>
                 ))}
@@ -246,7 +246,7 @@ export default function TeacherPortal() {
                     const isPresent = (course.attended_today_student_ids || []).includes(student.id)
                     return (
                       <div key={student.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-fuchsia-50 text-sm font-black text-fuchsia-600">
+                        <div className="mobile-bg-primary-soft mobile-text-primary flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-sm font-black">
                           {photo ? <img src={photo} alt={`${student.first_name} ${student.last_name}`} className="h-full w-full object-cover" /> : initials(student.first_name, student.last_name)}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -254,7 +254,7 @@ export default function TeacherPortal() {
                           <p className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${
                             enrollmentLabel(student) === 'Clase suelta'
                               ? 'bg-amber-50 text-amber-600'
-                              : 'bg-fuchsia-50 text-fuchsia-600'
+                              : 'mobile-bg-primary-soft mobile-text-primary'
                           }`}>
                             {enrollmentLabel(student)}
                           </p>
@@ -266,7 +266,7 @@ export default function TeacherPortal() {
                           className={`shrink-0 rounded-2xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition ${
                             isPresent
                               ? 'bg-emerald-50 text-emerald-600'
-                              : 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-500/20 hover:bg-fuchsia-700'
+                              : 'mobile-bg-primary text-white shadow-lg shadow-slate-200 hover:brightness-95'
                           } disabled:opacity-80`}
                         >
                           <span className="inline-flex items-center gap-1">

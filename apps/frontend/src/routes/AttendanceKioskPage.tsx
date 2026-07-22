@@ -577,7 +577,7 @@ export default function AttendanceKioskPage() {
                             }`}
 		                  >
 		                    <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-r from-fuchsia-100/70 via-white to-transparent" />
-	                      <div className="absolute top-4 right-4 w-14 h-14 md:w-16 md:h-16 rounded-[20px] border border-white/80 bg-white shadow-lg shadow-black/10 overflow-hidden flex items-center justify-center">
+		                      <div className="absolute top-4 right-4 w-[68px] h-[68px] md:w-20 md:h-20 rounded-[24px] border border-white/80 bg-white shadow-lg shadow-black/10 overflow-hidden flex items-center justify-center">
 	                        {row.course.image_url ? (
 	                          <img
 	                            src={toAbsoluteUrl(row.course.image_url)}
@@ -591,7 +591,7 @@ export default function AttendanceKioskPage() {
                         )}
                       </div>
 		                    <div className="relative">
-		                      <div className="relative pr-16 md:pr-20 pl-1 py-1">
+			                      <div className="relative pr-20 md:pr-24 pl-1 py-1">
                                     <div className={`mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.3em] ${
                                       row.course.attendance_window_open
                                         ? 'bg-emerald-500/12 text-emerald-700'

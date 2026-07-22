@@ -69,6 +69,21 @@ type TenantFeeSettings = {
 }
 
 type CalDay = { date:string; expected:boolean; attended:boolean; is_recovery?: boolean; is_extra?: boolean; expected_course_ids?: number[]; attended_course_ids?: number[] }
+type CourseOption = {
+  id: number
+  name: string
+  teacher_name?: string | null
+  day_of_week?: number | null
+  start_time?: string | null
+  day_of_week_2?: number | null
+  start_time_2?: string | null
+  day_of_week_3?: number | null
+  start_time_3?: string | null
+  day_of_week_4?: number | null
+  start_time_4?: string | null
+  day_of_week_5?: number | null
+  start_time_5?: string | null
+}
 
 const CL_TZ = 'America/Santiago'
 const DAY_NAMES_MON_FIRST = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'] as const
@@ -91,6 +106,18 @@ function minusOneDayYMD(ymd: string): string {
   const dt = new Date(y, (m || 1) - 1, d || 1)
   dt.setDate(dt.getDate() - 1)
   return toYMDInTZ(dt, CL_TZ)
+}
+function courseScheduleLabel(course?: CourseOption | PortalData['enrollments'][number]['course'] | null): string {
+  if (!course) return 'Horario por confirmar'
+  const slots = [
+    { d: course.day_of_week, t: course.start_time },
+    { d: course.day_of_week_2, t: course.start_time_2 },
+    { d: course.day_of_week_3, t: course.start_time_3 },
+    { d: course.day_of_week_4, t: course.start_time_4 },
+    { d: course.day_of_week_5, t: course.start_time_5 },
+  ].filter((slot) => slot.d != null && slot.t)
+  if (!slots.length) return 'Horario por confirmar'
+  return slots.map((slot) => `${DAY_NAMES_MON_FIRST[slot.d as number]} ${String(slot.t).slice(0, 5)} hrs`).join(' · ')
 }
 
 export default function StudentDetailPage() {
@@ -129,7 +156,7 @@ export default function StudentDetailPage() {
   const [changeSourceEnrollment, setChangeSourceEnrollment] = useState<any>(null)
   const [changeToCourseId, setChangeToCourseId] = useState<number | ''>('')
   const [changeEffectiveDate, setChangeEffectiveDate] = useState<string>(toYMDInTZ(new Date(), CL_TZ))
-  const [allCourses, setAllCourses] = useState<Array<{ id: number; name: string }>>([])
+  const [allCourses, setAllCourses] = useState<CourseOption[]>([])
   const [changingCourse, setChangingCourse] = useState(false)
 
   const todayYMD = useMemo(() => toYMDInTZ(new Date(), CL_TZ), [])
@@ -147,7 +174,21 @@ export default function StudentDetailPage() {
       try {
         const cRes = await api.get('/api/pms/courses', { params: { limit: 500 } })
         const items = (cRes.data?.items || cRes.data || []) as any[]
-        setAllCourses(items.map(c => ({ id: c.id, name: c.name })))
+        setAllCourses(items.map(c => ({
+          id: c.id,
+          name: c.name,
+          teacher_name: c.teacher_name,
+          day_of_week: c.day_of_week,
+          start_time: c.start_time,
+          day_of_week_2: c.day_of_week_2,
+          start_time_2: c.start_time_2,
+          day_of_week_3: c.day_of_week_3,
+          start_time_3: c.start_time_3,
+          day_of_week_4: c.day_of_week_4,
+          start_time_4: c.start_time_4,
+          day_of_week_5: c.day_of_week_5,
+          start_time_5: c.start_time_5,
+        })))
       } catch {
         setAllCourses([])
       }
@@ -979,29 +1020,59 @@ export default function StudentDetailPage() {
               <p className="text-sm text-gray-500 mt-1">El curso actual se cerrará el día anterior de la fecha efectiva para evitar superposición.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Curso actual</label>
-                <input
-                  value={changeSourceEnrollment?.course?.name || '-'}
-                  readOnly
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 font-black"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Curso nuevo</label>
-                <select
-                  value={changeToCourseId}
-                  onChange={(e) => setChangeToCourseId(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-black focus:outline-none focus:ring-2 focus:ring-fuchsia-200 focus:border-fuchsia-400"
-                >
-                  <option value="">Seleccionar...</option>
-                  {allCourses
-                    .filter(c => c.id !== Number(changeSourceEnrollment?.course?.id))
-                    .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-            </div>
+	            <div className="grid grid-cols-1 gap-4">
+	              <div>
+	                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Curso actual</label>
+	                <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+	                  <p className="text-sm font-black text-gray-900">{changeSourceEnrollment?.course?.name || '-'}</p>
+	                  <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-fuchsia-600">{changeSourceEnrollment?.course?.teacher_name || 'Sin instructor'}</p>
+	                  <p className="mt-1 text-xs font-bold text-gray-500">{courseScheduleLabel(changeSourceEnrollment?.course)}</p>
+	                </div>
+	              </div>
+	            </div>
+
+	            <div>
+	              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400">Curso nuevo</label>
+	              <p className="mt-1 text-xs font-bold text-gray-500">Selecciona el nuevo curso de destino.</p>
+	            </div>
+
+	            <div className="max-h-[340px] overflow-y-auto pr-1 space-y-3">
+	              {allCourses
+	                .filter(c => c.id !== Number(changeSourceEnrollment?.course?.id))
+	                .map(c => {
+	                  const selected = Number(changeToCourseId) === c.id
+	                  return (
+	                    <button
+	                      key={c.id}
+	                      type="button"
+	                      onClick={() => setChangeToCourseId(c.id)}
+	                      className={`w-full text-left rounded-2xl border px-4 py-3 transition-all ${
+	                        selected
+	                          ? 'border-fuchsia-300 bg-fuchsia-50 shadow-lg shadow-fuchsia-100'
+	                          : 'border-gray-100 bg-white hover:border-fuchsia-200 hover:bg-fuchsia-50/40'
+	                      }`}
+	                    >
+	                      <div className="flex items-start justify-between gap-3">
+	                        <div className="min-w-0">
+	                          <p className="text-sm md:text-base font-black text-gray-950 leading-tight">{c.name}</p>
+	                          <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-fuchsia-600">
+	                            Prof: {c.teacher_name || 'Sin instructor'}
+	                          </p>
+	                          <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-gray-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-700 border border-gray-100">
+	                            <HiOutlineClock size={14} className="text-fuchsia-500" />
+	                            {courseScheduleLabel(c)}
+	                          </div>
+	                        </div>
+	                        <span className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+	                          selected ? 'border-fuchsia-600 bg-fuchsia-600' : 'border-gray-200 bg-white'
+	                        }`}>
+	                          {selected && <span className="h-2 w-2 rounded-full bg-white" />}
+	                        </span>
+	                      </div>
+	                    </button>
+	                  )
+	                })}
+	            </div>
 
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Fecha efectiva</label>

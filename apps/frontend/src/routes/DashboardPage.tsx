@@ -113,6 +113,22 @@ function dayInfoInTZ(tz = CL_TZ) {
   }
 }
 
+function countOperatingDaysLast30(tz = CL_TZ) {
+  const todayYmd = toYMDInTZ(new Date(), tz)
+  const [year, month, day] = todayYmd.split('-').map(Number)
+  const end = new Date(year, (month || 1) - 1, day || 1)
+  let count = 0
+
+  for (let i = 0; i < 30; i += 1) {
+    const current = new Date(end)
+    current.setDate(end.getDate() - i)
+    const dow = current.getDay()
+    if (dow >= 1 && dow <= 6) count += 1
+  }
+
+  return count || 1
+}
+
 const methodLabel: Record<string, string> = {
   cash: 'Efectivo',
   card: 'Tarjeta',
@@ -162,6 +178,9 @@ export default function DashboardPage() {
   const paymentsRecent = summary?.recent_payments || []
   const alerts = summary?.alerts || { pending_count: 0, birthdays: [], soon_end: [] }
   const attendances30d = summary?.attendance_30d || 0
+  const highlightedStudents = summary?.highlighted_students || { total: 0, by_tier: { '4': 0, '6': 0, '12': 0 }, items: [] }
+  const attendanceOperatingDays = countOperatingDaysLast30(CL_TZ)
+  const attendanceDailyAverage = Math.round((attendances30d / attendanceOperatingDays) * 10) / 10
 
   const kpiData = [
     { label: 'Alumnos activos', mobileLabel: 'Alumnos', value: kpis?.active_students || 0, icon: <HiUserGroup />, color: 'fuchsia' },
@@ -398,8 +417,8 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* Cumpleaños */}
-          <section className="bg-gradient-to-br from-amber-50 via-rose-50 to-fuchsia-50 rounded-[32px] border border-amber-200/70 shadow-xl shadow-amber-100/30 overflow-hidden relative group">
+	          {/* Cumpleaños */}
+	          <section className="bg-gradient-to-br from-amber-50 via-rose-50 to-fuchsia-50 rounded-[32px] border border-amber-200/70 shadow-xl shadow-amber-100/30 overflow-hidden relative group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-500/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-amber-400/20 transition-all" />
             
             <div className="px-6 py-6 border-b border-amber-200/50 flex items-center gap-4 bg-gradient-to-r from-amber-100/60 via-rose-100/40 to-fuchsia-100/40 backdrop-blur-sm">
@@ -427,28 +446,115 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
-            </div>
-          </section>
+	            </div>
+	          </section>
 
-          {/* Estadísticas 30D */}
-          <section className="bg-gray-900 rounded-[32px] border border-fuchsia-200/20 p-6 md:p-8 shadow-2xl relative overflow-hidden group mx-4 md:mx-0">
-            <div className="absolute top-0 right-0 w-32 md:w-40 h-32 md:h-40 bg-fuchsia-500/20 rounded-full -mr-16 -mt-16 md:-mr-20 md:-mt-20 blur-[40px] md:blur-[60px] group-hover:bg-fuchsia-500/30 transition-all" />
-            <div className="relative space-y-4 md:space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
-                  <HiSparkles className="text-fuchsia-400 text-lg md:text-xl" />
-                </div>
-                <h2 className="text-[10px] md:text-xs font-black text-white uppercase tracking-[0.2em]">Asistencias 30D</h2>
-              </div>
-              <div>
-                <div className="text-4xl md:text-5xl font-black text-white tracking-tight leading-none">{attendances30d}</div>
-                <p className="text-gray-400 text-[8px] md:text-[10px] font-black mt-2 md:mt-3 uppercase tracking-widest">Total registros mensuales</p>
-              </div>
-              <div className="h-1.5 md:h-2 w-full bg-white/10 rounded-full overflow-hidden mt-4 md:mt-6">
-                <div className="h-full bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full shadow-[0_0_20px_rgba(217,70,239,0.4)] transition-all duration-1000" style={{ width: `${Math.min(100, (attendances30d/500)*100)}%` }} />
-              </div>
-            </div>
-          </section>
+	          {/* Alumnos destacados */}
+	          <section className="bg-white rounded-[32px] border border-gray-100 shadow-xl shadow-gray-100/40 overflow-hidden relative group">
+	            <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-fuchsia-500/10 blur-2xl group-hover:bg-fuchsia-500/20 transition-all" />
+	            <div className="px-6 py-6 border-b border-gray-50 flex items-center justify-between bg-gradient-to-r from-gray-950 to-gray-900">
+	              <div className="flex items-center gap-4">
+	                <div className="w-10 h-10 rounded-xl bg-fuchsia-500 text-white flex items-center justify-center shadow-lg shadow-fuchsia-500/25">
+	                  <HiSparkles className="text-xl" />
+	                </div>
+	                <div>
+	                  <h2 className="text-lg font-black text-white tracking-tight">Alumnos destacados</h2>
+	                  <p className="text-[9px] font-bold text-fuchsia-200 uppercase tracking-widest">Asistencia + pagos al día</p>
+	                </div>
+	              </div>
+	              <div className="text-right">
+	                <div className="text-3xl font-black text-white leading-none">{highlightedStudents.total || 0}</div>
+	                <div className="mt-1 text-[8px] font-black uppercase tracking-widest text-zinc-400">Cumplen</div>
+	              </div>
+	            </div>
+
+	            <div className="p-6 space-y-5">
+	              <div className="grid grid-cols-3 gap-2">
+	                {[
+	                  ['4M', highlightedStudents.by_tier?.['4'] || 0, 'Constancia'],
+	                  ['6M', highlightedStudents.by_tier?.['6'] || 0, 'Disciplina'],
+	                  ['12M', highlightedStudents.by_tier?.['12'] || 0, 'Excelencia'],
+	                ].map(([label, value, caption]) => (
+	                  <div key={label} className="rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-center">
+	                    <div className="text-sm font-black text-fuchsia-600">{label}</div>
+	                    <div className="mt-1 text-xl font-black text-gray-950">{value}</div>
+	                    <div className="mt-0.5 text-[8px] font-black uppercase tracking-widest text-gray-400">{caption}</div>
+	                  </div>
+	                ))}
+	              </div>
+
+	              {!highlightedStudents.items?.length ? (
+	                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 py-8 text-center">
+	                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sin alumnos destacados aún</p>
+	                  <p className="mt-2 px-6 text-xs font-bold text-gray-500">Aparecerán al cumplir asistencia mínima y pagos al día.</p>
+	                </div>
+	              ) : (
+	                <div className="space-y-3">
+	                  {highlightedStudents.items.slice(0, 3).map((student: any) => (
+	                    <Link key={student.id} to={`/students/${student.id}`} className="group/student flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-3 py-3 shadow-sm hover:border-fuchsia-200 hover:bg-fuchsia-50/40 transition-all">
+	                      <div className="h-11 w-11 rounded-2xl overflow-hidden bg-fuchsia-50 text-fuchsia-600 flex items-center justify-center font-black shrink-0 border border-fuchsia-100">
+	                        {student.photo_url ? (
+	                          <img src={toAbsoluteUrl(student.photo_url)} alt={student.name} className="h-full w-full object-cover" />
+	                        ) : (
+	                          student.name?.slice(0, 2).toUpperCase()
+	                        )}
+	                      </div>
+	                      <div className="min-w-0 flex-1">
+	                        <div className="text-sm font-black text-gray-950 truncate group-hover/student:text-fuchsia-700">{student.name}</div>
+	                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+	                          <span className="rounded-full bg-fuchsia-50 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-fuchsia-700 border border-fuchsia-100">{student.tier_months}M</span>
+	                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-700 border border-emerald-100">Al día</span>
+	                        </div>
+	                      </div>
+	                      <div className="text-right shrink-0">
+	                        <div className="text-sm font-black text-gray-950">{Math.round(student.attendance_rate || 0)}%</div>
+	                        <div className="text-[8px] font-black uppercase tracking-widest text-gray-400">{student.attended}/{student.expected}</div>
+	                      </div>
+	                    </Link>
+	                  ))}
+	                </div>
+	              )}
+	            </div>
+	          </section>
+
+	          {/* Estadísticas 30D */}
+	          <section className="rounded-[32px] border border-gray-100 bg-white p-6 md:p-7 shadow-xl shadow-gray-100/40 relative overflow-hidden group mx-4 md:mx-0">
+	            <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-fuchsia-500/10 blur-3xl group-hover:bg-fuchsia-500/20 transition-all" />
+	            <div className="absolute -left-12 bottom-0 h-28 w-28 rounded-full bg-zinc-900/5 blur-2xl" />
+	            <div className="relative space-y-5">
+	              <div className="flex items-center justify-between gap-4">
+	                <div className="flex items-center gap-3">
+	                  <div className="w-11 h-11 rounded-2xl bg-gray-950 text-white flex items-center justify-center shadow-lg shadow-gray-200">
+	                    <HiSparkles className="text-fuchsia-400 text-xl" />
+	                  </div>
+	                  <div>
+	                    <h2 className="text-lg font-black text-gray-950 tracking-tight">Asistencias 30D</h2>
+	                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Actividad registrada</p>
+	                  </div>
+	                </div>
+	                <div className="rounded-2xl bg-fuchsia-50 px-3 py-2 text-right border border-fuchsia-100">
+	                  <div className="text-lg font-black text-fuchsia-700">{attendanceDailyAverage}</div>
+	                  <div className="text-[8px] font-black uppercase tracking-widest text-fuchsia-500">Diaria</div>
+	                </div>
+	              </div>
+
+	              <div className="rounded-[28px] bg-gradient-to-br from-gray-950 via-gray-900 to-black px-5 py-5 text-white shadow-2xl shadow-gray-200/80">
+	                <div className="flex items-end justify-between gap-4">
+	                  <div>
+	                    <div className="text-5xl font-black tracking-tight leading-none">{attendances30d}</div>
+	                    <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">Registros totales</p>
+	                  </div>
+	                  <div className="text-right">
+	                    <div className="text-2xl font-black text-fuchsia-300">{attendanceDailyAverage}</div>
+	                    <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-zinc-500">Asistencia diaria</p>
+	                  </div>
+	                </div>
+	                <div className="mt-5 h-2.5 w-full rounded-full bg-white/10 overflow-hidden">
+	                  <div className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 via-purple-500 to-white shadow-[0_0_20px_rgba(217,70,239,0.45)] transition-all duration-1000" style={{ width: `${Math.min(100, (attendances30d / 300) * 100)}%` }} />
+	                </div>
+	              </div>
+	            </div>
+	          </section>
         </div>
       </div>
     </div>

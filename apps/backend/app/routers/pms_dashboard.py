@@ -12,6 +12,160 @@ from app.pms.deps import get_tenant_id, get_db_session
 
 router = APIRouter(prefix="/api/pms/dashboard", tags=["pms-dashboard"])
 
+
+def _subtract_months(value: date, months: int) -> date:
+    month = value.month - months
+    year = value.year
+    while month <= 0:
+        month += 12
+        year -= 1
+    last_day = [
+        31,
+        29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+        31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+    ][month - 1]
+    return date(year, month, min(value.day, last_day))
+
+
+def _course_days(course: Course) -> list[int]:
+    return [
+        day for day in [
+            course.day_of_week,
+            course.day_of_week_2,
+            course.day_of_week_3,
+            course.day_of_week_4,
+            course.day_of_week_5,
+        ] if day is not None
+    ]
+
+
+def _count_weekdays(start: date, end: date, dows: list[int]) -> int:
+    if start > end or not dows:
+        return 0
+    total = 0
+    for dow in set(dows):
+        current = start
+        diff = (dow - current.weekday()) % 7
+        current += timedelta(days=diff)
+        while current <= end:
+            total += 1
+            current += timedelta(days=7)
+    return total
+
+
+async def _highlighted_students(db: AsyncSession, tenant_id: int, today: date) -> dict[str, Any]:
+    tiers = [
+        {"months": 12, "threshold": 95.0, "label": "Excelencia 12M"},
+        {"months": 6, "threshold": 95.0, "label": "Disciplina 6M"},
+        {"months": 4, "threshold": 90.0, "label": "Constancia 4M"},
+    ]
+    min_cutoff = _subtract_months(today, 12)
+
+    rows = (
+        await db.execute(
+            select(Student, Enrollment, Course)
+            .join(Enrollment, and_(Enrollment.student_id == Student.id, Enrollment.tenant_id == tenant_id))
+            .join(Course, and_(Course.id == Enrollment.course_id, Course.tenant_id == tenant_id))
+            .where(
+                Student.tenant_id == tenant_id,
+                Student.is_active.is_(True),
+                Enrollment.is_active.is_(True),
+                Course.is_active.is_(True),
+            )
+        )
+    ).all()
+
+    by_student: dict[int, dict[str, Any]] = {}
+    course_ids: set[int] = set()
+    for student, enrollment, course in rows:
+        course_ids.add(course.id)
+        entry = by_student.setdefault(
+            student.id,
+            {
+                "student": student,
+                "enrollments": [],
+            },
+        )
+        entry["enrollments"].append((enrollment, course))
+
+    if not by_student:
+        return {"total": 0, "by_tier": {"4": 0, "6": 0, "12": 0}, "items": []}
+
+    attendance_set: set[tuple[int, int, date]] = set()
+    min_cutoff_dt = datetime.combine(min_cutoff, datetime.min.time())
+    tomorrow_dt = datetime.combine(today + timedelta(days=1), datetime.min.time())
+    att_rows = (
+        await db.execute(
+            select(Attendance.student_id, Attendance.course_id, Attendance.attended_at)
+            .where(
+                Attendance.tenant_id == tenant_id,
+                Attendance.student_id.in_(list(by_student.keys())),
+                Attendance.course_id.in_(list(course_ids)),
+                Attendance.attended_at >= min_cutoff_dt,
+                Attendance.attended_at < tomorrow_dt,
+                or_(Attendance.notes == None, Attendance.notes != "clase_suelta"),
+            )
+        )
+    ).all()
+    for student_id, course_id, attended_at in att_rows:
+        attendance_set.add((int(student_id), int(course_id), attended_at.date()))
+
+    highlighted: list[dict[str, Any]] = []
+    by_tier = {"4": 0, "6": 0, "12": 0}
+
+    for student_id, entry in by_student.items():
+        student: Student = entry["student"]
+        enrollments: list[tuple[Enrollment, Course]] = entry["enrollments"]
+        payments_current = all(enr.end_date is not None and enr.end_date >= today for enr, _course in enrollments)
+        if not payments_current:
+            continue
+
+        best: dict[str, Any] | None = None
+        for tier in tiers:
+            cutoff = _subtract_months(today, int(tier["months"]))
+            if student.joined_at and student.joined_at > cutoff:
+                continue
+            if not any(enr.start_date <= cutoff for enr, _course in enrollments):
+                continue
+
+            expected = 0
+            attended = 0
+            for enr, course in enrollments:
+                window_start = max(enr.start_date, cutoff)
+                window_end = min(enr.end_date or today, today)
+                if window_start > window_end:
+                    continue
+                expected += _count_weekdays(window_start, window_end, _course_days(course))
+                attended += sum(
+                    1
+                    for sid, cid, att_date in attendance_set
+                    if sid == student_id and cid == course.id and window_start <= att_date <= window_end
+                )
+
+            if expected <= 0:
+                continue
+            rate = min(100.0, round((attended / expected) * 100, 1))
+            if rate >= float(tier["threshold"]):
+                best = {
+                    "id": student.id,
+                    "name": f"{student.first_name} {student.last_name}",
+                    "photo_url": student.photo_url,
+                    "tier_months": tier["months"],
+                    "tier_label": tier["label"],
+                    "attendance_rate": rate,
+                    "attended": attended,
+                    "expected": expected,
+                    "payment_status": "Al dia",
+                }
+                break
+
+        if best:
+            by_tier[str(best["tier_months"])] += 1
+            highlighted.append(best)
+
+    highlighted.sort(key=lambda item: (int(item["tier_months"]), float(item["attendance_rate"]), int(item["attended"])), reverse=True)
+    return {"total": len(highlighted), "by_tier": by_tier, "items": highlighted[:5]}
+
 @router.get("/summary")
 async def get_summary(
     tenant_id: int = Depends(get_tenant_id),
@@ -114,6 +268,7 @@ async def get_summary(
     recent_res = await db.execute(recent_stmt)
     p_prev_res = await db.execute(pending_prev_stmt)
     soon_res = await db.execute(soon_stmt)
+    highlighted = await _highlighted_students(db, tenant_id, today)
 
     return {
         "kpis": {
@@ -137,5 +292,6 @@ async def get_summary(
             "birthdays": res[6] or [],
             "soon_end": [{"student": f"{r[0]} {r[1]}", "course": r[2], "renewal_date": r[3].isoformat()} for r in soon_res.all()]
         },
-        "attendance_30d": res[5] or 0
+        "attendance_30d": res[5] or 0,
+        "highlighted_students": highlighted,
     }

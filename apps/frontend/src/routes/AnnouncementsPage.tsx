@@ -299,7 +299,7 @@ export default function AnnouncementsPage() {
         <div className="flex flex-col gap-6 px-2 sm:flex-row sm:items-end sm:justify-between md:px-0">
           <div className="space-y-1 text-center sm:text-left">
             <span className="rounded-full bg-fuchsia-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-fuchsia-600 md:text-[10px]">Comunicacion</span>
-            <h1 className="text-2xl font-black leading-none tracking-tight text-gray-900 md:text-4xl">Anuncios</h1>
+            <h1 className="text-2xl font-black leading-none tracking-tight text-gray-900 md:text-3xl">Anuncios</h1>
             <p className="text-xs font-medium text-gray-500 md:text-sm">Gestiona comunicaciones para alumnos y profesores.</p>
           </div>
           <button

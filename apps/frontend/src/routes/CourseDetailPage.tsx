@@ -172,7 +172,7 @@ export default function CourseDetailPage() {
                  <span className="px-2 md:px-3 py-1 bg-fuchsia-100 text-fuchsia-700 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded-full">{course.level || 'Sin Nivel'}</span>
                  <span className="px-2 md:px-3 py-1 bg-purple-100 text-purple-700 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded-full">{course.course_type || 'Regular'}</span>
               </div>
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 tracking-tight leading-tight">{course.name}</h1>
+              <h1 className="text-2xl md:text-3xl lg:text-3xl font-black text-gray-900 tracking-tight leading-tight">{course.name}</h1>
               <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 md:gap-5 text-gray-500 font-bold text-xs md:text-sm">
                  <div className="flex items-center gap-2"><HiOutlineUserGroup className="text-fuchsia-500" /> {teacher.name || 'Sin Instructor'}</div>
                  <div className="flex items-center gap-2"><HiOutlineCalendar className="text-fuchsia-500" /> Sala: {room.name || 'Gral.'}</div>

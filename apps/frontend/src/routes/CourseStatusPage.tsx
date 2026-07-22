@@ -520,7 +520,7 @@ export default function CourseStatusPage() {
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 pt-4">
         <div className="space-y-1 text-center sm:text-left px-2 md:px-0">
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Gestion Academica</span>
-           <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Estado de Cursos</h1>
+           <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight leading-none">Estado de Cursos</h1>
            <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center sm:justify-start gap-4 mt-4">
               <p className="text-gray-500 font-medium text-sm md:text-lg max-w-[20rem]">Control de inscripciones y pagos en tiempo real.</p>
               <div className="hidden sm:block h-4 w-px bg-gray-200" />

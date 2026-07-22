@@ -162,7 +162,7 @@ export default function TeachersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4">
         <div className="space-y-1">
-          <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Profesores</h1>
+          <h1 className="text-3xl md:text-3xl font-black text-gray-900 tracking-tight">Profesores</h1>
           <p className="text-gray-500 font-medium text-sm md:text-base">Gestión de instructores y equipo docente.</p>
         </div>
         <button

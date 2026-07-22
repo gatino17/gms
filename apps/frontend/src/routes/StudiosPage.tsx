@@ -873,7 +873,7 @@ export default function StudiosPage() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="space-y-1 text-center sm:text-left">
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Administracion Central</span>
-           <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">Estudios</h1>
+           <h1 className="text-3xl md:text-3xl font-black text-gray-900 tracking-tight leading-none">Estudios</h1>
            <p className="text-gray-500 font-medium text-sm md:text-base">Gestion de sedes y configuracion de tenants.</p>
         </div>
       </div>

@@ -565,7 +565,7 @@ export default function PaymentsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-1 sm:px-4">
         <div className="space-y-1 text-center sm:text-left">
-          <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Caja y Pagos</h1>
+          <h1 className="text-3xl md:text-3xl font-black text-gray-900 tracking-tight">Caja y Pagos</h1>
           <p className="text-gray-500 font-medium text-sm md:text-base">Control financiero en tiempo real.</p>
         </div>
         <div className="flex flex-row items-stretch gap-3 w-full sm:w-auto">

@@ -180,7 +180,7 @@ export default function DashboardPage() {
              <div className="h-1 w-1 rounded-full bg-gray-300" />
              <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 md:text-gray-400 uppercase tracking-widest">{todayLabel}</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Panel de Control</h1>
+          <h1 className="text-3xl md:text-3xl font-black text-gray-900 tracking-tight">Panel de Control</h1>
           <p className="text-gray-500 font-medium text-sm md:text-base">Bienvenido a tu gestión diaria.</p>
         </div>
         <div className="flex flex-col xs:flex-row items-center gap-3 md:gap-4 w-full sm:w-auto">

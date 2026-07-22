@@ -359,7 +359,7 @@ export default function SettingsPage() {
           <div className="h-1 w-1 rounded-full bg-gray-300" />
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Panel de Control</span>
         </div>
-        <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Ajustes del Estudio</h1>
+        <h1 className="text-3xl md:text-3xl font-black text-gray-900 tracking-tight">Ajustes del Estudio</h1>
         <p className="text-sm md:text-base text-gray-500 font-medium">Gestiona la identidad de tu academia y la infraestructura física.</p>
       </div>
 

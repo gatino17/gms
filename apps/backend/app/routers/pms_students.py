@@ -520,6 +520,7 @@ async def student_portal_summary(
             "phone": getattr(tenant, "phone", None),
             "logo_url": getattr(tenant, "logo_url", None),
             "mobile_theme": getattr(tenant, "mobile_theme", None) or "gms_default",
+            "online_payments_enabled": bool(getattr(tenant, "online_payments_enabled", False)),
         },
         "student": {
             "id": student.id,

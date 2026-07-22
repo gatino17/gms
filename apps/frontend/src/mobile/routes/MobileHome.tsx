@@ -1,15 +1,41 @@
 import { useEffect, useMemo, useState } from 'react'
-import { HiOutlineBell, HiOutlineCake, HiOutlineCash, HiOutlineChartBar, HiOutlineCheckCircle, HiOutlineSparkles, HiOutlineSpeakerphone } from 'react-icons/hi'
+import { createPortal } from 'react-dom'
+import { HiOutlineCake, HiOutlineCash, HiOutlineChartBar, HiOutlineCheckCircle, HiOutlineClock, HiOutlineSparkles, HiOutlineSpeakerphone, HiOutlineX } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
 import { getMobileUser, mobileApi, mobileUserName } from '../services/mobileApi'
 
 interface StudentSummary {
+  student?: {
+    is_active?: boolean
+  }
   attendance?: { percent?: number }
   classes_active?: number
   payments?: { total_last_90?: number }
+  enrollments?: Array<{
+    id: number
+    is_active?: boolean
+    payment_status?: string | null
+    course?: {
+      id: number
+      name: string
+      teacher_name?: string | null
+      day_of_week?: number | null
+      start_time?: string | null
+      day_of_week_2?: number | null
+      start_time_2?: string | null
+      day_of_week_3?: number | null
+      start_time_3?: string | null
+      day_of_week_4?: number | null
+      start_time_4?: string | null
+      day_of_week_5?: number | null
+      start_time_5?: string | null
+    }
+  }>
 }
+
+type StudentCourseSummary = NonNullable<NonNullable<StudentSummary['enrollments']>[number]['course']>
 
 interface TeacherSummary {
   course_count?: number
@@ -45,7 +71,7 @@ interface Announcement {
 
 const ANNOUNCEMENT_TYPE_CONFIG: Record<string, { label: string; badge: string; icon: string }> = {
   important: { label: 'Aviso importante', badge: 'bg-slate-950 text-white', icon: 'mobile-bg-primary-soft mobile-text-primary' },
-  promotion: { label: 'Promocion', badge: 'bg-emerald-600 text-white', icon: 'bg-emerald-50 text-emerald-600' },
+  promotion: { label: 'Promoción', badge: 'bg-emerald-600 text-white', icon: 'bg-emerald-50 text-emerald-600' },
   event: { label: 'Evento', badge: 'bg-blue-600 text-white', icon: 'bg-blue-50 text-blue-600' },
   schedule: { label: 'Cambio de horario', badge: 'bg-amber-500 text-white', icon: 'bg-amber-50 text-amber-600' },
   payment: { label: 'Recordatorio de pago', badge: 'bg-purple-600 text-white', icon: 'bg-purple-50 text-purple-600' },
@@ -117,7 +143,7 @@ const sortAnnouncementsNewestFirst = (items: Announcement[]) =>
 
 const announcementValidityText = (announcement: Announcement, role?: string) => {
   if (announcement.end_date) return `Vigente hasta ${announcement.end_date}`
-  if (role === 'teacher') return 'Visible minimo 2 meses'
+  if (role === 'teacher') return 'Visible mínimo 2 meses'
   return 'Vigente este mes'
 }
 
@@ -132,37 +158,97 @@ const isBirthdayToday = (birthdate?: string | null) => {
 const initials = (first?: string, last?: string) =>
   `${first?.trim()?.[0] || ''}${last?.trim()?.[0] || ''}`.toUpperCase() || 'AL'
 
+const DAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+const DAY_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+const courseSlots = (course?: StudentCourseSummary) => {
+  if (!course) return []
+  return [
+    [course.day_of_week, course.start_time],
+    [course.day_of_week_2, course.start_time_2],
+    [course.day_of_week_3, course.start_time_3],
+    [course.day_of_week_4, course.start_time_4],
+    [course.day_of_week_5, course.start_time_5],
+  ]
+    .filter(([day, time]) => day != null && time)
+    .map(([day, time]) => ({ day: Number(day), time: String(time).slice(0, 5) }))
+}
+
+const nextClassFromEnrollments = (enrollments?: StudentSummary['enrollments']) => {
+  const activeEnrollments = (enrollments || []).filter((item) => item.is_active !== false)
+  const now = new Date()
+  const todayMonFirst = (now.getDay() + 6) % 7
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+  let best: {
+    courseName: string
+    teacherName?: string | null
+    dayLabel: string
+    shortLabel: string
+    time: string
+    daysAway: number
+  } | null = null
+
+  for (const enrollment of activeEnrollments) {
+    for (const slot of courseSlots(enrollment.course)) {
+      const [hour, minute] = slot.time.split(':').map(Number)
+      const slotMinutes = (hour || 0) * 60 + (minute || 0)
+      let daysAway = (slot.day - todayMonFirst + 7) % 7
+      if (daysAway === 0 && slotMinutes < currentMinutes) daysAway = 7
+      const candidate = {
+        courseName: enrollment.course?.name || 'Curso',
+        teacherName: enrollment.course?.teacher_name,
+        dayLabel: daysAway === 0 ? 'Hoy' : daysAway === 1 ? 'Mañana' : DAY_LABELS[slot.day] || 'Próxima clase',
+        shortLabel: DAY_SHORT[slot.day] || 'Clase',
+        time: slot.time,
+        daysAway,
+      }
+      if (!best || candidate.daysAway < best.daysAway || (candidate.daysAway === best.daysAway && candidate.time < best.time)) {
+        best = candidate
+      }
+    }
+  }
+
+  return best
+}
+
+const nextClassReminderText = (nextClass: NonNullable<ReturnType<typeof nextClassFromEnrollments>>) => {
+  const day = nextClass.dayLabel.toLowerCase()
+  if (nextClass.dayLabel === 'Hoy') return 'Recuerda que hoy es tu curso a las'
+  if (nextClass.dayLabel === 'Mañana') return 'Recuerda que mañana tienes clase a las'
+  return `Recuerda que este ${day} tienes clase a las`
+}
+
 const TEACHER_DAILY_MESSAGES = [
   'Cada clase puede ser el impulso que un alumno necesitaba hoy.',
-  'Tu energia marca el ritmo antes de que empiece la musica.',
-  'Una buena clase tambien se construye con orden y presencia.',
+  'Tu energía marca el ritmo antes de que empiece la música.',
+  'Una buena clase también se construye con orden y presencia.',
   'Hoy tienes una nueva oportunidad para inspirar disciplina.',
-  'Los pequenos avances tambien cuentan cuando se sostienen.',
-  'Tu constancia ayuda a que tus alumnos confien en su proceso.',
-  'Ensenar tambien es observar, ajustar y acompanar.',
-  'Una clase clara deja alumnos mas seguros y motivados.',
-  'El progreso se nota cuando cada detalle tiene intencion.',
-  'Hoy puedes convertir una correccion en una mejora real.',
+  'Los pequeños avances también cuentan cuando se sostienen.',
+  'Tu constancia ayuda a que tus alumnos confíen en su proceso.',
+  'Enseñar también es observar, ajustar y acompañar.',
+  'Una clase clara deja alumnos más seguros y motivados.',
+  'El progreso se nota cuando cada detalle tiene intención.',
+  'Hoy puedes convertir una corrección en una mejora real.',
   'La actitud del profesor define mucho antes del primer paso.',
-  'Cada asistencia marcada tambien cuenta una historia de compromiso.',
-  'Un alumno motivado empieza muchas veces con una guia cercana.',
-  'La tecnica mejora cuando existe paciencia y direccion.',
-  'Tu clase puede ser el mejor momento del dia para alguien.',
-  'La energia correcta transforma un grupo en comunidad.',
-  'Ordenar la clase tambien es cuidar la experiencia del alumno.',
-  'Hoy enfocate en que cada alumno se lleve algo concreto.',
-  'Una indicacion simple puede cambiar todo el resultado.',
-  'La mejor clase combina estructura, energia y escucha.',
-  'Tu liderazgo se nota en como el grupo avanza unido.',
-  'Cada alumno progresa a su ritmo; tu guia le da direccion.',
-  'Hoy es buen dia para reforzar confianza y tecnica.',
-  'La presencia del profesor tambien ensena.',
+  'Cada asistencia marcada también cuenta una historia de compromiso.',
+  'Un alumno motivado empieza muchas veces con una guía cercana.',
+  'La técnica mejora cuando existe paciencia y dirección.',
+  'Tu clase puede ser el mejor momento del día para alguien.',
+  'La energía correcta transforma un grupo en comunidad.',
+  'Ordenar la clase también es cuidar la experiencia del alumno.',
+  'Hoy enfócate en que cada alumno se lleve algo concreto.',
+  'Una indicación simple puede cambiar todo el resultado.',
+  'La mejor clase combina estructura, energía y escucha.',
+  'Tu liderazgo se nota en cómo el grupo avanza unido.',
+  'Cada alumno progresa a su ritmo; tu guía le da dirección.',
+  'Hoy es buen día para reforzar confianza y técnica.',
+  'La presencia del profesor también enseña.',
   'Una clase bien guiada deja ganas de volver.',
-  'El compromiso se contagia cuando se trabaja con proposito.',
+  'El compromiso se contagia cuando se trabaja con propósito.',
   'Cada horario es una oportunidad para elevar el nivel.',
-  'La disciplina se construye mejor con una guia constante.',
-  'Tu forma de ensenar tambien crea identidad para el estudio.',
-  'Hoy deja una clase que se recuerde por su energia y claridad.',
+  'La disciplina se construye mejor con una guía constante.',
+  'Tu forma de enseñar también crea identidad para el estudio.',
+  'Hoy deja una clase que se recuerde por su energía y claridad.',
 ]
 
 const teacherDailyMessage = () => {
@@ -177,6 +263,7 @@ export default function MobileHome() {
   const [teacherSummary, setTeacherSummary] = useState<TeacherSummary | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [announcementSlide, setAnnouncementSlide] = useState(0)
+  const [expandedAnnouncementImage, setExpandedAnnouncementImage] = useState<{ src: string; title: string } | null>(null)
 
   const birthdayStudents = useMemo(() => {
     const byStudent = new Map<number, { id: number; name: string; photo_url?: string | null; courses: string[] }>()
@@ -223,6 +310,9 @@ export default function MobileHome() {
   const currentAnnouncement = sliderAnnouncements[activeAnnouncementIndex]
   const dailyMessage = teacherDailyMessage()
   const teacherFirstName = user?.first_name || mobileUserName(user).split(' ')[0] || 'Profesor'
+  const nextClass = useMemo(() => nextClassFromEnrollments(summary?.enrollments), [summary?.enrollments])
+  const studentNextClassTeacherFirstName = nextClass?.teacherName?.trim().split(/\s+/)[0]
+  const studentIsActive = summary?.student?.is_active !== false
 
   useEffect(() => {
     setAnnouncementSlide(0)
@@ -261,14 +351,21 @@ export default function MobileHome() {
             <div className="relative min-h-[330px] overflow-hidden bg-slate-950">
               {image ? (
                 <>
-                  <img src={image} alt={currentAnnouncement.title} className="absolute inset-0 h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setExpandedAnnouncementImage({ src: image, title: currentAnnouncement.title })}
+                    className="absolute inset-0 z-[1] cursor-zoom-in"
+                    aria-label="Ver imagen del aviso en grande"
+                  >
+                    <img src={image} alt={currentAnnouncement.title} className="h-full w-full object-cover" />
+                  </button>
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/28 to-slate-950/10" />
                   <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950/60 to-transparent" />
                 </>
               ) : (
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.7),transparent_34%),linear-gradient(135deg,#020617,#581c87_55%,#111827)]" />
               )}
-              <div className="absolute left-4 top-4 flex items-center gap-2">
+              <div className="absolute left-4 top-4 z-[2] flex items-center gap-2">
                 <span className={`rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-black/20 ${typeConfig.badge}`}>
                   {typeConfig.label}
                 </span>
@@ -276,10 +373,10 @@ export default function MobileHome() {
                   Nuevo
                 </span>
               </div>
-              <div className="mobile-text-primary absolute right-4 top-4 rounded-2xl bg-white/95 p-2 shadow-xl shadow-black/20">
+              <div className="mobile-text-primary absolute right-4 top-4 z-[2] rounded-2xl bg-white/95 p-2 shadow-xl shadow-black/20">
                 <HiOutlineSpeakerphone size={18} />
               </div>
-              <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+              <div className="absolute inset-x-0 bottom-0 z-[2] p-5 text-white">
                 <h3 className="text-2xl font-black leading-tight drop-shadow-lg">{currentAnnouncement.title}</h3>
                 {currentAnnouncement.subtitle ? <p className="mt-1 text-sm font-black text-white/90 drop-shadow">{currentAnnouncement.subtitle}</p> : null}
                 {currentAnnouncement.body ? <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-white/85">{currentAnnouncement.body}</p> : null}
@@ -320,6 +417,32 @@ export default function MobileHome() {
     </section>
   ) : null
 
+  const expandedImageModal = expandedAnnouncementImage && typeof document !== 'undefined' ? createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-md">
+      <button
+        type="button"
+        onClick={() => setExpandedAnnouncementImage(null)}
+        className="absolute inset-0 cursor-zoom-out"
+        aria-label="Cerrar imagen ampliada"
+      />
+      <div className="relative z-10 w-full max-w-3xl">
+        <button
+          type="button"
+          onClick={() => setExpandedAnnouncementImage(null)}
+          className="absolute -right-2 -top-12 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white shadow-xl backdrop-blur hover:bg-white/20"
+          aria-label="Cerrar"
+        >
+          <HiOutlineX size={20} />
+        </button>
+        <div className="overflow-hidden rounded-[30px] border border-white/10 bg-white shadow-2xl shadow-black/40">
+          <img src={expandedAnnouncementImage.src} alt={expandedAnnouncementImage.title} className="max-h-[82vh] w-full object-contain" />
+        </div>
+        <p className="mt-3 text-center text-sm font-black text-white">{expandedAnnouncementImage.title}</p>
+      </div>
+    </div>,
+    document.body
+  ) : null
+
   if (user?.role === 'teacher') {
     return (
       <div className="space-y-4">
@@ -329,7 +452,7 @@ export default function MobileHome() {
               <HiOutlineSparkles size={18} />
             </span>
             <div>
-              <p className="mobile-text-primary mb-1 text-[10px] font-black uppercase tracking-[0.22em]">Mensaje del dia</p>
+              <p className="mobile-text-primary mb-1 text-[10px] font-black uppercase tracking-[0.22em]">Mensaje del día</p>
               <p className="text-base font-black leading-6 text-slate-950">{dailyMessage}</p>
             </div>
           </div>
@@ -353,7 +476,7 @@ export default function MobileHome() {
             <HiOutlineSparkles className="pointer-events-none absolute right-5 top-20 -rotate-12 text-3xl text-yellow-300 drop-shadow-[0_12px_14px_rgba(234,179,8,0.34)]" />
             <div className="relative flex items-center justify-between border-b border-yellow-100/80 bg-white/45 px-4 py-4 backdrop-blur-sm">
               <div className="pl-8">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-rose-500">Cumpleanos hoy</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-rose-500">Cumpleaños hoy</p>
                 <h2 className="text-lg font-black text-slate-950">Alumnos de tus cursos</h2>
               </div>
               <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-rose-500 shadow-lg shadow-yellow-200/80 ring-1 ring-yellow-100">
@@ -384,16 +507,35 @@ export default function MobileHome() {
           </section>
         ) : null}
         {announcementPanel}
+        {expandedImageModal}
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      <MobileCard eyebrow="Alumno" title={`Hola, ${mobileUserName(user)}`}>
-        <p className="text-sm font-semibold leading-6 text-slate-600">
-          Revisa tu avance, pagos y anuncios importantes desde tu celular.
-        </p>
+      <MobileCard accent="plain" eyebrow="Alumno" title={`Hola, ${mobileUserName(user)}`}>
+        {nextClass ? (
+          <div className="mt-2 space-y-5">
+            <div>
+              <p className="text-lg font-medium leading-7 text-slate-950">{nextClassReminderText(nextClass)}</p>
+              <p className="text-lg font-black leading-7 text-slate-400">
+                {nextClass.time} hrs{studentNextClassTeacherFirstName ? ` con ${studentNextClassTeacherFirstName}.` : '.'}
+              </p>
+            </div>
+            <div className="relative mb-5 rounded-[22px] bg-gradient-to-br from-red-700 via-red-700 to-red-800 px-5 pb-10 pt-5 text-white shadow-2xl shadow-red-200/70">
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-100/80">Tu curso</p>
+              <p className="mt-2 text-xl font-black leading-tight">{nextClass.courseName}</p>
+              <span className="absolute -bottom-5 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/25 bg-red-500 px-5 py-2 text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-red-200">
+                <HiOutlineClock size={13} /> {nextClass.shortLabel} {nextClass.time}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm font-semibold leading-6 text-slate-600">
+            Revisa tu avance, pagos y anuncios importantes desde tu celular.
+          </p>
+        )}
       </MobileCard>
 
       <div className="grid grid-cols-2 gap-3">
@@ -412,13 +554,14 @@ export default function MobileHome() {
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pagos 90d</p>
           <p className="mt-1 text-xl font-black">${Number(summary?.payments?.total_last_90 || 0).toLocaleString('es-CL')}</p>
         </div>
-        <div className="rounded-[24px] border border-orange-100 bg-white p-4 shadow-lg shadow-slate-200/70">
-          <HiOutlineBell className="mb-3 text-orange-500" size={24} />
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Avisos</p>
-          <p className="mt-1 text-2xl font-black">{announcements.length}</p>
+        <div className={`rounded-[24px] border bg-white p-4 shadow-lg shadow-slate-200/70 ${studentIsActive ? 'border-emerald-100' : 'border-rose-100'}`}>
+          <HiOutlineCheckCircle className={`mb-3 ${studentIsActive ? 'text-emerald-500' : 'text-rose-500'}`} size={24} />
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</p>
+          <p className={`mt-1 text-xl font-black ${studentIsActive ? 'text-emerald-600' : 'text-rose-600'}`}>{studentIsActive ? 'Activo' : 'Inactivo'}</p>
         </div>
       </div>
       {announcementPanel}
+      {expandedImageModal}
     </div>
   )
 }

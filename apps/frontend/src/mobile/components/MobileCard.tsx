@@ -4,7 +4,7 @@ interface Props {
   eyebrow?: string
   title: string
   children?: ReactNode
-  accent?: 'pink' | 'dark' | 'green' | 'blue'
+  accent?: 'pink' | 'dark' | 'green' | 'blue' | 'plain'
 }
 
 const accentStyles = {
@@ -12,6 +12,7 @@ const accentStyles = {
   dark: 'from-slate-950 to-slate-900 border-slate-800 text-white',
   green: 'from-emerald-500/15 to-white border-emerald-100',
   blue: 'from-blue-500/15 to-white border-blue-100',
+  plain: 'from-transparent to-transparent border-transparent shadow-none',
 }
 
 export default function MobileCard({ eyebrow, title, children, accent = 'pink' }: Props) {

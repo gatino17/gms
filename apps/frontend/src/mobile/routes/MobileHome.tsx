@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { HiOutlineBell, HiOutlineCake, HiOutlineCash, HiOutlineChartBar, HiOutlineCheckCircle, HiOutlineSpeakerphone } from 'react-icons/hi'
+import { Link } from 'react-router-dom'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
 import { getMobileUser, mobileApi, mobileUserName } from '../services/mobileApi'
@@ -106,6 +107,14 @@ const isMobileAnnouncementVisible = (announcement: Announcement, role?: string) 
   return isStudentAnnouncementVisible(announcement)
 }
 
+const sortAnnouncementsNewestFirst = (items: Announcement[]) =>
+  [...items].sort((a, b) => {
+    const aTime = parseAnnouncementDate(a.created_at)?.getTime() || 0
+    const bTime = parseAnnouncementDate(b.created_at)?.getTime() || 0
+    if (bTime !== aTime) return bTime - aTime
+    return (b.id || 0) - (a.id || 0)
+  })
+
 const announcementValidityText = (announcement: Announcement, role?: string) => {
   if (announcement.end_date) return `Vigente hasta ${announcement.end_date}`
   if (role === 'teacher') return 'Visible minimo 2 meses'
@@ -128,6 +137,7 @@ export default function MobileHome() {
   const [summary, setSummary] = useState<StudentSummary | null>(null)
   const [teacherSummary, setTeacherSummary] = useState<TeacherSummary | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [announcementSlide, setAnnouncementSlide] = useState(0)
 
   const birthdayStudents = useMemo(() => {
     const byStudent = new Map<number, { id: number; name: string; photo_url?: string | null; courses: string[] }>()
@@ -160,44 +170,112 @@ export default function MobileHome() {
     if (user?.role) {
       const audience = user.role === 'teacher' ? 'teachers' : 'students'
       mobileApi
-        .get<Announcement[]>('/api/pms/announcements', { params: { active_only: user.role !== 'teacher', limit: 8, audience } })
-        .then((res) => setAnnouncements((res.data || []).filter((item) => isMobileAnnouncementVisible(item, user.role)).slice(0, 3)))
+        .get<Announcement[]>('/api/pms/announcements', { params: { active_only: user.role !== 'teacher', limit: 50, audience } })
+        .then((res) => {
+          const visible = (res.data || []).filter((item) => isMobileAnnouncementVisible(item, user.role))
+          setAnnouncements(sortAnnouncementsNewestFirst(visible))
+        })
         .catch(() => setAnnouncements([]))
     }
   }, [user?.role])
 
-  const announcementPanel = announcements.length ? (
+  const sliderAnnouncements = announcements.slice(0, 3)
+  const activeAnnouncementIndex = sliderAnnouncements.length ? Math.min(announcementSlide, sliderAnnouncements.length - 1) : 0
+  const currentAnnouncement = sliderAnnouncements[activeAnnouncementIndex]
+
+  useEffect(() => {
+    setAnnouncementSlide(0)
+  }, [announcements.length, user?.role])
+
+  useEffect(() => {
+    if (sliderAnnouncements.length <= 1) return undefined
+    const interval = window.setInterval(() => {
+      setAnnouncementSlide((current) => (current + 1) % sliderAnnouncements.length)
+    }, 5000)
+    return () => window.clearInterval(interval)
+  }, [sliderAnnouncements.length])
+
+  const announcementPanel = currentAnnouncement ? (
     <section className="space-y-3">
       <div className="flex items-center justify-between px-1">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-fuchsia-600">Comunicados</p>
           <h2 className="text-lg font-black text-slate-950">Avisos activos</h2>
         </div>
-        <span className="rounded-full bg-fuchsia-50 px-3 py-1 text-[10px] font-black text-fuchsia-600">{announcements.length}</span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-slate-950 px-3 py-1 text-[10px] font-black text-white">
+            {activeAnnouncementIndex + 1} / {sliderAnnouncements.length}
+          </span>
+          <span className="rounded-full bg-fuchsia-50 px-3 py-1 text-[10px] font-black text-fuchsia-600">{announcements.length}</span>
+        </div>
       </div>
-      {announcements.map((announcement) => {
-        const image = toAbsoluteUrl(announcement.image_url)
-        const typeConfig = announcementTypeConfig(announcement.announcement_type)
+      {(() => {
+        const image = toAbsoluteUrl(currentAnnouncement.image_url)
+        const typeConfig = announcementTypeConfig(currentAnnouncement.announcement_type)
         return (
-          <article key={announcement.id} className="overflow-hidden rounded-[28px] border border-fuchsia-100 bg-white shadow-xl shadow-slate-200/70">
-            {image ? <img src={image} alt={announcement.title} className="h-36 w-full object-cover" /> : null}
-            <div className="relative p-4">
-              <div className={`absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-2xl ${typeConfig.icon}`}>
-                <HiOutlineSpeakerphone size={20} />
+          <article
+            key={currentAnnouncement.id}
+            className="mobile-announcement-slide overflow-hidden rounded-[32px] border border-white bg-white shadow-[0_26px_52px_rgba(15,23,42,0.22),0_14px_26px_rgba(217,70,239,0.18)] ring-1 ring-fuchsia-100/70"
+          >
+            <div className="relative min-h-[330px] overflow-hidden bg-slate-950">
+              {image ? (
+                <>
+                  <img src={image} alt={currentAnnouncement.title} className="absolute inset-0 h-full w-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/28 to-slate-950/10" />
+                  <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-fuchsia-950/55 to-transparent" />
+                </>
+              ) : (
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.7),transparent_34%),linear-gradient(135deg,#020617,#581c87_55%,#111827)]" />
+              )}
+              <div className="absolute left-4 top-4 flex items-center gap-2">
+                <span className={`rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-black/20 ${typeConfig.badge}`}>
+                  {typeConfig.label}
+                </span>
+                <span className="rounded-full bg-white/15 px-2.5 py-1 text-[9px] font-black text-white backdrop-blur">
+                  Nuevo
+                </span>
               </div>
-              <p className={`mb-2 w-fit rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${typeConfig.badge}`}>
-                {typeConfig.label}
-              </p>
-              <h3 className="pr-12 text-base font-black leading-tight text-slate-950">{announcement.title}</h3>
-              {announcement.subtitle ? <p className="mt-1 text-sm font-bold text-fuchsia-600">{announcement.subtitle}</p> : null}
-              {announcement.body ? <p className="mt-3 line-clamp-3 text-sm font-semibold leading-6 text-slate-600">{announcement.body}</p> : null}
-              <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                {announcementValidityText(announcement, user?.role)}
-              </p>
+              <div className="absolute right-4 top-4 rounded-2xl bg-white/95 p-2 text-fuchsia-600 shadow-xl shadow-black/20">
+                <HiOutlineSpeakerphone size={18} />
+              </div>
+              <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+                <h3 className="text-2xl font-black leading-tight drop-shadow-lg">{currentAnnouncement.title}</h3>
+                {currentAnnouncement.subtitle ? <p className="mt-1 text-sm font-black text-fuchsia-100 drop-shadow">{currentAnnouncement.subtitle}</p> : null}
+                {currentAnnouncement.body ? <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-white/85">{currentAnnouncement.body}</p> : null}
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <p className="rounded-full border border-white/15 bg-white/18 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-black/20 backdrop-blur-md">
+                    {announcementValidityText(currentAnnouncement, user?.role)}
+                  </p>
+                  <span className="h-2 w-12 shrink-0 rounded-full bg-gradient-to-r from-fuchsia-400 to-white" />
+                </div>
+              </div>
             </div>
           </article>
         )
-      })}
+      })()}
+      {sliderAnnouncements.length > 1 ? (
+        <div className="flex items-center justify-center gap-2">
+          {sliderAnnouncements.map((announcement, index) => (
+            <button
+              key={announcement.id}
+              type="button"
+              onClick={() => setAnnouncementSlide(index)}
+              className={`h-2.5 rounded-full transition-all ${
+                index === activeAnnouncementIndex ? 'w-8 bg-fuchsia-600 shadow-lg shadow-fuchsia-200' : 'w-2.5 bg-slate-200'
+              }`}
+              aria-label={`Ver aviso ${index + 1}`}
+            />
+          ))}
+        </div>
+      ) : null}
+      {announcements.length > 3 ? (
+        <Link
+          to="/mobile/announcements"
+          className="flex items-center justify-center rounded-2xl border border-fuchsia-100 bg-fuchsia-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-fuchsia-700"
+        >
+          Ver todos los avisos
+        </Link>
+      ) : null}
     </section>
   ) : null
 

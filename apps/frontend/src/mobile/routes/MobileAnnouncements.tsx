@@ -114,21 +114,34 @@ export default function MobileAnnouncements() {
         const image = toAbsoluteUrl(item.image_url)
         const config = typeConfig(item.announcement_type)
         return (
-          <article key={item.id} className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-xl shadow-slate-200/70">
-            {image ? <img src={image} alt={item.title} className="h-40 w-full object-cover" /> : null}
-            <div className="relative p-4">
-              <div className={`absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-2xl ${config.icon}`}>
-                <HiOutlineSpeakerphone size={20} />
+          <article key={item.id} className="overflow-hidden rounded-[26px] border border-slate-100 bg-white p-3 shadow-lg shadow-slate-200/60">
+            <div className="flex gap-3">
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[22px] bg-slate-950 shadow-lg shadow-slate-200">
+                {image ? (
+                  <>
+                    <img src={image} alt={item.title} className="h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 to-transparent" />
+                  </>
+                ) : (
+                  <div className={`flex h-full w-full items-center justify-center ${config.icon}`}>
+                    <HiOutlineSpeakerphone size={24} />
+                  </div>
+                )}
+                <span className="absolute bottom-2 left-2 h-2 w-10 rounded-full bg-gradient-to-r from-fuchsia-500 to-white" />
               </div>
-              <span className={`inline-flex rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${config.badge}`}>
-                {config.label}
-              </span>
-              <h3 className="mt-3 pr-12 text-lg font-black leading-tight text-slate-950">{item.title}</h3>
-              {item.subtitle ? <p className="mt-1 text-sm font-bold text-fuchsia-600">{item.subtitle}</p> : null}
-              {item.body ? <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{item.body}</p> : null}
-              <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                <HiOutlineCalendar className="text-fuchsia-500" />
-                {announcementValidityText(item, user?.role)}
+              <div className="min-w-0 flex-1 py-1">
+                <div className="flex items-start justify-between gap-2">
+                  <span className={`inline-flex rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-widest ${config.badge}`}>
+                    {config.label}
+                  </span>
+                </div>
+                <h3 className="mt-2 line-clamp-2 text-base font-black leading-tight text-slate-950">{item.title}</h3>
+                {item.subtitle ? <p className="mt-1 line-clamp-1 text-xs font-black text-fuchsia-600">{item.subtitle}</p> : null}
+                {item.body ? <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-slate-600">{item.body}</p> : null}
+                <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  <HiOutlineCalendar className="text-fuchsia-500" />
+                  {announcementValidityText(item, user?.role)}
+                </div>
               </div>
             </div>
           </article>

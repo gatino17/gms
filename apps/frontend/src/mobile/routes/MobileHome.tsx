@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { HiOutlineBell, HiOutlineCash, HiOutlineChartBar, HiOutlineCheckCircle, HiOutlineSpeakerphone } from 'react-icons/hi'
+import { useEffect, useMemo, useState } from 'react'
+import { HiOutlineBell, HiOutlineCake, HiOutlineCash, HiOutlineChartBar, HiOutlineCheckCircle, HiOutlineSpeakerphone } from 'react-icons/hi'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
 import { getMobileUser, mobileApi, mobileUserName } from '../services/mobileApi'
@@ -14,6 +14,17 @@ interface TeacherSummary {
   course_count?: number
   student_count?: number
   tenant?: { name?: string | null }
+  courses?: Array<{
+    id: number
+    name: string
+    students?: Array<{
+      id: number
+      first_name: string
+      last_name: string
+      birthdate?: string | null
+      photo_url?: string | null
+    }>
+  }>
 }
 
 interface Announcement {
@@ -22,11 +33,13 @@ interface Announcement {
   subtitle?: string | null
   body?: string | null
   announcement_type?: string | null
+  audience?: string | null
   image_url?: string | null
   link_url?: string | null
   start_date?: string | null
   end_date?: string | null
   created_at?: string | null
+  is_active?: boolean | null
 }
 
 const ANNOUNCEMENT_TYPE_CONFIG: Record<string, { label: string; badge: string; icon: string }> = {
@@ -41,21 +54,101 @@ const ANNOUNCEMENT_TYPE_CONFIG: Record<string, { label: string; badge: string; i
 const announcementTypeConfig = (value?: string | null) =>
   ANNOUNCEMENT_TYPE_CONFIG[value || 'important'] || ANNOUNCEMENT_TYPE_CONFIG.important
 
-const isCurrentMonthAnnouncement = (announcement: Announcement) => {
+const parseAnnouncementDate = (value?: string | null) => {
+  if (!value) return null
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+    const [year, month, day] = value.slice(0, 10).split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const endOfDay = (date: Date) => {
+  const copy = new Date(date)
+  copy.setHours(23, 59, 59, 999)
+  return copy
+}
+
+const addMonths = (date: Date, months: number) => {
+  const copy = new Date(date)
+  copy.setMonth(copy.getMonth() + months)
+  return copy
+}
+
+const isStudentAnnouncementVisible = (announcement: Announcement) => {
+  if (announcement.is_active === false) return false
   if (announcement.end_date) return true
   const anchor = announcement.start_date || announcement.created_at
   if (!anchor) return true
-  const date = new Date(anchor)
-  if (Number.isNaN(date.getTime())) return true
+  const date = parseAnnouncementDate(anchor)
+  if (!date) return true
   const now = new Date()
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
 }
+
+const isTeacherAnnouncementVisible = (announcement: Announcement) => {
+  if (announcement.is_active === false) return false
+  const now = new Date()
+  const start = parseAnnouncementDate(announcement.start_date)
+  if (start && start > now) return false
+  const end = parseAnnouncementDate(announcement.end_date)
+  if (end && endOfDay(end) < now) return false
+  const anchor = start || parseAnnouncementDate(announcement.created_at)
+  if (!anchor) return true
+  const minimumUntil = addMonths(anchor, 2)
+  const visibleUntil = end && endOfDay(end) > minimumUntil ? endOfDay(end) : minimumUntil
+  return visibleUntil >= now
+}
+
+const isMobileAnnouncementVisible = (announcement: Announcement, role?: string) => {
+  if (role === 'teacher') return isTeacherAnnouncementVisible(announcement)
+  return isStudentAnnouncementVisible(announcement)
+}
+
+const announcementValidityText = (announcement: Announcement, role?: string) => {
+  if (announcement.end_date) return `Vigente hasta ${announcement.end_date}`
+  if (role === 'teacher') return 'Visible minimo 2 meses'
+  return 'Vigente este mes'
+}
+
+const isBirthdayToday = (birthdate?: string | null) => {
+  if (!birthdate) return false
+  const [year, month, day] = birthdate.slice(0, 10).split('-').map(Number)
+  if (!year || !month || !day) return false
+  const now = new Date()
+  return month === now.getMonth() + 1 && day === now.getDate()
+}
+
+const initials = (first?: string, last?: string) =>
+  `${first?.trim()?.[0] || ''}${last?.trim()?.[0] || ''}`.toUpperCase() || 'AL'
 
 export default function MobileHome() {
   const user = getMobileUser()
   const [summary, setSummary] = useState<StudentSummary | null>(null)
   const [teacherSummary, setTeacherSummary] = useState<TeacherSummary | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
+
+  const birthdayStudents = useMemo(() => {
+    const byStudent = new Map<number, { id: number; name: string; photo_url?: string | null; courses: string[] }>()
+    for (const course of teacherSummary?.courses || []) {
+      for (const student of course.students || []) {
+        if (!isBirthdayToday(student.birthdate)) continue
+        const existing = byStudent.get(student.id)
+        if (existing) {
+          if (!existing.courses.includes(course.name)) existing.courses.push(course.name)
+          continue
+        }
+        byStudent.set(student.id, {
+          id: student.id,
+          name: `${student.first_name} ${student.last_name}`.trim(),
+          photo_url: student.photo_url,
+          courses: [course.name],
+        })
+      }
+    }
+    return Array.from(byStudent.values())
+  }, [teacherSummary?.courses])
 
   useEffect(() => {
     if (user?.role === 'student') {
@@ -65,9 +158,10 @@ export default function MobileHome() {
       mobileApi.get('/api/pms/teachers/portal/me').then((res) => setTeacherSummary(res.data)).catch(() => setTeacherSummary(null))
     }
     if (user?.role) {
+      const audience = user.role === 'teacher' ? 'teachers' : 'students'
       mobileApi
-        .get<Announcement[]>('/api/pms/announcements', { params: { active_only: true, limit: 8 } })
-        .then((res) => setAnnouncements((res.data || []).filter(isCurrentMonthAnnouncement).slice(0, 3)))
+        .get<Announcement[]>('/api/pms/announcements', { params: { active_only: user.role !== 'teacher', limit: 8, audience } })
+        .then((res) => setAnnouncements((res.data || []).filter((item) => isMobileAnnouncementVisible(item, user.role)).slice(0, 3)))
         .catch(() => setAnnouncements([]))
     }
   }, [user?.role])
@@ -97,13 +191,9 @@ export default function MobileHome() {
               <h3 className="pr-12 text-base font-black leading-tight text-slate-950">{announcement.title}</h3>
               {announcement.subtitle ? <p className="mt-1 text-sm font-bold text-fuchsia-600">{announcement.subtitle}</p> : null}
               {announcement.body ? <p className="mt-3 line-clamp-3 text-sm font-semibold leading-6 text-slate-600">{announcement.body}</p> : null}
-              {announcement.end_date ? (
-                <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Vigente hasta {announcement.end_date}
-                </p>
-              ) : (
-                <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Vigente este mes</p>
-              )}
+              <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                {announcementValidityText(announcement, user?.role)}
+              </p>
             </div>
           </article>
         )
@@ -129,6 +219,45 @@ export default function MobileHome() {
             <p className="mt-1 text-3xl font-black">{teacherSummary?.student_count || 0}</p>
           </div>
         </div>
+        {birthdayStudents.length ? (
+          <section className="relative overflow-hidden rounded-[30px] border border-yellow-100 bg-gradient-to-br from-white via-rose-50/70 to-yellow-50 shadow-2xl shadow-rose-100/80">
+            <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-yellow-200/50 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-8 left-6 h-24 w-24 rounded-full bg-fuchsia-200/40 blur-3xl" />
+            <div className="pointer-events-none absolute left-5 top-5 text-2xl text-yellow-300 drop-shadow-[0_8px_10px_rgba(234,179,8,0.35)]">★</div>
+            <div className="pointer-events-none absolute right-16 top-4 rotate-12 text-xl text-yellow-400 drop-shadow-[0_7px_9px_rgba(234,179,8,0.32)]">✦</div>
+            <div className="pointer-events-none absolute right-5 top-20 -rotate-12 text-3xl text-yellow-300 drop-shadow-[0_12px_14px_rgba(234,179,8,0.34)]">★</div>
+            <div className="relative flex items-center justify-between border-b border-yellow-100/80 bg-white/45 px-4 py-4 backdrop-blur-sm">
+              <div className="pl-8">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-rose-500">Cumpleanos hoy</p>
+                <h2 className="text-lg font-black text-slate-950">Alumnos de tus cursos</h2>
+              </div>
+              <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-rose-500 shadow-lg shadow-yellow-200/80 ring-1 ring-yellow-100">
+                <span className="absolute -right-1 -top-1 text-sm text-yellow-400 drop-shadow-[0_5px_5px_rgba(234,179,8,0.35)]">✦</span>
+                <HiOutlineCake size={22} />
+              </div>
+            </div>
+            <div className="relative space-y-2 p-4">
+              <div className="pointer-events-none absolute left-3 top-1 text-sm text-yellow-300 drop-shadow-[0_5px_6px_rgba(234,179,8,0.3)]">✦</div>
+              <div className="pointer-events-none absolute bottom-3 right-7 text-lg text-yellow-300 drop-shadow-[0_7px_8px_rgba(234,179,8,0.3)]">★</div>
+              {birthdayStudents.map((student) => {
+                const photo = toAbsoluteUrl(student.photo_url)
+                const [first = '', ...rest] = student.name.split(' ')
+                return (
+                  <div key={student.id} className="relative flex items-center gap-3 rounded-2xl border border-white bg-white/90 p-3 shadow-lg shadow-yellow-100/50">
+                    <span className="absolute -left-1 -top-1 text-xs text-yellow-400 drop-shadow-[0_4px_4px_rgba(234,179,8,0.35)]">★</span>
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-rose-50 text-sm font-black text-rose-600 shadow-inner">
+                      {photo ? <img src={photo} alt={student.name} className="h-full w-full object-cover" /> : initials(first, rest.join(' '))}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-black text-slate-950">{student.name}</p>
+                      <p className="truncate text-xs font-bold text-slate-500">{student.courses.join(' · ')}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        ) : null}
         {announcementPanel}
       </div>
     )

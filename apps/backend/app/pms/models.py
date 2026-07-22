@@ -304,6 +304,7 @@ class Announcement(Base):
     subtitle: Mapped[Optional[str]] = mapped_column(String(255))
     body: Mapped[Optional[str]] = mapped_column(Text())
     announcement_type: Mapped[Optional[str]] = mapped_column(String(30), default="important")
+    audience: Mapped[Optional[str]] = mapped_column(String(20), default="both")
     image_url: Mapped[Optional[str]] = mapped_column(String(255))
     link_url: Mapped[Optional[str]] = mapped_column(String(255))
     start_date: Mapped[Optional[date]] = mapped_column(Date)

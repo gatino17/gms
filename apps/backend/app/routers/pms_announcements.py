@@ -21,6 +21,7 @@ async def list_announcements(
     db: AsyncSession = Depends(get_db_session),
     active_only: bool = Query(default=True),
     date_ref: date | None = Query(default=None),
+    audience: str | None = Query(default=None),
     limit: int = Query(default=4, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     x_tenant_id: int | None = Header(default=None, alias="X-Tenant-ID"),
@@ -41,6 +42,14 @@ async def list_announcements(
         stmt = stmt.where(
             or_(models.Announcement.start_date == None, models.Announcement.start_date <= ref),  # noqa: E711
             or_(models.Announcement.end_date == None, models.Announcement.end_date >= ref),      # noqa: E711
+        )
+    if audience in {"students", "teachers"}:
+        stmt = stmt.where(
+            or_(
+                models.Announcement.audience == audience,
+                models.Announcement.audience == "both",
+                models.Announcement.audience == None,  # noqa: E711
+            )
         )
     stmt = stmt.order_by(
         models.Announcement.sort_order.nulls_last(),
@@ -75,6 +84,7 @@ async def create_announcement(
         subtitle=payload.subtitle,
         body=payload.body,
         announcement_type=payload.announcement_type or "important",
+        audience=payload.audience or "both",
         start_date=payload.start_date,
         end_date=payload.end_date,
         image_url=payload.image_url,

@@ -190,6 +190,7 @@ async def _teacher_portal_summary(teacher: Teacher, db: AsyncSession) -> dict:
                 "email": student.email,
                 "phone": student.phone,
                 "gender": student.gender,
+                "birthdate": student.birthdate.isoformat() if student.birthdate else None,
                 "photo_url": student.photo_url,
                 "enrollment_id": enrollment.id,
                 "enrolled_since": enrollment.start_date.isoformat() if enrollment.start_date else None,
@@ -269,7 +270,7 @@ async def teacher_portal_login(
     if user.tenant_id is None:
         raise HTTPException(status_code=403, detail="Profesor sin tenant asignado")
 
-    await _ensure_teacher_portal_enabled(db, user.tenant_id)
+    tenant = await _ensure_teacher_portal_enabled(db, user.tenant_id)
     teacher_res = await db.execute(
         select(Teacher).where(
             Teacher.user_id == user.id,

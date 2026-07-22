@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { HiOutlineCalendar, HiOutlineSpeakerphone } from 'react-icons/hi'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
-import { mobileApi } from '../services/mobileApi'
+import { getMobileUser, mobileApi } from '../services/mobileApi'
 
 type Announcement = {
   id: number
@@ -10,10 +10,12 @@ type Announcement = {
   subtitle?: string | null
   body?: string | null
   announcement_type?: string | null
+  audience?: string | null
   image_url?: string | null
   start_date?: string | null
   end_date?: string | null
   created_at?: string | null
+  is_active?: boolean | null
 }
 
 const TYPE_CONFIG: Record<string, { label: string; badge: string; icon: string }> = {
@@ -29,28 +31,67 @@ const typeConfig = (value?: string | null) => TYPE_CONFIG[value || 'important'] 
 
 const formatDate = (value?: string | null) => value ? value.split('-').reverse().join('/') : ''
 
-const isCurrentMonthAnnouncement = (announcement: Announcement) => {
+const parseAnnouncementDate = (value?: string | null) => {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const addMonths = (date: Date, months: number) => {
+  const copy = new Date(date)
+  copy.setMonth(copy.getMonth() + months)
+  return copy
+}
+
+const isStudentAnnouncementVisible = (announcement: Announcement) => {
+  if (announcement.is_active === false) return false
   if (announcement.end_date) return true
   const anchor = announcement.start_date || announcement.created_at
   if (!anchor) return true
-  const date = new Date(anchor)
-  if (Number.isNaN(date.getTime())) return true
+  const date = parseAnnouncementDate(anchor)
+  if (!date) return true
   const now = new Date()
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
 }
 
+const isTeacherAnnouncementVisible = (announcement: Announcement) => {
+  if (announcement.is_active === false) return false
+  const now = new Date()
+  const start = parseAnnouncementDate(announcement.start_date)
+  if (start && start > now) return false
+  const anchor = start || parseAnnouncementDate(announcement.created_at)
+  if (!anchor) return true
+  const minimumUntil = addMonths(anchor, 2)
+  const end = parseAnnouncementDate(announcement.end_date)
+  const visibleUntil = end && end > minimumUntil ? end : minimumUntil
+  return visibleUntil >= now
+}
+
+const isMobileAnnouncementVisible = (announcement: Announcement, role?: string) => {
+  if (role === 'teacher') return isTeacherAnnouncementVisible(announcement)
+  return isStudentAnnouncementVisible(announcement)
+}
+
+const announcementValidityText = (announcement: Announcement, role?: string) => {
+  if (announcement.end_date) return `Hasta ${formatDate(announcement.end_date)}`
+  if (role === 'teacher') return 'Visible minimo 2 meses'
+  return 'Vigente este mes'
+}
+
 export default function MobileAnnouncements() {
+  const user = getMobileUser()
   const [items, setItems] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
+    const audience = user?.role === 'teacher' ? 'teachers' : 'students'
     mobileApi
-      .get<Announcement[]>('/api/pms/announcements', { params: { active_only: true, limit: 50 } })
-      .then((res) => setItems((res.data || []).filter(isCurrentMonthAnnouncement)))
+      .get<Announcement[]>('/api/pms/announcements', { params: { active_only: user?.role !== 'teacher', limit: 50, audience } })
+      .then((res) => setItems((res.data || []).filter((item) => isMobileAnnouncementVisible(item, user?.role))))
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [user?.role])
 
   if (loading) {
     return (
@@ -87,7 +128,7 @@ export default function MobileAnnouncements() {
               {item.body ? <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{item.body}</p> : null}
               <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                 <HiOutlineCalendar className="text-fuchsia-500" />
-                {item.end_date ? `Hasta ${formatDate(item.end_date)}` : 'Vigente este mes'}
+                {announcementValidityText(item, user?.role)}
               </div>
             </div>
           </article>

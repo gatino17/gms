@@ -375,6 +375,7 @@ class AnnouncementBase(BaseModel):
     subtitle: Optional[str] = Field(default=None, max_length=255)
     body: Optional[str] = None
     announcement_type: Optional[str] = Field(default="important", max_length=30)
+    audience: Optional[str] = Field(default="both", max_length=20)
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     image_url: Optional[str] = Field(default=None, max_length=255)
@@ -392,6 +393,7 @@ class AnnouncementUpdate(BaseModel):
     subtitle: Optional[str] = Field(default=None, max_length=255)
     body: Optional[str] = None
     announcement_type: Optional[str] = Field(default=None, max_length=30)
+    audience: Optional[str] = Field(default=None, max_length=20)
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     image_url: Optional[str] = Field(default=None, max_length=255)

@@ -629,9 +629,9 @@ export default function StudentDetailPage() {
                              </div>
                              {!!stats.extraOutside && stats.extraOutside > 0 && (
                                 <div className="mt-2 flex justify-start">
-                                   <span className="px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md cursor-help transition-colors hover:bg-amber-100" title="Clases sueltas o asistencias registradas fuera del plan">
-                                      +{stats.extraOutside} Clase{stats.extraOutside > 1 ? 's' : ''} Suelta{stats.extraOutside > 1 ? 's' : ''}
-                                   </span>
+	                                   <span className="px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md cursor-help transition-colors hover:bg-amber-100" title="Asistencias extras registradas fuera del plan regular">
+	                                      +{stats.extraOutside} Clase{stats.extraOutside > 1 ? 's' : ''} Extra{stats.extraOutside > 1 ? 's' : ''}
+	                                   </span>
                                 </div>
                              )}
                           </div>

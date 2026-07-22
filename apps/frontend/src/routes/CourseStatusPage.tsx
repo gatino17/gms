@@ -62,12 +62,27 @@ type CourseRow = {
     attendance_count?: number;
     expected_count?: number;
     extra_count?: number;
+    extra_dates?: string[];
     birthday_today?: boolean;
   }[]
 }
 
 const DAY_NAMES = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo']
 const fmtCLP = (n: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(n)
+const ymdToCL = (ymd?: string | null) => {
+  if (!ymd) return ''
+  const [y, m, d] = ymd.split('-').map(Number)
+  if (!y || !m || !d) return ymd
+  return new Date(y, m - 1, d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+const ymdToWeekdayCL = (ymd?: string | null) => {
+  if (!ymd) return ''
+  const [y, m, d] = ymd.split('-').map(Number)
+  if (!y || !m || !d) return ymd || ''
+  const date = new Date(y, m - 1, d)
+  const weekday = date.toLocaleDateString('es-CL', { weekday: 'long' })
+  return `${weekday} ${ymdToCL(ymd)}`
+}
 const normalizeGender = (g?: string | null) => (g || '').trim().toLowerCase()
 const minusOneDayYMD = (ymd: string) => {
   const [y, m, d] = ymd.split('-').map(Number)
@@ -522,7 +537,7 @@ export default function CourseStatusPage() {
            <span className="text-[9px] md:text-[10px] font-black text-fuchsia-600 uppercase tracking-widest bg-fuchsia-50 px-3 py-1 rounded-full">Gestion Academica</span>
            <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight leading-none">Estado de Cursos</h1>
            <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center sm:justify-start gap-4 mt-4">
-              <p className="text-gray-500 font-medium text-sm md:text-lg max-w-[20rem]">Control de inscripciones y pagos en tiempo real.</p>
+              <p className="text-gray-500 font-medium text-sm md:text-lg max-w-[20rem]">Inscripciones y pagos al día.</p>
               <div className="hidden sm:block h-4 w-px bg-gray-200" />
                <div className="grid grid-cols-2 sm:flex w-full sm:w-auto bg-gray-50 p-1.5 rounded-2xl border border-gray-100 gap-1.5">
                  <button onClick={() => setViewMode('detailed')} className={`px-4 md:px-6 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${viewMode==='detailed' ? 'bg-white shadow-sm text-fuchsia-600' : 'text-gray-400 hover:text-gray-600'}`}>Todos</button>
@@ -700,11 +715,21 @@ export default function CourseStatusPage() {
                                                         <div className={`h-full transition-all duration-1000 ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-fuchsia-500' : 'bg-rose-400'}`} style={{ width: `${progress}%` }} />
                                                      </div>
                                                       {!isSingleClass && !!s.extra_count && s.extra_count > 0 && (
-                                                         <div className="mt-2 flex justify-center">
-                                                            <span className="px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md cursor-help transition-colors hover:bg-amber-100" title="Asistencia registrada fuera de las fechas de su plan original (ej. Clase suelta)">
-                                                               +{s.extra_count} Extra{s.extra_count > 1 ? 's' : ''}
-                                                            </span>
-                                                         </div>
+	                                                         <div className="mt-2 flex justify-center">
+                                                            <span tabIndex={0} className="group relative px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md cursor-help transition-colors hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200">
+	                                                               +{s.extra_count} Extra{s.extra_count > 1 ? 's' : ''}
+                                                              <span className="pointer-events-none absolute left-1/2 bottom-full z-30 mb-2 w-64 -translate-x-1/2 rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-left text-[10px] font-bold normal-case tracking-normal text-white opacity-0 shadow-2xl shadow-black/30 transition-all duration-200 group-hover:opacity-100 group-focus:opacity-100">
+                                                                <span className="block text-[9px] font-black uppercase tracking-[0.24em] text-amber-300">Clase Extra</span>
+                                                                <span className="mt-1 block leading-relaxed text-zinc-200">Registrada fuera de las fechas de su plan regular.</span>
+                                                                {s.extra_dates?.length ? (
+                                                                  <span className="mt-2 block rounded-xl bg-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-100">
+                                                                    {s.extra_dates.map(ymdToWeekdayCL).join(' · ')}
+                                                                  </span>
+                                                                ) : null}
+                                                                <span className="absolute left-1/2 top-full h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-zinc-700 bg-zinc-950" />
+                                                              </span>
+	                                                            </span>
+	                                                         </div>
                                                      )}
                                                   </div>
                                                </td>

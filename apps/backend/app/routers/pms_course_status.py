@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_, func
+from sqlalchemy import select, or_, and_, func, cast, Date
 from datetime import date, timedelta, datetime, time
 from zoneinfo import ZoneInfo
 
@@ -108,7 +108,8 @@ async def course_status(
         select(
             Attendance.student_id, 
             Attendance.course_id, 
-            func.count(Attendance.id).label("count")
+            func.count(Attendance.id).label("count"),
+            func.array_agg(func.distinct(cast(Attendance.attended_at, Date))).label("dates"),
         )
         .join(Enrollment, and_(
             Enrollment.student_id == Attendance.student_id,
@@ -158,6 +159,7 @@ async def course_status(
             Enrollment.end_date.label("enr_end"),
             func.coalesce(att_subquery.c.count, 0).label("att_count"),
             func.coalesce(extra_subquery.c.count, 0).label("extra_count"),
+            extra_subquery.c.dates.label("extra_dates"),
             single_class_payment_subquery.c.latest_single_class_date.label("latest_single_class_date"),
         )
         .join(Enrollment, enrollment_join, isouter=True)
@@ -211,7 +213,7 @@ async def course_status(
                 count += 1
         return count
 
-    for course_obj, t_name, student_obj, enr_id, enr_start, enr_end, att_count, extra_count, latest_single_class_date in rows:
+    for course_obj, t_name, student_obj, enr_id, enr_start, enr_end, att_count, extra_count, extra_dates, latest_single_class_date in rows:
         cid = course_obj.id
         if cid not in grouped:
             attendance_window = _attendance_window_payload(course_obj, local_now)
@@ -264,6 +266,7 @@ async def course_status(
             payment_status = "activo" if current_period_active else "pendiente"
             display_attendance_count = int(att_count or 0)
             display_extra_count = int(extra_count or 0)
+            display_extra_dates = [d.isoformat() for d in (extra_dates or []) if d]
             enrollment_mode = "regular"
 
             if is_single_class:
@@ -274,6 +277,7 @@ async def course_status(
                 # so reuse that signal for display instead of showing it as an "extra".
                 display_attendance_count = 1 if int(extra_count or 0) > 0 else 0
                 display_extra_count = 0
+                display_extra_dates = []
 
             student_data = {
                 "id": student_obj.id,
@@ -291,6 +295,7 @@ async def course_status(
                 "attendance_count": display_attendance_count,
                 "expected_count": expected,
                 "extra_count": display_extra_count,
+                "extra_dates": display_extra_dates,
                 "birthday_today": bool(student_obj.birthdate and student_obj.birthdate.month == today.month and student_obj.birthdate.day == today.day),
             }
             grouped[cid]["students"].append(student_data)

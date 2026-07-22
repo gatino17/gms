@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { HiOutlineBell, HiOutlineCake, HiOutlineCash, HiOutlineChartBar, HiOutlineCheckCircle, HiOutlineSpeakerphone } from 'react-icons/hi'
+import { HiOutlineBell, HiOutlineCake, HiOutlineCash, HiOutlineChartBar, HiOutlineCheckCircle, HiOutlineSparkles, HiOutlineSpeakerphone } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
@@ -132,6 +132,45 @@ const isBirthdayToday = (birthdate?: string | null) => {
 const initials = (first?: string, last?: string) =>
   `${first?.trim()?.[0] || ''}${last?.trim()?.[0] || ''}`.toUpperCase() || 'AL'
 
+const TEACHER_DAILY_MESSAGES = [
+  'Cada clase puede ser el impulso que un alumno necesitaba hoy.',
+  'Tu energia marca el ritmo antes de que empiece la musica.',
+  'Una buena clase tambien se construye con orden y presencia.',
+  'Hoy tienes una nueva oportunidad para inspirar disciplina.',
+  'Los pequenos avances tambien cuentan cuando se sostienen.',
+  'Tu constancia ayuda a que tus alumnos confien en su proceso.',
+  'Ensenar tambien es observar, ajustar y acompanar.',
+  'Una clase clara deja alumnos mas seguros y motivados.',
+  'El progreso se nota cuando cada detalle tiene intencion.',
+  'Hoy puedes convertir una correccion en una mejora real.',
+  'La actitud del profesor define mucho antes del primer paso.',
+  'Cada asistencia marcada tambien cuenta una historia de compromiso.',
+  'Un alumno motivado empieza muchas veces con una guia cercana.',
+  'La tecnica mejora cuando existe paciencia y direccion.',
+  'Tu clase puede ser el mejor momento del dia para alguien.',
+  'La energia correcta transforma un grupo en comunidad.',
+  'Ordenar la clase tambien es cuidar la experiencia del alumno.',
+  'Hoy enfocate en que cada alumno se lleve algo concreto.',
+  'Una indicacion simple puede cambiar todo el resultado.',
+  'La mejor clase combina estructura, energia y escucha.',
+  'Tu liderazgo se nota en como el grupo avanza unido.',
+  'Cada alumno progresa a su ritmo; tu guia le da direccion.',
+  'Hoy es buen dia para reforzar confianza y tecnica.',
+  'La presencia del profesor tambien ensena.',
+  'Una clase bien guiada deja ganas de volver.',
+  'El compromiso se contagia cuando se trabaja con proposito.',
+  'Cada horario es una oportunidad para elevar el nivel.',
+  'La disciplina se construye mejor con una guia constante.',
+  'Tu forma de ensenar tambien crea identidad para el estudio.',
+  'Hoy deja una clase que se recuerde por su energia y claridad.',
+]
+
+const teacherDailyMessage = () => {
+  const today = new Date()
+  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate()
+  return TEACHER_DAILY_MESSAGES[seed % TEACHER_DAILY_MESSAGES.length]
+}
+
 export default function MobileHome() {
   const user = getMobileUser()
   const [summary, setSummary] = useState<StudentSummary | null>(null)
@@ -182,6 +221,8 @@ export default function MobileHome() {
   const sliderAnnouncements = announcements.slice(0, 3)
   const activeAnnouncementIndex = sliderAnnouncements.length ? Math.min(announcementSlide, sliderAnnouncements.length - 1) : 0
   const currentAnnouncement = sliderAnnouncements[activeAnnouncementIndex]
+  const dailyMessage = teacherDailyMessage()
+  const teacherFirstName = user?.first_name || mobileUserName(user).split(' ')[0] || 'Profesor'
 
   useEffect(() => {
     setAnnouncementSlide(0)
@@ -282,10 +323,16 @@ export default function MobileHome() {
   if (user?.role === 'teacher') {
     return (
       <div className="space-y-4">
-        <MobileCard eyebrow="Profesor" title={`Hola, ${mobileUserName(user)}`}>
-          <p className="text-sm font-semibold leading-6 text-slate-600">
-            Gestiona tus cursos y revisa alumnos inscritos desde tu celular.
-          </p>
+        <MobileCard eyebrow="Profesor" title={`Hola, ${teacherFirstName}`}>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-fuchsia-300 shadow-lg shadow-fuchsia-100">
+              <HiOutlineSparkles size={18} />
+            </span>
+            <div>
+              <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-fuchsia-600">Mensaje del dia</p>
+              <p className="text-base font-black leading-6 text-slate-950">{dailyMessage}</p>
+            </div>
+          </div>
         </MobileCard>
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-[24px] border border-fuchsia-100 bg-white p-4 shadow-lg shadow-slate-200/70">
@@ -301,34 +348,34 @@ export default function MobileHome() {
           <section className="relative overflow-hidden rounded-[30px] border border-yellow-100 bg-gradient-to-br from-white via-rose-50/70 to-yellow-50 shadow-2xl shadow-rose-100/80">
             <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-yellow-200/50 blur-2xl" />
             <div className="pointer-events-none absolute -bottom-8 left-6 h-24 w-24 rounded-full bg-fuchsia-200/40 blur-3xl" />
-            <div className="pointer-events-none absolute left-5 top-5 text-2xl text-yellow-300 drop-shadow-[0_8px_10px_rgba(234,179,8,0.35)]">★</div>
-            <div className="pointer-events-none absolute right-16 top-4 rotate-12 text-xl text-yellow-400 drop-shadow-[0_7px_9px_rgba(234,179,8,0.32)]">✦</div>
-            <div className="pointer-events-none absolute right-5 top-20 -rotate-12 text-3xl text-yellow-300 drop-shadow-[0_12px_14px_rgba(234,179,8,0.34)]">★</div>
+            <HiOutlineSparkles className="pointer-events-none absolute left-5 top-5 text-2xl text-yellow-300 drop-shadow-[0_8px_10px_rgba(234,179,8,0.35)]" />
+            <HiOutlineSparkles className="pointer-events-none absolute right-16 top-4 rotate-12 text-xl text-yellow-400 drop-shadow-[0_7px_9px_rgba(234,179,8,0.32)]" />
+            <HiOutlineSparkles className="pointer-events-none absolute right-5 top-20 -rotate-12 text-3xl text-yellow-300 drop-shadow-[0_12px_14px_rgba(234,179,8,0.34)]" />
             <div className="relative flex items-center justify-between border-b border-yellow-100/80 bg-white/45 px-4 py-4 backdrop-blur-sm">
               <div className="pl-8">
                 <p className="text-[10px] font-black uppercase tracking-[0.24em] text-rose-500">Cumpleanos hoy</p>
                 <h2 className="text-lg font-black text-slate-950">Alumnos de tus cursos</h2>
               </div>
               <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-rose-500 shadow-lg shadow-yellow-200/80 ring-1 ring-yellow-100">
-                <span className="absolute -right-1 -top-1 text-sm text-yellow-400 drop-shadow-[0_5px_5px_rgba(234,179,8,0.35)]">✦</span>
+                <HiOutlineSparkles className="absolute -right-1 -top-1 text-sm text-yellow-400 drop-shadow-[0_5px_5px_rgba(234,179,8,0.35)]" />
                 <HiOutlineCake size={22} />
               </div>
             </div>
             <div className="relative space-y-2 p-4">
-              <div className="pointer-events-none absolute left-3 top-1 text-sm text-yellow-300 drop-shadow-[0_5px_6px_rgba(234,179,8,0.3)]">✦</div>
-              <div className="pointer-events-none absolute bottom-3 right-7 text-lg text-yellow-300 drop-shadow-[0_7px_8px_rgba(234,179,8,0.3)]">★</div>
+              <HiOutlineSparkles className="pointer-events-none absolute left-3 top-1 text-sm text-yellow-300 drop-shadow-[0_5px_6px_rgba(234,179,8,0.3)]" />
+              <HiOutlineSparkles className="pointer-events-none absolute bottom-3 right-7 text-lg text-yellow-300 drop-shadow-[0_7px_8px_rgba(234,179,8,0.3)]" />
               {birthdayStudents.map((student) => {
                 const photo = toAbsoluteUrl(student.photo_url)
                 const [first = '', ...rest] = student.name.split(' ')
                 return (
                   <div key={student.id} className="relative flex items-center gap-3 rounded-2xl border border-white bg-white/90 p-3 shadow-lg shadow-yellow-100/50">
-                    <span className="absolute -left-1 -top-1 text-xs text-yellow-400 drop-shadow-[0_4px_4px_rgba(234,179,8,0.35)]">★</span>
+                    <HiOutlineSparkles className="absolute -left-1 -top-1 text-xs text-yellow-400 drop-shadow-[0_4px_4px_rgba(234,179,8,0.35)]" />
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-rose-50 text-sm font-black text-rose-600 shadow-inner">
                       {photo ? <img src={photo} alt={student.name} className="h-full w-full object-cover" /> : initials(first, rest.join(' '))}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-black text-slate-950">{student.name}</p>
-                      <p className="truncate text-xs font-bold text-slate-500">{student.courses.join(' · ')}</p>
+                      <p className="truncate text-xs font-bold text-slate-500">{student.courses.join(' - ')}</p>
                     </div>
                   </div>
                 )
@@ -375,3 +422,4 @@ export default function MobileHome() {
     </div>
   )
 }
+

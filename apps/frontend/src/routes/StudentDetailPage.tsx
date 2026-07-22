@@ -25,9 +25,14 @@ import {
 } from 'react-icons/hi'
 
 type PortalData = {
+  tenant?: {
+    id:number; name?:string|null; slug?:string|null;
+    mobile_theme?:string|null; logo_url?:string|null;
+  }
   student: { 
     id:number; first_name:string; last_name:string; email?:string|null; 
     joined_at?:string|null; photo_url?:string|null; is_active?:boolean; 
+    portal_enabled?:boolean;
     tenant_id?:number; phone?:string|null; gender?:string|null; 
     birthdate?:string|null; notes?:string|null;
     inactive_note?: string | null; inactive_at?: string | null;
@@ -66,6 +71,19 @@ type TenantFeeSettings = {
   enrollment_fee_enabled?: boolean
   enrollment_fee_amount?: number | null
   enrollment_fee_kind?: 'incorporation' | 'annual' | string | null
+}
+
+type StudentMobileAccess = {
+  enabled: boolean
+  email?: string | null
+  student_id: number
+  tenant_id: number
+  tenant_mobile_enabled: boolean
+  tenant_student_portal_enabled: boolean
+  can_generate: boolean
+  portal_path: string
+  code?: string
+  expires_in_minutes?: number
 }
 
 type CalDay = { date:string; expected:boolean; attended:boolean; is_recovery?: boolean; is_extra?: boolean; expected_course_ids?: number[]; attended_course_ids?: number[] }
@@ -147,6 +165,9 @@ export default function StudentDetailPage() {
   const [feePayMethod, setFeePayMethod] = useState('efectivo')
   const [feeReference, setFeeReference] = useState('')
   const [savingFee, setSavingFee] = useState(false)
+  const [mobileAccess, setMobileAccess] = useState<StudentMobileAccess | null>(null)
+  const [mobileAccessLoading, setMobileAccessLoading] = useState(false)
+  const [mobileAccessMessage, setMobileAccessMessage] = useState('')
 
   const [showEdit, setShowEdit] = useState(false)
   const [editMode, setEditMode] = useState<'edit' | 'renew' | 'profile'>('edit')
@@ -171,6 +192,16 @@ export default function StudentDetailPage() {
       ])
       setData(pRes.data)
       setCourseStats(sRes.data || {})
+      try {
+        const accessRes = await api.get(`/api/pms/students/${id}/mobile_access`)
+        setMobileAccess((current) => ({
+          ...accessRes.data,
+          code: current?.code,
+          expires_in_minutes: current?.expires_in_minutes,
+        }))
+      } catch {
+        setMobileAccess(null)
+      }
       try {
         const cRes = await api.get('/api/pms/courses', { params: { limit: 500 } })
         const items = (cRes.data?.items || cRes.data || []) as any[]
@@ -199,6 +230,47 @@ export default function StudentDetailPage() {
         setFeeSettings(null)
       }
     } finally { if (showLoader) setLoading(false) }
+  }
+
+  const portalLink = mobileAccess?.portal_path ? `${window.location.origin}${mobileAccess.portal_path}` : ''
+
+  const copyText = async (value: string, message: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setMobileAccessMessage(message)
+    } catch {
+      setMobileAccessMessage(value)
+    }
+  }
+
+  const generateMobileAccess = async () => {
+    if (!id) return
+    setMobileAccessLoading(true)
+    setMobileAccessMessage('')
+    try {
+      const res = await api.post(`/api/pms/students/${id}/mobile_access/generate`)
+      setMobileAccess(res.data)
+      setMobileAccessMessage('Código generado correctamente.')
+    } catch (err: any) {
+      setMobileAccessMessage(err?.response?.data?.detail || err?.message || 'No se pudo generar el acceso mobile.')
+    } finally {
+      setMobileAccessLoading(false)
+    }
+  }
+
+  const disableMobileAccess = async () => {
+    if (!id) return
+    setMobileAccessLoading(true)
+    setMobileAccessMessage('')
+    try {
+      const res = await api.delete(`/api/pms/students/${id}/mobile_access`)
+      setMobileAccess(res.data)
+      setMobileAccessMessage('Acceso mobile desactivado.')
+    } catch (err: any) {
+      setMobileAccessMessage(err?.response?.data?.detail || err?.message || 'No se pudo desactivar el acceso mobile.')
+    } finally {
+      setMobileAccessLoading(false)
+    }
   }
 
   const loadCalendar = async () => {
@@ -545,6 +617,100 @@ export default function StudentDetailPage() {
                       </div>
                     )}
                  </div>
+              </div>
+           </div>
+
+           {/* Mobile Access Card */}
+           <div className="bg-white rounded-[36px] shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden">
+              <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-black px-6 py-6 text-white">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.24em] text-fuchsia-300">Portal alumnos</p>
+                    <h2 className="mt-1 text-xl font-black">Acceso Mobile</h2>
+                  </div>
+                  <div className={`rounded-2xl px-3 py-2 text-[9px] font-black uppercase tracking-widest ${mobileAccess?.enabled ? 'bg-emerald-400/15 text-emerald-300 border border-emerald-400/30' : 'bg-white/10 text-white/70 border border-white/10'}`}>
+                    {mobileAccess?.enabled ? 'Activo' : 'Inactivo'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-fuchsia-600 shadow-sm">
+                      <HiOutlineMail size={20} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Usuario de ingreso</p>
+                      <p className="mt-1 truncate text-sm font-black text-gray-900">{mobileAccess?.email || student.email || 'Sin email registrado'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className={`rounded-2xl border px-3 py-3 ${mobileAccess?.tenant_mobile_enabled ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-gray-100 bg-gray-50 text-gray-400'}`}>
+                    <p className="text-[8px] font-black uppercase tracking-widest">Portal mobile</p>
+                    <p className="mt-1 text-xs font-black">{mobileAccess?.tenant_mobile_enabled ? 'Habilitado' : 'Inactivo'}</p>
+                  </div>
+                  <div className={`rounded-2xl border px-3 py-3 ${mobileAccess?.tenant_student_portal_enabled ? 'border-fuchsia-100 bg-fuchsia-50 text-fuchsia-700' : 'border-gray-100 bg-gray-50 text-gray-400'}`}>
+                    <p className="text-[8px] font-black uppercase tracking-widest">Alumnos</p>
+                    <p className="mt-1 text-xs font-black">{mobileAccess?.tenant_student_portal_enabled ? 'Habilitado' : 'Inactivo'}</p>
+                  </div>
+                </div>
+
+                {portalLink ? (
+                  <div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Link de acceso</p>
+                    <p className="mt-1 break-all text-xs font-bold text-gray-700">{portalLink}</p>
+                    <button
+                      type="button"
+                      onClick={() => copyText(portalLink, 'Link copiado.')}
+                      className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-gray-950 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white hover:bg-fuchsia-600 transition-colors"
+                    >
+                      <HiOutlineExternalLink size={14} /> Copiar link
+                    </button>
+                  </div>
+                ) : null}
+
+                {mobileAccess?.code ? (
+                  <div className="rounded-3xl border border-fuchsia-100 bg-fuchsia-50 p-4">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-fuchsia-500">Código temporal</p>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <p className="font-mono text-3xl font-black tracking-[0.2em] text-fuchsia-700">{mobileAccess.code}</p>
+                      <button
+                        type="button"
+                        onClick={() => copyText(mobileAccess.code || '', 'Código copiado.')}
+                        className="rounded-2xl bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-700 shadow-sm"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[10px] font-bold text-fuchsia-500">Válido por {mobileAccess.expires_in_minutes || 60} minutos.</p>
+                  </div>
+                ) : null}
+
+                {mobileAccessMessage ? (
+                  <p className="rounded-2xl bg-gray-50 px-4 py-3 text-xs font-black text-gray-600">{mobileAccessMessage}</p>
+                ) : null}
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={generateMobileAccess}
+                    disabled={mobileAccessLoading || !mobileAccess?.can_generate}
+                    className="flex-1 rounded-2xl bg-fuchsia-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-fuchsia-100 hover:bg-fuchsia-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none transition-all"
+                  >
+                    {mobileAccessLoading ? 'Procesando...' : mobileAccess?.enabled ? 'Nuevo código' : 'Activar acceso'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={disableMobileAccess}
+                    disabled={mobileAccessLoading || !mobileAccess?.enabled}
+                    className="rounded-2xl border border-gray-100 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40 transition-all"
+                  >
+                    Desactivar
+                  </button>
+                </div>
               </div>
            </div>
 

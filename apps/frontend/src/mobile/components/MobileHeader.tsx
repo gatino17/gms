@@ -14,8 +14,14 @@ export default function MobileHeader({ user, tenant }: Props) {
   const tenantLogoSrc = toAbsoluteUrl(tenantInfo?.logo_url)
 
   const logout = () => {
+    const slug = tenantInfo?.slug
+    const target = slug
+      ? user?.role === 'teacher'
+        ? `/mobile/staff/${slug}`
+        : `/mobile/${slug}`
+      : '/mobile/login'
     clearMobileSession()
-    navigate('/mobile/login', { replace: true })
+    navigate(target, { replace: true })
   }
 
   return (

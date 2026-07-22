@@ -18,7 +18,9 @@ import {
   HiOutlineX,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
-  HiOutlinePlus
+  HiOutlinePlus,
+  HiOutlineDeviceMobile,
+  HiOutlineExternalLink
 } from 'react-icons/hi'
 
 import CreateStudentModal from "../components/CreateStudentModal"
@@ -36,8 +38,17 @@ type Student = {
   photo_url?: string | null
   joined_at?: string | null
   is_active?: boolean
+  portal_enabled?: boolean
   enrollment_count?: number
   has_registration_fee?: boolean
+}
+
+type StudentMobileAccess = {
+  enabled: boolean
+  email?: string | null
+  portal_path: string
+  code?: string
+  expires_in_minutes?: number
 }
 
 type EnrollmentCourseSnapshot = {
@@ -88,6 +99,10 @@ export default function StudentsPage() {
   const [showEdit, setShowEdit] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [showPlanLimitModal, setShowPlanLimitModal] = useState(false)
+  const [mobileAccessStudent, setMobileAccessStudent] = useState<Student | null>(null)
+  const [mobileAccessResult, setMobileAccessResult] = useState<StudentMobileAccess | null>(null)
+  const [mobileAccessLoadingId, setMobileAccessLoadingId] = useState<number | null>(null)
+  const [mobileAccessMessage, setMobileAccessMessage] = useState('')
 
   const [showEnroll, setShowEnroll] = useState(false)
   const [showPay, setShowPay] = useState(false)
@@ -192,8 +207,51 @@ export default function StudentsPage() {
     }
   }
 
+  const portalLink = mobileAccessResult?.portal_path ? `${window.location.origin}${mobileAccessResult.portal_path}` : ''
+
+  const copyText = async (value: string, message: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setMobileAccessMessage(message)
+    } catch {
+      setMobileAccessMessage(value)
+    }
+  }
+
+  const handleGenerateMobileAccess = async (student: Student) => {
+    setMobileAccessLoadingId(student.id)
+    setMobileAccessMessage('')
+    try {
+      const res = await api.post(`/api/pms/students/${student.id}/mobile_access/generate`)
+      setMobileAccessStudent(student)
+      setMobileAccessResult(res.data)
+      setData((current) => current.map((item) => item.id === student.id ? { ...item, portal_enabled: true } : item))
+    } catch (err: any) {
+      setMobileAccessStudent(student)
+      setMobileAccessResult(null)
+      setMobileAccessMessage(err?.response?.data?.detail || err?.message || 'No se pudo generar el acceso mobile.')
+    } finally {
+      setMobileAccessLoadingId(null)
+    }
+  }
+
+  const handleDisableMobileAccess = async (student: Student) => {
+    setMobileAccessLoadingId(student.id)
+    setMobileAccessMessage('')
+    try {
+      await api.delete(`/api/pms/students/${student.id}/mobile_access`)
+      setData((current) => current.map((item) => item.id === student.id ? { ...item, portal_enabled: false } : item))
+    } catch (err: any) {
+      setMobileAccessStudent(student)
+      setMobileAccessResult(null)
+      setMobileAccessMessage(err?.response?.data?.detail || err?.message || 'No se pudo desactivar el acceso mobile.')
+    } finally {
+      setMobileAccessLoadingId(null)
+    }
+  }
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-20 px-1 sm:px-4 md:px-0">
+    <div className="max-w-[1600px] mx-auto space-y-6 md:space-y-8 pb-20 px-1 sm:px-4 md:px-4 xl:px-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pt-4">
         <div className="space-y-1 text-center sm:text-left">
@@ -220,7 +278,7 @@ export default function StudentsPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
         {[
           { label: 'Total Activos', value: stats.total_active, icon: HiOutlineCheckCircle, color: 'emerald' },
           { label: 'Inactivos', value: stats.total_inactive, icon: HiOutlineXCircle, color: 'gray' },
@@ -282,11 +340,11 @@ export default function StudentsPage() {
 	                <thead className="hidden md:table-header-group">
 	                  <tr className="bg-gray-50/50 text-left border-b border-gray-100">
 	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">N°</th>
-	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno</th>
-	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contacto</th>
-	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
-	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Registro</th>
-	                    <th className="px-6 py-4 text-center">
+	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno</th>
+	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contacto</th>
+	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
+	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Registro</th>
+	                    <th className="px-4 py-4 text-center">
 	                      <button
 	                        onClick={() => setJoinedSort((current) => (current === 'asc' ? 'desc' : 'asc'))}
 	                        className="inline-flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-fuchsia-600 transition-colors"
@@ -297,7 +355,7 @@ export default function StudentsPage() {
 	                        </span>
 	                      </button>
 	                    </th>
-	                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
+	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
 	                  </tr>
 	                </thead>
 	                <tbody className="block space-y-3 p-3 md:space-y-0 md:p-0 md:divide-y md:divide-gray-50 md:table-row-group">
@@ -306,7 +364,7 @@ export default function StudentsPage() {
 	                      <td className="hidden md:table-cell px-4 py-4 text-center font-black text-xs text-gray-400">
 	                        {(page - 1) * pageSize + index + 1}
 	                      </td>
-	                      <td className="block md:table-cell px-6 py-3 md:py-4">
+	                      <td className="block md:table-cell px-6 py-3 md:px-4 md:py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center font-black overflow-hidden border-2 border-white shadow-sm shrink-0">
                             {s.photo_url ? <img src={toAbsoluteUrl(s.photo_url)} className="w-full h-full object-cover" /> : `${s.first_name[0]}${s.last_name[0]}`}
@@ -317,7 +375,7 @@ export default function StudentsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="block md:table-cell px-6 py-1 md:py-4">
+                      <td className="block md:table-cell px-6 py-1 md:px-4 md:py-4">
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-2 text-xs text-gray-600 font-bold">
                             <HiOutlineMail className="text-fuchsia-400 shrink-0" size={14} /> <span className="truncate max-w-[150px]">{s.email || '-'}</span>
@@ -327,12 +385,12 @@ export default function StudentsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="block md:table-cell px-6 py-1 md:py-4 text-left md:text-center">
+                      <td className="block md:table-cell px-6 py-1 md:px-4 md:py-4 text-left md:text-center">
                         <span className={`inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest ${s.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>
                           {s.is_active ? 'Activo' : 'Inactivo'}
                         </span>
                       </td>
-                      <td className="block md:table-cell px-6 py-1 md:py-4 text-left md:text-center">
+                      <td className="block md:table-cell px-6 py-1 md:px-4 md:py-4 text-left md:text-center">
                         <div className="flex flex-col items-start md:items-center gap-1">
                           {(s.enrollment_count || 0) > 0 ? (
                             <span className="inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest bg-fuchsia-50 text-fuchsia-600 border border-fuchsia-100">
@@ -346,15 +404,18 @@ export default function StudentsPage() {
                           <span className="text-[7px] font-bold text-gray-400 uppercase tracking-tighter">
                             {s.enrollment_count || 0} inscripciones
                           </span>
+                          <span className={`inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${s.portal_enabled ? 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm shadow-fuchsia-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                            {s.portal_enabled ? 'Mobile activo' : 'Sin mobile'}
+                          </span>
 	                          <span className={`hidden md:inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${s.has_registration_fee ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
 	                            {s.has_registration_fee ? 'Con matrícula' : 'Sin matrícula'}
 	                          </span>
                         </div>
                       </td>
-                      <td className="hidden md:table-cell px-6 py-4 text-center font-bold text-xs text-gray-500">
+                      <td className="hidden md:table-cell px-4 py-4 text-center font-bold text-xs text-gray-500">
                         {ymdToCL(s.joined_at)}
                       </td>
-                      <td className="block md:table-cell px-5 pr-6 py-3 pb-4 md:px-6 md:py-4 text-left md:text-right">
+                      <td className="block md:table-cell px-5 pr-6 py-3 pb-4 md:px-4 md:py-4 text-left md:text-right">
                          <div className="flex items-center justify-start md:justify-end gap-2">
                            <button
                              onClick={() => { setSelectedStudent(s); setShowEnroll(true) }}
@@ -369,6 +430,14 @@ export default function StudentsPage() {
                             title="Ver Perfil"
                           >
                             <HiOutlineEye size={16} />
+                          </button>
+                          <button
+                            onClick={() => s.portal_enabled ? handleDisableMobileAccess(s) : handleGenerateMobileAccess(s)}
+                            disabled={mobileAccessLoadingId === s.id}
+                            className={`p-2 rounded-lg transition-all shadow-sm disabled:opacity-50 ${s.portal_enabled ? 'bg-fuchsia-600 text-white hover:bg-gray-900' : 'bg-gray-50 text-gray-400 hover:bg-fuchsia-600 hover:text-white'}`}
+                            title={s.portal_enabled ? 'Desactivar mobile' : 'Activar mobile'}
+                          >
+                            <HiOutlineDeviceMobile size={16} />
                           </button>
                           <button
                             onClick={() => { setSelectedStudent(s); setShowEdit(true) }}
@@ -507,6 +576,77 @@ export default function StudentsPage() {
           onClose={() => { setShowEdit(false); setSelectedStudent(null) }}
           onSuccess={() => { setShowEdit(false); setSelectedStudent(null); load() }}
         />
+      )}
+
+      {(mobileAccessStudent || mobileAccessMessage) && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
+            onClick={() => { setMobileAccessStudent(null); setMobileAccessResult(null); setMobileAccessMessage('') }}
+          />
+          <div className="relative w-full max-w-md overflow-hidden rounded-[30px] border border-gray-100 bg-white shadow-2xl">
+            <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-black px-6 py-6 text-white">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-fuchsia-300">Acceso mobile</p>
+                  <h3 className="mt-1 text-2xl font-black tracking-tight">
+                    {mobileAccessStudent ? `${mobileAccessStudent.first_name} ${mobileAccessStudent.last_name}` : 'Alumno'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => { setMobileAccessStudent(null); setMobileAccessResult(null); setMobileAccessMessage('') }}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                >
+                  <HiOutlineX size={18} />
+                </button>
+              </div>
+            </div>
+            <div className="space-y-4 px-6 py-6">
+              {mobileAccessResult?.code ? (
+                <div className="rounded-3xl border border-fuchsia-100 bg-fuchsia-50 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-fuchsia-500">Código temporal</p>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="font-mono text-3xl font-black tracking-[0.2em] text-fuchsia-700">{mobileAccessResult.code}</p>
+                    <button
+                      type="button"
+                      onClick={() => copyText(mobileAccessResult.code || '', 'Código copiado.')}
+                      className="rounded-2xl bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-700 shadow-sm"
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[10px] font-bold text-fuchsia-500">Válido por {mobileAccessResult.expires_in_minutes || 60} minutos.</p>
+                </div>
+              ) : null}
+
+              {portalLink ? (
+                <div className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Link portal alumno</p>
+                  <p className="mt-1 break-all text-xs font-bold text-gray-700">{portalLink}</p>
+                  <button
+                    type="button"
+                    onClick={() => copyText(portalLink, 'Link copiado.')}
+                    className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-gray-950 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white hover:bg-fuchsia-600 transition-colors"
+                  >
+                    <HiOutlineExternalLink size={14} /> Copiar link
+                  </button>
+                </div>
+              ) : null}
+
+              {mobileAccessMessage ? (
+                <p className="rounded-2xl bg-gray-50 px-4 py-3 text-xs font-black text-gray-600">{mobileAccessMessage}</p>
+              ) : null}
+
+              <button
+                onClick={() => { setMobileAccessStudent(null); setMobileAccessResult(null); setMobileAccessMessage('') }}
+                className="w-full rounded-2xl bg-gray-950 px-5 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-black transition-all"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {showPlanLimitModal && typeof document !== 'undefined' && createPortal(

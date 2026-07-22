@@ -23,6 +23,46 @@ router = APIRouter(prefix="/api/pms/students", tags=["pms-students"])
 _portal_codes: dict[tuple[str, int | None], dict[str, object]] = {}
 
 
+def _student_portal_path(tenant: Tenant | None, tenant_id: int) -> str:
+    slug = getattr(tenant, "slug", None) or f"tenant-{tenant_id}"
+    return f"/mobile/{slug}"
+
+
+def _create_student_portal_code(student: Student, tenant_id: int, minutes: int = 60) -> dict[str, object]:
+    email = (student.email or "").strip().lower()
+    code = f"{secrets.randbelow(1000000):06d}"
+    _portal_codes[(email, tenant_id)] = {
+        "code": code,
+        "expires": datetime.utcnow() + timedelta(minutes=minutes),
+        "student_id": student.id,
+        "tenant_id": tenant_id,
+    }
+    return {"code": code, "expires_in_minutes": minutes}
+
+
+def _student_mobile_access_payload(
+    student: Student,
+    tenant: Tenant | None,
+    tenant_id: int,
+    code_data: dict[str, object] | None = None,
+) -> dict[str, object]:
+    tenant_mobile_enabled = bool(getattr(tenant, "mobile_enabled", False))
+    tenant_student_portal_enabled = bool(getattr(tenant, "student_portal_enabled", False))
+    payload: dict[str, object] = {
+        "enabled": bool(getattr(student, "portal_enabled", False)),
+        "email": student.email,
+        "student_id": student.id,
+        "tenant_id": tenant_id,
+        "tenant_mobile_enabled": tenant_mobile_enabled,
+        "tenant_student_portal_enabled": tenant_student_portal_enabled,
+        "can_generate": bool(student.email) and tenant_mobile_enabled and tenant_student_portal_enabled,
+        "portal_path": _student_portal_path(tenant, tenant_id),
+    }
+    if code_data:
+        payload.update(code_data)
+    return payload
+
+
 async def _ensure_student_plan_capacity(db: AsyncSession, tenant_id: int) -> None:
     tenant = await db.get(Tenant, tenant_id)
     if not tenant or not tenant.plan_id:
@@ -291,6 +331,67 @@ async def upload_student_photo(
     return {"url": public_url}
 
 
+@router.get("/{student_id}/mobile_access")
+async def get_student_mobile_access(
+    student_id: int,
+    tenant_id: int = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    res = await db.execute(select(Student).where(Student.id == student_id, Student.tenant_id == tenant_id))
+    student = res.scalar_one_or_none()
+    if not student:
+        raise HTTPException(status_code=404, detail="Alumno no encontrado")
+    tenant = await db.get(Tenant, tenant_id)
+    return _student_mobile_access_payload(student, tenant, tenant_id)
+
+
+@router.post("/{student_id}/mobile_access/generate")
+async def generate_student_mobile_access(
+    student_id: int,
+    tenant_id: int = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    res = await db.execute(select(Student).where(Student.id == student_id, Student.tenant_id == tenant_id))
+    student = res.scalar_one_or_none()
+    if not student:
+        raise HTTPException(status_code=404, detail="Alumno no encontrado")
+    if not student.email:
+        raise HTTPException(status_code=400, detail="El alumno necesita email para usar el portal mobile")
+
+    tenant = await db.get(Tenant, tenant_id)
+    if not tenant or not tenant.mobile_enabled or not tenant.student_portal_enabled:
+        raise HTTPException(status_code=403, detail="Portal de alumnos no habilitado para este estudio")
+
+    student.portal_enabled = True
+    code_data = _create_student_portal_code(student, tenant_id, minutes=60)
+    await db.flush()
+    await db.refresh(student)
+    await db.commit()
+    return _student_mobile_access_payload(student, tenant, tenant_id, code_data)
+
+
+@router.delete("/{student_id}/mobile_access")
+async def disable_student_mobile_access(
+    student_id: int,
+    tenant_id: int = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    res = await db.execute(select(Student).where(Student.id == student_id, Student.tenant_id == tenant_id))
+    student = res.scalar_one_or_none()
+    if not student:
+        raise HTTPException(status_code=404, detail="Alumno no encontrado")
+    student.portal_enabled = False
+    email = (student.email or "").strip().lower()
+    if email:
+        _portal_codes.pop((email, tenant_id), None)
+        _portal_codes.pop((email, None), None)
+    await db.flush()
+    await db.refresh(student)
+    await db.commit()
+    tenant = await db.get(Tenant, tenant_id)
+    return _student_mobile_access_payload(student, tenant, tenant_id)
+
+
 @router.get("/{student_id}/portal")
 async def student_portal_summary(
     student_id: int,
@@ -432,6 +533,7 @@ async def student_portal_summary(
             "notes": getattr(student, "notes", None),
             "photo_url": student.photo_url,
             "is_active": bool(getattr(student, "is_active", False)),
+            "portal_enabled": bool(getattr(student, "portal_enabled", False)),
             "inactive_note": getattr(student, "inactive_note", None),
             "inactive_at": student.inactive_at.isoformat() if getattr(student, "inactive_at", None) else None,
             "tenant_id": student.tenant_id,
@@ -466,16 +568,11 @@ async def request_portal_code(payload: dict, db: AsyncSession = Depends(get_db_s
     tenant = await db.get(Tenant, student.tenant_id)
     if not tenant or not tenant.mobile_enabled or not tenant.student_portal_enabled:
         raise HTTPException(status_code=403, detail="Portal de alumnos no habilitado para este estudio")
-    key = (email, tenant_id or student.tenant_id)
-    code = f"{secrets.randbelow(1000000):06d}"
-    _portal_codes[key] = {
-        "code": code,
-        "expires": datetime.utcnow() + timedelta(minutes=10),
-        "student_id": student.id,
-        "tenant_id": tenant_id or student.tenant_id,
-    }
+    if not getattr(student, "portal_enabled", False):
+        raise HTTPException(status_code=403, detail="Acceso mobile no habilitado para este alumno")
+    code_data = _create_student_portal_code(student, tenant_id or student.tenant_id, minutes=10)
     # En un entorno real se enviaría por correo. Para pruebas devolvemos el código.
-    return {"ok": True, "code": code, "expires_in_minutes": 10}
+    return {"ok": True, "code": code_data["code"], "expires_in_minutes": code_data["expires_in_minutes"]}
 
 @router.post("/portal/login")
 async def portal_login(payload: dict, db: AsyncSession = Depends(get_db_session)):
@@ -515,6 +612,8 @@ async def portal_login(payload: dict, db: AsyncSession = Depends(get_db_session)
     tenant = await db.get(Tenant, tid)
     if not tenant or not tenant.mobile_enabled or not tenant.student_portal_enabled:
         raise HTTPException(status_code=403, detail="Portal de alumnos no habilitado para este estudio")
+    if not getattr(student, "portal_enabled", False):
+        raise HTTPException(status_code=403, detail="Acceso mobile no habilitado para este alumno")
     token = security.create_access_token(
         student.id,
         extra={"role": "student", "tenant_id": tid}
@@ -544,6 +643,8 @@ async def portal_me(
     tenant = await db.get(Tenant, current_student.tenant_id)
     if not tenant or not tenant.mobile_enabled or not tenant.student_portal_enabled:
         raise HTTPException(status_code=403, detail="Portal de alumnos no habilitado para este estudio")
+    if not getattr(current_student, "portal_enabled", False):
+        raise HTTPException(status_code=403, detail="Acceso mobile no habilitado para este alumno")
     # reutilizar el resumen del portal existente con el tenant real del alumno
     return await student_portal_summary(
         current_student.id,

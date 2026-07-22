@@ -133,6 +133,7 @@ class Student(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     inactive_note: Mapped[Optional[str]] = mapped_column(Text())
     inactive_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)
+    portal_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

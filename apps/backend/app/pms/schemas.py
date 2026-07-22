@@ -198,6 +198,7 @@ class StudentUpdate(StudentBase):
 class StudentOut(StudentBase):
     id: int
     tenant_id: int
+    portal_enabled: bool = False
     created_at: datetime
     updated_at: datetime
     enrollment_count: Optional[int] = 0

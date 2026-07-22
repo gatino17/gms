@@ -14,10 +14,15 @@ export default function MobileLogin() {
   const [tenantInfo, setTenantInfo] = useState<MobileTenantInfo | null>(null)
   const [code, setCode] = useState('')
   const [debugCode, setDebugCode] = useState('')
-  const [step, setStep] = useState<'request' | 'confirm'>('request')
   const [loading, setLoading] = useState(false)
+  const [requestingCode, setRequestingCode] = useState(false)
   const [error, setError] = useState('')
+  const [tenantLogoFailed, setTenantLogoFailed] = useState(false)
   const tenantLogoSrc = toAbsoluteUrl(tenantInfo?.logo_url)
+
+  useEffect(() => {
+    setTenantLogoFailed(false)
+  }, [tenantLogoSrc])
 
   useEffect(() => {
     if (!studioSlug) return
@@ -35,10 +40,9 @@ export default function MobileLogin() {
       .catch((err) => setError(err?.message || 'No se pudo cargar el estudio.'))
   }, [studioSlug])
 
-  const requestCode = async (event: FormEvent) => {
-    event.preventDefault()
+  const requestCode = async () => {
     setError('')
-    setLoading(true)
+    setRequestingCode(true)
     try {
       const payload = {
         email: email.trim(),
@@ -46,11 +50,11 @@ export default function MobileLogin() {
       }
       const { data } = await mobileApi.post('/api/pms/students/portal/request_code', payload)
       setDebugCode(data?.code || '')
-      setStep('confirm')
+      if (data?.code) setCode(data.code)
     } catch (err: any) {
       setError(err?.message || 'No se pudo solicitar el codigo.')
     } finally {
-      setLoading(false)
+      setRequestingCode(false)
     }
   }
 
@@ -100,8 +104,17 @@ export default function MobileLogin() {
               <span className="h-px w-2 bg-white/40" />
               <span className="mobile-auth-dot-soft h-1.5 w-1.5 rounded-full" />
             </div>
-            <div className="h-28 w-28 overflow-hidden rounded-full border-2 border-white bg-white shadow-2xl shadow-slate-950/25">
-              <img src={tenantLogoSrc || '/gms-soluciones-digitales.jpg'} alt={tenantInfo?.name || 'Estudio'} className="h-full w-full object-cover" />
+            <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white text-3xl font-black text-slate-950 shadow-2xl shadow-slate-950/25">
+              {tenantLogoSrc && !tenantLogoFailed ? (
+                <img
+                  src={tenantLogoSrc}
+                  alt={tenantInfo?.name || 'Estudio'}
+                  className="h-full w-full object-cover"
+                  onError={() => setTenantLogoFailed(true)}
+                />
+              ) : (
+                <span>{(tenantInfo?.name || 'E').slice(0, 1).toUpperCase()}</span>
+              )}
             </div>
           </div>
           <p className="mobile-text-accent text-[11px] font-black uppercase tracking-[0.3em]">{tenantInfo?.name || 'GMS Mobile'}</p>
@@ -114,10 +127,10 @@ export default function MobileLogin() {
         <div className="rounded-[34px] border border-white/10 bg-white p-5 text-slate-950 shadow-2xl">
           <div className="mobile-bg-primary-soft mb-5 rounded-2xl px-4 py-3">
             <p className="mobile-text-primary text-[10px] font-black uppercase tracking-[0.24em]">Acceso alumno</p>
-            <p className="mt-1 text-xs font-bold text-slate-600">Recibiras un codigo temporal para entrar.</p>
+            <p className="mt-1 text-xs font-bold text-slate-600">Ingresa el codigo generado desde tu estudio o solicita uno nuevo.</p>
           </div>
 
-          <form onSubmit={step === 'request' ? requestCode : confirmCode} className="space-y-4">
+          <form onSubmit={confirmCode} className="space-y-4">
             <label className="block">
               <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Email</span>
               <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -149,27 +162,25 @@ export default function MobileLogin() {
               </div>
             )}
 
-            {step === 'confirm' ? (
-              <label className="block">
-                <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Codigo</span>
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <HiOutlineShieldCheck className="text-emerald-500" size={20} />
-                  <input
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    inputMode="numeric"
-                    required
-                    className="w-full bg-transparent text-sm font-bold outline-none"
-                    placeholder="000000"
-                  />
-                </div>
-                {debugCode ? (
-                  <p className="mobile-bg-primary-soft mobile-text-primary mt-2 rounded-xl px-3 py-2 text-xs font-bold">
-                    Codigo de prueba: {debugCode}
-                  </p>
-                ) : null}
-              </label>
-            ) : null}
+            <label className="block">
+              <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Codigo</span>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <HiOutlineShieldCheck className="text-emerald-500" size={20} />
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  inputMode="numeric"
+                  required
+                  className="w-full bg-transparent text-sm font-bold outline-none"
+                  placeholder="000000"
+                />
+              </div>
+              {debugCode ? (
+                <p className="mobile-bg-primary-soft mobile-text-primary mt-2 rounded-xl px-3 py-2 text-xs font-bold">
+                  Codigo de prueba: {debugCode}
+                </p>
+              ) : null}
+            </label>
 
             {error ? <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">{error}</p> : null}
 
@@ -178,7 +189,15 @@ export default function MobileLogin() {
               disabled={loading}
               className="mobile-bg-primary mobile-shadow-primary w-full rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-widest text-white transition hover:brightness-95 disabled:opacity-60"
             >
-              {loading ? 'Procesando...' : step === 'request' ? 'Solicitar codigo' : 'Ingresar'}
+              {loading ? 'Procesando...' : 'Ingresar'}
+            </button>
+            <button
+              type="button"
+              onClick={requestCode}
+              disabled={requestingCode || !email.trim()}
+              className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 transition hover:bg-white hover:text-slate-950 disabled:opacity-50"
+            >
+              {requestingCode ? 'Solicitando...' : 'Solicitar codigo nuevo'}
             </button>
           </form>
           <div className="mt-5 border-t border-slate-100 pt-4 text-center">

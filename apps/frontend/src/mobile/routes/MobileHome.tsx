@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { HiOutlineCake, HiOutlineCheckCircle, HiOutlineClock, HiOutlineSparkles, HiOutlineSpeakerphone, HiOutlineX } from 'react-icons/hi'
+import { HiOutlineAcademicCap, HiOutlineCake, HiOutlineCheckCircle, HiOutlineClock, HiOutlineSparkles, HiOutlineSpeakerphone, HiOutlineUserGroup, HiOutlineX } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
@@ -472,25 +472,38 @@ export default function MobileHome() {
   if (user?.role === 'teacher') {
     return (
       <div className="space-y-4">
-        <MobileCard eyebrow="Profesor" title={`Hola, ${teacherFirstName}`}>
-          <div className="flex items-start gap-3">
-              <span className="mobile-bg-header mobile-text-accent mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-lg shadow-slate-200">
+        <section className="px-1 pt-1">
+          <p className="mobile-text-primary mb-2 text-[10px] font-black uppercase tracking-[0.24em]">Profesor</p>
+          <h2 className="text-2xl font-black leading-tight text-slate-950">Hola, {teacherFirstName}</h2>
+          <div className="mt-4 flex items-start gap-3">
+            <span className="mobile-bg-header mobile-text-accent mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-lg shadow-slate-200">
               <HiOutlineSparkles size={18} />
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="mobile-text-primary mb-1 text-[10px] font-black uppercase tracking-[0.22em]">Mensaje del día</p>
               <p className="text-base font-black leading-6 text-slate-950">{dailyMessage}</p>
             </div>
           </div>
-        </MobileCard>
+        </section>
         <div className="grid grid-cols-2 gap-3">
-          <div className="mobile-border-primary rounded-[24px] border bg-white p-4 shadow-lg shadow-slate-200/70">
-            <p className="mobile-text-primary text-[10px] font-black uppercase tracking-widest">Cursos</p>
-            <p className="mt-1 text-3xl font-black">{teacherSummary?.course_count || 0}</p>
+          <div className="mobile-bg-primary relative overflow-hidden rounded-[24px] border border-white/20 p-4 text-white shadow-xl shadow-slate-300/70">
+            <div className="relative flex items-center gap-3">
+              <HiOutlineAcademicCap className="shrink-0 text-white" size={28} />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-white">Cursos</p>
+                <p className="mt-0.5 text-2xl font-black leading-none">{teacherSummary?.course_count || 0}</p>
+              </div>
+            </div>
           </div>
-          <div className="rounded-[24px] border border-slate-100 bg-slate-950 p-4 text-white shadow-lg shadow-slate-200/70">
-            <p className="mobile-text-accent text-[10px] font-black uppercase tracking-widest">Alumnos</p>
-            <p className="mt-1 text-3xl font-black">{teacherSummary?.student_count || 0}</p>
+          <div className="relative overflow-hidden rounded-[24px] border border-slate-900 bg-slate-950 p-4 text-white shadow-xl shadow-slate-300/70">
+            <div className="mobile-bg-primary absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-25 blur-sm" />
+            <div className="relative flex items-center gap-3">
+              <HiOutlineUserGroup className="shrink-0 text-white" size={28} />
+              <div>
+                <p className="mobile-text-accent text-[10px] font-black uppercase tracking-widest">Alumnos</p>
+                <p className="mt-0.5 text-2xl font-black leading-none">{teacherSummary?.student_count || 0}</p>
+              </div>
+            </div>
           </div>
         </div>
         {birthdayStudents.length ? (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { HiOutlineCalendar, HiOutlineCheckCircle, HiOutlineLocationMarker, HiOutlineUserGroup } from 'react-icons/hi'
+import { HiOutlineAcademicCap, HiOutlineCalendar, HiOutlineCheckCircle, HiOutlineLocationMarker, HiOutlineUserGroup } from 'react-icons/hi'
 import { IoFemale, IoMale } from 'react-icons/io5'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
@@ -178,18 +178,34 @@ export default function TeacherPortal() {
 
   return (
     <div className="space-y-4">
-      <MobileCard eyebrow="Profesor" title={summary?.teacher?.name || 'Mis cursos'}>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="mobile-bg-primary-soft rounded-2xl p-4">
-            <p className="mobile-text-primary text-[10px] font-black uppercase tracking-widest">Cursos</p>
-            <p className="mt-1 text-2xl font-black text-slate-950">{summary?.course_count || 0}</p>
+      <section className="px-1 pt-1">
+        <p className="mobile-text-primary mb-2 text-[10px] font-black uppercase tracking-[0.24em]">Cursos</p>
+        <h2 className="text-2xl font-black leading-tight text-slate-950">Mis cursos</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+          Selecciona un curso para revisar alumnos y marcar asistencia.
+        </p>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mobile-bg-primary relative overflow-hidden rounded-[24px] border border-white/20 p-4 text-white shadow-xl shadow-slate-300/70">
+            <div className="relative flex items-center gap-3">
+              <HiOutlineAcademicCap className="shrink-0 text-white" size={28} />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-white">Cursos</p>
+                <p className="mt-0.5 text-2xl font-black leading-none">{summary?.course_count || 0}</p>
+              </div>
+            </div>
           </div>
-          <div className="rounded-2xl bg-slate-950 p-4 text-white">
-            <p className="mobile-text-accent text-[10px] font-black uppercase tracking-widest">Alumnos</p>
-            <p className="mt-1 text-2xl font-black">{summary?.student_count || 0}</p>
+          <div className="relative overflow-hidden rounded-[24px] border border-slate-900 bg-slate-950 p-4 text-white shadow-xl shadow-slate-300/70">
+            <div className="mobile-bg-primary absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-25 blur-sm" />
+            <div className="relative flex items-center gap-3">
+              <HiOutlineUserGroup className="shrink-0 text-white" size={28} />
+              <div>
+                <p className="mobile-text-accent text-[10px] font-black uppercase tracking-widest">Alumnos</p>
+                <p className="mt-0.5 text-2xl font-black leading-none">{summary?.student_count || 0}</p>
+              </div>
+            </div>
           </div>
         </div>
-      </MobileCard>
+      </section>
 
       {error ? <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">{error}</p> : null}
 
@@ -205,7 +221,7 @@ export default function TeacherPortal() {
               className="w-full p-4 text-left"
             >
               <div className="flex gap-4">
-                <div className="mobile-bg-primary mobile-shadow-primary h-20 w-20 shrink-0 overflow-hidden rounded-3xl text-white">
+                <div className="mobile-bg-primary h-20 w-20 shrink-0 overflow-hidden rounded-3xl text-white shadow-lg shadow-slate-300/70">
                   {courseImage ? <img src={courseImage} alt={course.name} className="h-full w-full object-cover" /> : (
                     <div className="flex h-full w-full items-center justify-center text-2xl font-black">{course.name.slice(0, 1).toUpperCase()}</div>
                   )}

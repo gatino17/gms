@@ -104,11 +104,13 @@ export default function MobileAnnouncements() {
 
   return (
     <div className="space-y-4">
-      <MobileCard eyebrow="Anuncios" title="Novedades del estudio">
+      <section className="px-1 pt-1">
+        <p className="mobile-text-primary mb-2 text-[10px] font-black uppercase tracking-[0.24em]">Avisos</p>
+        <h2 className="text-2xl font-black leading-tight text-slate-950">Novedades del estudio</h2>
         <p className="text-sm font-semibold leading-6 text-slate-600">
           Revisa comunicados, promociones, eventos y cambios importantes.
         </p>
-      </MobileCard>
+      </section>
 
       {items.length ? items.map((item) => {
         const image = toAbsoluteUrl(item.image_url)

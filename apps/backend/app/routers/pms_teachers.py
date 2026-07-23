@@ -159,6 +159,25 @@ async def _teacher_portal_summary(teacher: Teacher, db: AsyncSession) -> dict:
     students_by_course: dict[int, list[dict]] = {course_id: [] for course_id in course_ids}
     attended_by_course: dict[int, set[int]] = {course_id: set() for course_id in course_ids}
     if course_ids:
+        single_class_by_student_course: dict[tuple[int, int], date] = {}
+        single_class_res = await db.execute(
+            select(
+                Payment.student_id,
+                Payment.course_id,
+                func.max(Payment.payment_date).label("latest_single_class_date"),
+            )
+            .where(
+                Payment.tenant_id == teacher.tenant_id,
+                Payment.course_id.in_(course_ids),
+                Payment.student_id != None,
+                Payment.type == "single_class",
+            )
+            .group_by(Payment.student_id, Payment.course_id)
+        )
+        for student_id, course_id, latest_single_class_date in single_class_res.all():
+            if student_id and course_id and latest_single_class_date:
+                single_class_by_student_course[(int(student_id), int(course_id))] = latest_single_class_date
+
         attendance_res = await db.execute(
             select(Attendance.course_id, Attendance.student_id)
             .where(
@@ -183,6 +202,15 @@ async def _teacher_portal_summary(teacher: Teacher, db: AsyncSession) -> dict:
             .order_by(Student.first_name.asc(), Student.last_name.asc())
         )
         for enrollment, student in students_res.all():
+            latest_single_class_date = single_class_by_student_course.get((student.id, enrollment.course_id))
+            current_period_active = bool(enrollment.end_date and enrollment.end_date >= today)
+            single_class_date = None
+            if latest_single_class_date and not current_period_active:
+                if enrollment.end_date is None or latest_single_class_date >= enrollment.end_date:
+                    single_class_date = latest_single_class_date
+            if not single_class_date and enrollment.end_date and enrollment.start_date == enrollment.end_date:
+                single_class_date = enrollment.end_date
+
             students_by_course.setdefault(enrollment.course_id, []).append({
                 "id": student.id,
                 "first_name": student.first_name,
@@ -195,7 +223,14 @@ async def _teacher_portal_summary(teacher: Teacher, db: AsyncSession) -> dict:
                 "enrollment_id": enrollment.id,
                 "enrolled_since": enrollment.start_date.isoformat() if enrollment.start_date else None,
                 "renewal_date": enrollment.end_date.isoformat() if enrollment.end_date else None,
-                "enrollment_mode": "single_class" if enrollment.end_date and enrollment.start_date == enrollment.end_date else "regular",
+                "enrollment_mode": "single_class" if single_class_date else "regular",
+                "single_class_date": single_class_date.isoformat() if single_class_date else None,
+                "payment_status": (
+                    "activo" if single_class_date and single_class_date >= today else
+                    "inactivo" if single_class_date else
+                    "activo" if current_period_active else
+                    "pendiente"
+                ),
             })
 
     courses = []

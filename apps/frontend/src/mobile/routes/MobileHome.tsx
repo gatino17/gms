@@ -17,6 +17,8 @@ interface StudentSummary {
     id: number
     is_active?: boolean
     payment_status?: string | null
+    start_date?: string | null
+    end_date?: string | null
     course?: {
       id: number
       name: string
@@ -218,6 +220,16 @@ const nextClassReminderText = (nextClass: NonNullable<ReturnType<typeof nextClas
   return `Recuerda que este ${day} tienes clase a las`
 }
 
+const formatShortDate = (value?: string | null) => {
+  if (!value) return null
+  const [year, month, day] = value.slice(0, 10).split('-')
+  if (!year || !month || !day) return value
+  return `${day}-${month}-${year}`
+}
+
+const pendingEnrollmentFromSummary = (enrollments?: StudentSummary['enrollments']) =>
+  (enrollments || []).find((item) => item.is_active !== false && item.payment_status !== 'activo')
+
 const TEACHER_DAILY_MESSAGES = [
   'Cada clase puede ser el impulso que un alumno necesitaba hoy.',
   'Tu energía marca el ritmo antes de que empiece la música.',
@@ -310,9 +322,20 @@ export default function MobileHome() {
   const currentAnnouncement = sliderAnnouncements[activeAnnouncementIndex]
   const dailyMessage = teacherDailyMessage()
   const teacherFirstName = user?.first_name || mobileUserName(user).split(' ')[0] || 'Profesor'
+  const studentFirstName = user?.first_name || mobileUserName(user).split(' ')[0] || 'Alumno'
   const nextClass = useMemo(() => nextClassFromEnrollments(summary?.enrollments), [summary?.enrollments])
   const studentNextClassTeacherFirstName = nextClass?.teacherName?.trim().split(/\s+/)[0]
   const studentIsActive = summary?.student?.is_active !== false
+  const pendingEnrollment = useMemo(() => pendingEnrollmentFromSummary(summary?.enrollments), [summary?.enrollments])
+  const studentStatus = !studentIsActive
+    ? { label: 'Inactivo', textClass: 'text-rose-600', iconClass: 'bg-rose-50 text-rose-500', borderClass: 'border-rose-100' }
+    : pendingEnrollment
+      ? { label: 'Pendiente', textClass: 'text-amber-600', iconClass: 'bg-amber-50 text-amber-500', borderClass: 'border-amber-100' }
+      : { label: 'Activo', textClass: 'text-emerald-600', iconClass: 'bg-emerald-50 text-emerald-500', borderClass: 'border-emerald-100' }
+  const pendingCourseName = pendingEnrollment?.course?.name || 'tu curso'
+  const pendingPeriodText = pendingEnrollment
+    ? [formatShortDate(pendingEnrollment.start_date), formatShortDate(pendingEnrollment.end_date)].filter(Boolean).join(' / ')
+    : ''
 
   useEffect(() => {
     setAnnouncementSlide(0)
@@ -343,29 +366,32 @@ export default function MobileHome() {
       {(() => {
         const image = toAbsoluteUrl(currentAnnouncement.image_url)
         const typeConfig = announcementTypeConfig(currentAnnouncement.announcement_type)
+        const openAnnouncementImage = () => {
+          if (image) setExpandedAnnouncementImage({ src: image, title: currentAnnouncement.title })
+        }
         return (
           <article
             key={currentAnnouncement.id}
             className="mobile-announcement-slide overflow-hidden rounded-[32px] border border-white bg-white shadow-[0_26px_52px_rgba(15,23,42,0.22),0_14px_26px_rgba(15,23,42,0.10)] ring-1 ring-slate-100"
           >
-            <div className="relative min-h-[330px] overflow-hidden bg-slate-950">
+            <button
+              type="button"
+              onClick={openAnnouncementImage}
+              onTouchStart={openAnnouncementImage}
+              disabled={!image}
+              className="relative block min-h-[330px] w-full overflow-hidden bg-slate-950 text-left disabled:cursor-default"
+              aria-label={image ? 'Ver imagen del aviso en grande' : currentAnnouncement.title}
+            >
               {image ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedAnnouncementImage({ src: image, title: currentAnnouncement.title })}
-                    className="absolute inset-0 z-[1] cursor-zoom-in"
-                    aria-label="Ver imagen del aviso en grande"
-                  >
-                    <img src={image} alt={currentAnnouncement.title} className="h-full w-full object-cover" />
-                  </button>
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/28 to-slate-950/10" />
-                  <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950/60 to-transparent" />
+                  <img src={image} alt={currentAnnouncement.title} className="absolute inset-0 h-full w-full object-cover" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/28 to-slate-950/10" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950/60 to-transparent" />
                 </>
               ) : (
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.7),transparent_34%),linear-gradient(135deg,#020617,#581c87_55%,#111827)]" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.7),transparent_34%),linear-gradient(135deg,#020617,#581c87_55%,#111827)]" />
               )}
-              <div className="absolute left-4 top-4 z-[2] flex items-center gap-2">
+              <div className="pointer-events-none absolute left-4 top-4 z-[2] flex items-center gap-2">
                 <span className={`rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-black/20 ${typeConfig.badge}`}>
                   {typeConfig.label}
                 </span>
@@ -373,10 +399,10 @@ export default function MobileHome() {
                   Nuevo
                 </span>
               </div>
-              <div className="mobile-text-primary absolute right-4 top-4 z-[2] rounded-2xl bg-white/95 p-2 shadow-xl shadow-black/20">
+              <div className="mobile-text-primary pointer-events-none absolute right-4 top-4 z-[2] rounded-2xl bg-white/95 p-2 shadow-xl shadow-black/20">
                 <HiOutlineSpeakerphone size={18} />
               </div>
-              <div className="absolute inset-x-0 bottom-0 z-[2] p-5 text-white">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] p-5 text-white">
                 <h3 className="text-2xl font-black leading-tight drop-shadow-lg">{currentAnnouncement.title}</h3>
                 {currentAnnouncement.subtitle ? <p className="mt-1 text-sm font-black text-white/90 drop-shadow">{currentAnnouncement.subtitle}</p> : null}
                 {currentAnnouncement.body ? <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-white/85">{currentAnnouncement.body}</p> : null}
@@ -387,7 +413,7 @@ export default function MobileHome() {
                   <span className="mobile-gradient-primary h-2 w-12 shrink-0 rounded-full" />
                 </div>
               </div>
-            </div>
+            </button>
           </article>
         )
       })()}
@@ -514,7 +540,7 @@ export default function MobileHome() {
 
   return (
     <div className="space-y-4">
-      <MobileCard accent="plain" eyebrow="Alumno" title={`Hola, ${mobileUserName(user)}`}>
+      <MobileCard accent="plain" eyebrow="Alumno" title={`Hola, ${studentFirstName}`}>
         {nextClass ? (
           <div className="mt-2 space-y-5">
             <div>
@@ -523,13 +549,36 @@ export default function MobileHome() {
                 {nextClass.time} hrs{studentNextClassTeacherFirstName ? ` con ${studentNextClassTeacherFirstName}.` : '.'}
               </p>
             </div>
-            <div className="relative mb-5 rounded-[22px] bg-gradient-to-br from-red-700 via-red-700 to-red-800 px-5 pb-10 pt-5 text-white shadow-2xl shadow-red-200/70">
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-100/80">Tu curso</p>
+            <div
+              className="relative mb-5 rounded-[22px] px-5 pb-10 pt-5 text-white shadow-2xl"
+              style={{
+                backgroundImage: 'linear-gradient(135deg, var(--mobile-primary, #c026d3), var(--mobile-primary-dark, #a21caf))',
+                boxShadow: '0 14px 26px color-mix(in srgb, var(--mobile-primary-shadow, rgba(192, 38, 211, 0.28)) 55%, transparent)',
+              }}
+            >
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/75">Tu curso</p>
               <p className="mt-2 text-xl font-black leading-tight">{nextClass.courseName}</p>
-              <span className="absolute -bottom-5 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/25 bg-red-500 px-5 py-2 text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-red-200">
+              <span
+                className="absolute -bottom-5 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/25 px-5 py-2 text-[11px] font-black uppercase tracking-widest text-white shadow-xl"
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--mobile-primary, #c026d3) 88%, white)',
+                  boxShadow: '0 8px 18px color-mix(in srgb, var(--mobile-primary-shadow, rgba(192, 38, 211, 0.28)) 50%, transparent)',
+                }}
+              >
                 <HiOutlineClock size={13} /> {nextClass.shortLabel} {nextClass.time}
               </span>
             </div>
+            {pendingEnrollment ? (
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-600">Curso pendiente</p>
+                <p className="mt-1 text-sm font-black leading-5 text-slate-950">
+                  Recuerda actualizar tu curso {pendingCourseName}.
+                </p>
+                {pendingPeriodText ? (
+                  <p className="mt-1 text-xs font-bold text-amber-700">Periodo: {pendingPeriodText}</p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : (
           <p className="text-sm font-semibold leading-6 text-slate-600">
@@ -550,13 +599,13 @@ export default function MobileHome() {
             </span>
           </div>
         </div>
-        <div className={`rounded-[24px] border bg-white p-4 shadow-lg shadow-slate-200/70 ${studentIsActive ? 'border-emerald-100' : 'border-rose-100'}`}>
+        <div className={`rounded-[24px] border bg-white p-4 shadow-lg shadow-slate-200/70 ${studentStatus.borderClass}`}>
           <div className="flex min-h-[76px] items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</p>
-              <p className={`mt-1 text-xl font-black ${studentIsActive ? 'text-emerald-600' : 'text-rose-600'}`}>{studentIsActive ? 'Activo' : 'Inactivo'}</p>
+              <p className={`mt-1 text-xl font-black ${studentStatus.textClass}`}>{studentStatus.label}</p>
             </div>
-            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${studentIsActive ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${studentStatus.iconClass}`}>
               <HiOutlineCheckCircle size={24} />
             </span>
           </div>

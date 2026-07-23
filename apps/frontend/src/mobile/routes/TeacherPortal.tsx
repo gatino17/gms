@@ -16,6 +16,8 @@ type StudentItem = {
   enrolled_since?: string | null
   renewal_date?: string | null
   enrollment_mode?: 'regular' | 'single_class' | string | null
+  single_class_date?: string | null
+  payment_status?: string | null
 }
 
 type CourseItem = {
@@ -91,6 +93,7 @@ const genderCounts = (students: StudentItem[]) => {
 }
 
 const enrollmentLabel = (student: StudentItem) => {
+  if (student.single_class_date) return 'Clase suelta'
   if (student.enrollment_mode === 'single_class') return 'Clase suelta'
   if (student.renewal_date && student.enrolled_since === student.renewal_date) return 'Clase suelta'
   return 'Mensualidad'
@@ -111,7 +114,7 @@ export default function TeacherPortal() {
       setSummary(res.data)
       setExpandedCourseId((current) => {
         if (current && res.data?.courses?.some((course) => course.id === current)) return current
-        return res.data?.courses?.[0]?.id ?? null
+        return null
       })
     } catch (err: any) {
       if (!silent) setError(err?.message || 'No se pudo cargar tus cursos.')

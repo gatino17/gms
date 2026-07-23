@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { HiOutlineMail, HiOutlineShieldCheck } from 'react-icons/hi'
 import { mobileApi, setMobileSession, setMobileTenant, setMobileTenantInfo, type MobileTenantInfo } from '../services/mobileApi'
 import { toAbsoluteUrl } from '../../lib/api'
@@ -221,11 +221,6 @@ export default function MobileLogin() {
               {requestingCode ? 'Solicitando...' : 'Solicitar codigo nuevo'}
             </button>
           </form>
-          <div className="mt-5 border-t border-slate-100 pt-4 text-center">
-            <Link to={studioSlug ? `/mobile/staff/${studioSlug}` : '/mobile/staff'} className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 hover:text-slate-950">
-              Acceso equipo
-            </Link>
-          </div>
         </div>
       </div>
     </div>

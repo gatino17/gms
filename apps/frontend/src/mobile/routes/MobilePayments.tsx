@@ -1,6 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { HiOutlineCash, HiOutlineCheckCircle, HiOutlineClock, HiOutlineCreditCard } from 'react-icons/hi'
-import MobileCard from '../components/MobileCard'
 import { mobileApi } from '../services/mobileApi'
 
 type PaymentItem = {
@@ -76,32 +75,35 @@ export default function MobilePayments() {
 
   return (
     <div className="space-y-4">
-      <MobileCard eyebrow="Pagos" title="Historial de pagos">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-emerald-100 bg-white px-3 py-2.5 shadow-sm shadow-slate-200/70">
-              <div className="flex items-center gap-2">
-                <HiOutlineCash className="text-emerald-500" size={20} />
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Pagado</p>
-              </div>
-              <p className="mt-1 text-center text-lg font-black text-slate-950">{money(totalRecent)}</p>
+      <section className="px-1 pt-1">
+        <p className="mobile-text-primary mb-2 text-[10px] font-black uppercase tracking-[0.24em]">Pagos</p>
+        <h2 className="text-2xl font-black leading-tight text-slate-950">Historial de pagos</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+          Pagos y periodos registrados.
+        </p>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-emerald-100 bg-white px-3 py-2.5 shadow-sm shadow-slate-200/70">
+            <div className="flex items-center gap-2">
+              <HiOutlineCash className="text-emerald-500" size={20} />
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Pagado</p>
             </div>
-            <div className="rounded-2xl border border-blue-100 bg-white px-3 py-2.5 shadow-sm shadow-slate-200/70">
-              <div className="flex items-center gap-2">
-                <HiOutlineClock className="text-blue-500" size={20} />
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Último pago</p>
-              </div>
-              <p className="mt-1 text-center text-sm font-black text-slate-950">{lastPayment ? formatDate(lastPayment.payment_date) : '-'}</p>
-            </div>
+            <p className="mt-1 text-center text-lg font-black text-slate-950">{money(totalRecent)}</p>
           </div>
-          {latestPeriod ? (
-            <div className="rounded-2xl bg-slate-50 px-4 py-3">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Último periodo registrado</p>
-              <p className="mt-1 text-sm font-black text-slate-950">{latestPeriod}</p>
+          <div className="rounded-2xl border border-blue-100 bg-white px-3 py-2.5 shadow-sm shadow-slate-200/70">
+            <div className="flex items-center gap-2">
+              <HiOutlineClock className="text-blue-500" size={20} />
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Último pago</p>
             </div>
-          ) : null}
+            <p className="mt-1 text-center text-sm font-black text-slate-950">{lastPayment ? formatDate(lastPayment.payment_date) : '-'}</p>
+          </div>
         </div>
-      </MobileCard>
+        {latestPeriod ? (
+          <div className="mt-3 rounded-2xl bg-white px-4 py-3 shadow-sm shadow-slate-200/70">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Último periodo registrado</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{latestPeriod}</p>
+          </div>
+        ) : null}
+      </section>
 
       {onlineEnabled ? (
         <button

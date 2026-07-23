@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import MobileCard from '../components/MobileCard'
+﻿import { useEffect, useState } from 'react'
+import { HiOutlineAcademicCap, HiOutlineChartBar } from 'react-icons/hi'
 import { mobileApi } from '../services/mobileApi'
 
 interface StudentSummary {
@@ -26,13 +26,13 @@ const enrollmentStatus = (item: NonNullable<StudentSummary['enrollments']>[numbe
   }
   if (item.payment_status === 'activo') {
     return {
-      label: 'Pagado',
-      className: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+      label: 'Al día',
+      className: 'bg-emerald-500 text-white border-emerald-300 shadow-emerald-200/80',
     }
   }
   return {
     label: 'Pendiente',
-    className: 'bg-rose-50 text-rose-700 border-rose-100',
+    className: 'bg-rose-500 text-white border-rose-300 shadow-rose-200/80',
   }
 }
 
@@ -48,25 +48,42 @@ export default function StudentPortal() {
 
   return (
     <div className="space-y-4">
-      <MobileCard eyebrow="Progreso" title={`${Math.round(summary?.attendance?.percent || 0)}% de asistencia`}>
-        <p className="text-sm font-semibold text-slate-600">Resumen inicial del alumno conectado al portal.</p>
-      </MobileCard>
+      <section className="relative overflow-hidden rounded-[28px] border border-slate-100 bg-white p-5 shadow-xl shadow-slate-200/70">
+        <div className="relative flex items-center justify-between gap-4">
+          <div>
+            <p className="mobile-text-primary mb-2 text-[10px] font-black uppercase tracking-[0.24em]">Progreso</p>
+            <h2 className="text-2xl font-black leading-tight text-slate-950">{Math.round(summary?.attendance?.percent || 0)}% asistencia</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">Tu avance registrado en el estudio.</p>
+          </div>
+          <div className="mobile-bg-primary flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] text-white shadow-lg shadow-slate-300/70">
+            <HiOutlineChartBar size={30} />
+          </div>
+        </div>
+        <div className="relative mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="mobile-bg-primary h-full rounded-full"
+            style={{ width: `${Math.min(100, Math.max(0, Math.round(summary?.attendance?.percent || 0)))}%` }}
+          />
+        </div>
+      </section>
 
       <section
-        className="mobile-border-primary rounded-[28px] border p-5 shadow-xl shadow-slate-200/70"
-        style={{
-          backgroundImage: 'linear-gradient(135deg, color-mix(in srgb, var(--mobile-primary, #c026d3) 18%, white), var(--mobile-primary-soft, #fdf4ff) 52%, white)',
-        }}
+        className="mobile-bg-primary rounded-[28px] border border-white/20 p-5 text-white shadow-xl shadow-slate-300/70"
       >
-        <p className="mobile-text-primary mb-2 text-[10px] font-black uppercase tracking-[0.24em]">Cursos activos</p>
-        <h2 className="text-xl font-black leading-tight text-slate-950">{summary?.enrollments?.filter((item) => item.is_active).length || 0} cursos</h2>
+        <div className="flex items-center gap-3">
+          <HiOutlineAcademicCap className="shrink-0 text-white" size={30} />
+          <div>
+            <p className="mb-1 text-[10px] font-black uppercase tracking-[0.24em] text-white">Cursos activos</p>
+            <h2 className="text-xl font-black leading-tight">{summary?.enrollments?.filter((item) => item.is_active).length || 0} cursos</h2>
+          </div>
+        </div>
         <div className="mt-4 space-y-3">
           {summary?.enrollments?.length ? summary.enrollments.map((item, index) => {
             const courseName = item.course?.name || item.course_name || 'Curso sin nombre'
             const status = enrollmentStatus(item)
             return (
-              <div key={`${courseName}-${index}`} className="mobile-border-primary relative rounded-2xl border bg-white/80 p-4 pt-6 shadow-sm shadow-slate-200/70">
-                <span className={`absolute right-3 top-3 rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-widest ${status.className}`}>
+              <div key={`${courseName}-${index}`} className="relative mt-4 rounded-2xl border border-white/80 bg-white p-4 pt-7 text-slate-950 shadow-sm shadow-slate-300/50">
+                <span className={`absolute right-4 top-0 -translate-y-1/2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-widest shadow-lg ${status.className}`}>
                   {status.label}
                 </span>
                 <p className="font-black">{courseName}</p>

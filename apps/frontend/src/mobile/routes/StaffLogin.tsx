@@ -12,12 +12,17 @@ export default function StaffLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [tenantInfo, setTenantInfo] = useState<MobileTenantInfo | null>(null)
+  const [tenantLoading, setTenantLoading] = useState(!!studioSlug)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const tenantLogoSrc = toAbsoluteUrl(tenantInfo?.logo_url)
 
   useEffect(() => {
-    if (!studioSlug) return
+    if (!studioSlug) {
+      setTenantLoading(false)
+      return
+    }
+    setTenantLoading(true)
     mobileApi.get<MobileTenantInfo>(`/api/pms/tenants/public/${studioSlug}`)
       .then((res) => {
         setTenantInfo(res.data)
@@ -28,6 +33,7 @@ export default function StaffLogin() {
         }
       })
       .catch((err) => setMessage(err?.message || 'No se pudo cargar el estudio.'))
+      .finally(() => setTenantLoading(false))
   }, [studioSlug])
 
   const submit = async (event: FormEvent) => {
@@ -57,6 +63,21 @@ export default function StaffLogin() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (tenantLoading && studioSlug) {
+    return (
+      <div className="mobile-bg-header relative min-h-screen px-5 py-8 text-white">
+        <MobileAuthBackground />
+        <div className="relative z-10 mx-auto flex min-h-[calc(100vh-64px)] max-w-md flex-col items-center justify-center text-center">
+          <div className="h-28 w-28 overflow-hidden rounded-full border border-white/15 bg-white shadow-2xl shadow-slate-950/30">
+            <img src="/gms-soluciones-digitales.jpg" alt="GMS Soluciones Digitales" className="h-full w-full object-cover" />
+          </div>
+          <div className="mt-8 h-10 w-10 animate-spin rounded-full border-4 border-white/15 border-t-white" />
+          <p className="mt-5 text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">Preparando portal</p>
+        </div>
+      </div>
+    )
   }
 
   return (

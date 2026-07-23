@@ -67,6 +67,23 @@ type CourseRow = {
   }[]
 }
 
+type CourseCatalogItem = {
+  id: number
+  name: string
+  teacher_name?: string | null
+  room_name?: string | null
+  day_of_week?: number | null
+  day_of_week_2?: number | null
+  day_of_week_3?: number | null
+  day_of_week_4?: number | null
+  day_of_week_5?: number | null
+  start_time?: string | null
+  start_time_2?: string | null
+  start_time_3?: string | null
+  start_time_4?: string | null
+  start_time_5?: string | null
+}
+
 const DAY_NAMES = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo']
 const fmtCLP = (n: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(n)
 const ymdToCL = (ymd?: string | null) => {
@@ -124,7 +141,7 @@ const toDDMMYYYY = (ymd?: string | null) => {
   return ymd.split('-').reverse().join('/')
 }
 
-const courseScheduleSummary = (course: CourseRow['course']) => {
+const courseScheduleSummary = (course: Pick<CourseCatalogItem, 'day_of_week' | 'day_of_week_2' | 'day_of_week_3' | 'day_of_week_4' | 'day_of_week_5' | 'start_time' | 'start_time_2' | 'start_time_3' | 'start_time_4' | 'start_time_5'>) => {
   const slots = [
     { day: course.day_of_week, time: course.start_time },
     { day: course.day_of_week_2, time: course.start_time_2 },
@@ -171,7 +188,7 @@ export default function CourseStatusPage() {
   const [transferring, setTransferring] = useState(false)
   const [transferResult, setTransferResult] = useState<{ ok: number; fail: number; errors: string[] } | null>(null)
   const [transferSelectedIds, setTransferSelectedIds] = useState<number[]>([])
-  const [allCoursesCatalog, setAllCoursesCatalog] = useState<Array<{ id: number; name: string }>>([])
+  const [allCoursesCatalog, setAllCoursesCatalog] = useState<CourseCatalogItem[]>([])
   const [waTestLoadingByStudent, setWaTestLoadingByStudent] = useState<Record<string, boolean>>({})
   const [waTestResultByStudent, setWaTestResultByStudent] = useState<Record<string, { ok: boolean; message: string }>>({})
   const [waBulkLoadingByCourse, setWaBulkLoadingByCourse] = useState<Record<number, boolean>>({})
@@ -211,7 +228,22 @@ export default function CourseStatusPage() {
       setTenantInfo(tenantRes.data)
       try {
         const coursesRes = await api.get('/api/pms/courses', { params: { limit: 500 } })
-        setAllCoursesCatalog((coursesRes.data?.items || coursesRes.data || []).map((c: any) => ({ id: c.id, name: c.name })))
+        setAllCoursesCatalog((coursesRes.data?.items || coursesRes.data || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          teacher_name: c.teacher_name,
+          room_name: c.room_name,
+          day_of_week: c.day_of_week,
+          day_of_week_2: c.day_of_week_2,
+          day_of_week_3: c.day_of_week_3,
+          day_of_week_4: c.day_of_week_4,
+          day_of_week_5: c.day_of_week_5,
+          start_time: c.start_time,
+          start_time_2: c.start_time_2,
+          start_time_3: c.start_time_3,
+          start_time_4: c.start_time_4,
+          start_time_5: c.start_time_5,
+        })))
       } catch {
         // Mantener ?ltimo cat?logo cargado para no vaciar el selector destino
       }
@@ -392,10 +424,24 @@ export default function CourseStatusPage() {
 
 
   const allCourseOptions = useMemo(() => {
-    const map = new Map<number, string>()
-    allCoursesCatalog.forEach((c) => map.set(c.id, c.name))
-    data.forEach((r) => map.set(r.course.id, r.course.name))
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+    const map = new Map<number, CourseCatalogItem>()
+    allCoursesCatalog.forEach((c) => map.set(c.id, c))
+    data.forEach((r) => map.set(r.course.id, {
+      id: r.course.id,
+      name: r.course.name,
+      teacher_name: r.teacher?.name,
+      day_of_week: r.course.day_of_week,
+      day_of_week_2: r.course.day_of_week_2,
+      day_of_week_3: r.course.day_of_week_3,
+      day_of_week_4: r.course.day_of_week_4,
+      day_of_week_5: r.course.day_of_week_5,
+      start_time: r.course.start_time,
+      start_time_2: r.course.start_time_2,
+      start_time_3: r.course.start_time_3,
+      start_time_4: r.course.start_time_4,
+      start_time_5: r.course.start_time_5,
+    }))
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
   }, [allCoursesCatalog, data])
 
   const openTransferModal = (row: CourseRow) => {
@@ -998,9 +1044,9 @@ export default function CourseStatusPage() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !transferring && setTransferSourceRow(null)} />
           <div className="relative bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-100">
-            <div className="p-6 md:p-8 border-b border-gray-100 bg-gray-50/40">
-              <h2 className="text-xl font-black text-gray-900">Trasladar alumnos</h2>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">
+            <div className="p-6 md:p-8 border-b border-fuchsia-200 bg-gradient-to-br from-fuchsia-600 via-purple-600 to-gray-950 text-white">
+              <h2 className="text-xl font-black">Trasladar alumnos</h2>
+              <p className="text-xs font-bold text-white/80 uppercase tracking-widest mt-1">
                 {transferSourceRow.course.name} | nuevo curso
               </p>
             </div>
@@ -1012,16 +1058,42 @@ export default function CourseStatusPage() {
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Curso destino</label>
-                  <select
-                    value={transferTargetCourseId}
-                    onChange={(e) => setTransferTargetCourseId(e.target.value ? Number(e.target.value) : '')}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white font-black text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                  >
-                    <option value="">Seleccionar...</option>
+                  <div className="max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 space-y-2">
                     {allCourseOptions
                       .filter((c) => c.id !== transferSourceRow.course.id)
-                      .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                      .map((c) => {
+                        const selected = Number(transferTargetCourseId) === c.id
+                        const schedule = courseScheduleSummary(c)
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => setTransferTargetCourseId(c.id)}
+                            className={`w-full rounded-xl border p-3 text-left transition-all ${
+                              selected
+                                ? 'border-fuchsia-300 bg-fuchsia-50 shadow-sm shadow-fuchsia-100'
+                                : 'border-gray-100 bg-white hover:border-fuchsia-100 hover:bg-fuchsia-50/40'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-black text-gray-900">{c.name}</p>
+                                <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-fuchsia-600">
+                                  Prof: {c.teacher_name || 'Sin profesor'}
+                                </p>
+                                <p className="mt-1 text-[11px] font-bold text-gray-500">
+                                  {schedule || 'Sin horario definido'}
+                                  {c.room_name ? ` | ${c.room_name}` : ''}
+                                </p>
+                              </div>
+                              <span className={`mt-1 h-4 w-4 shrink-0 rounded-full border-2 ${
+                                selected ? 'border-fuchsia-600 bg-fuchsia-600 shadow-sm shadow-fuchsia-200' : 'border-gray-300 bg-white'
+                              }`} />
+                            </div>
+                          </button>
+                        )
+                      })}
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

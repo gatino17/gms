@@ -496,7 +496,8 @@ async def create_or_reset_teacher_portal_access(
         raise HTTPException(status_code=400, detail="El profesor necesita correo para crear acceso mobile")
 
     email = teacher.email.strip().lower()
-    password = (payload.password or "").strip() or _generate_teacher_password()
+    custom_password = (payload.password or "").strip()
+    password = custom_password or _generate_teacher_password()
     if len(password) < 6:
         raise HTTPException(status_code=400, detail="La clave debe tener al menos 6 caracteres")
 
@@ -537,7 +538,7 @@ async def create_or_reset_teacher_portal_access(
         email=email,
         portal_enabled=teacher.portal_enabled,
         password=password,
-        message="Acceso mobile del profesor actualizado",
+        message="Clave mobile definida correctamente" if custom_password else "Clave temporal generada correctamente",
     )
 
 

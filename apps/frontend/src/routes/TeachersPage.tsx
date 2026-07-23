@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import {
@@ -57,6 +58,9 @@ export default function TeachersPage() {
   const [error, setError] = useState<string | null>(null)
   const [portalLoadingId, setPortalLoadingId] = useState<number | null>(null)
   const [portalAccess, setPortalAccess] = useState<{ email: string; password?: string | null; message: string } | null>(null)
+  const [portalAccessTeacher, setPortalAccessTeacher] = useState<Teacher | null>(null)
+  const [portalPassword, setPortalPassword] = useState('')
+  const [portalPasswordConfirm, setPortalPasswordConfirm] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -111,11 +115,49 @@ export default function TeachersPage() {
       setPortalAccess({
         email: data.email,
         password: data.password,
-        message: data.message || 'Acceso mobile creado correctamente.',
+        message: data.message || 'Clave temporal generada correctamente.',
       })
+      setPortalAccessTeacher(null)
+      setPortalPassword('')
+      setPortalPasswordConfirm('')
       await load()
     } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'No se pudo crear el acceso mobile')
+      setError(err.response?.data?.detail || err.message || 'No se pudo generar la clave temporal')
+    } finally {
+      setPortalLoadingId(null)
+    }
+  }
+
+  const handleSavePortalPassword = async () => {
+    if (!portalAccessTeacher) return
+    const password = portalPassword.trim()
+    if (password.length < 6) {
+      setError('La clave debe tener al menos 6 caracteres')
+      return
+    }
+    if (password !== portalPasswordConfirm.trim()) {
+      setError('Las claves no coinciden')
+      return
+    }
+    setPortalLoadingId(portalAccessTeacher.id)
+    setError(null)
+    setPortalAccess(null)
+    try {
+      const { data } = await api.post(`/api/pms/teachers/${portalAccessTeacher.id}/portal/access`, {
+        enabled: true,
+        password,
+      })
+      setPortalAccess({
+        email: data.email,
+        password: null,
+        message: data.message || 'Clave mobile definida correctamente.',
+      })
+      setPortalAccessTeacher(null)
+      setPortalPassword('')
+      setPortalPasswordConfirm('')
+      await load()
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'No se pudo guardar la clave mobile')
     } finally {
       setPortalLoadingId(null)
     }
@@ -300,12 +342,18 @@ export default function TeachersPage() {
                           <HiOutlinePencil size={18} /> <span className="md:hidden text-[10px] font-black uppercase tracking-widest">Editar</span>
                         </button>
                         <button
-                          onClick={() => handleCreatePortalAccess(t)}
+                          onClick={() => {
+                            setPortalAccessTeacher(t)
+                            setPortalPassword('')
+                            setPortalPasswordConfirm('')
+                            setPortalAccess(null)
+                            setError(null)
+                          }}
                           disabled={portalLoadingId === t.id || !t.email}
                           className="flex-1 md:flex-none p-3 bg-slate-950 text-white rounded-xl hover:bg-fuchsia-700 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
-                          title={t.portal_enabled ? 'Resetear acceso mobile' : 'Crear acceso mobile'}
+                          title={t.portal_enabled ? 'Gestionar acceso mobile' : 'Crear acceso mobile'}
                         >
-                          <HiOutlineKey size={18} /> <span className="md:hidden text-[10px] font-black uppercase tracking-widest">{t.portal_enabled ? 'Reset' : 'Mobile'}</span>
+                          <HiOutlineKey size={18} /> <span className="md:hidden text-[10px] font-black uppercase tracking-widest">{t.portal_enabled ? 'Clave' : 'Mobile'}</span>
                         </button>
                         {t.portal_enabled && (
                           <button
@@ -374,6 +422,94 @@ export default function TeachersPage() {
       </div>
 
       {/* Modals */}
+      {portalAccessTeacher && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            onClick={() => {
+              if (portalLoadingId !== portalAccessTeacher.id) {
+                setPortalAccessTeacher(null)
+                setPortalPassword('')
+                setPortalPasswordConfirm('')
+              }
+            }}
+          />
+          <div className="relative w-full max-w-lg overflow-hidden rounded-[32px] border border-gray-100 bg-white shadow-2xl">
+            <div className="bg-gradient-to-br from-fuchsia-600 via-purple-600 to-slate-950 p-6 text-white">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/70">Acceso mobile</p>
+                  <h2 className="mt-1 text-2xl font-black">Clave profesor</h2>
+                  <p className="mt-2 text-sm font-bold text-white/80">{portalAccessTeacher.name}</p>
+                  <p className="text-xs font-bold text-white/60">{portalAccessTeacher.email || 'Sin correo registrado'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPortalAccessTeacher(null)
+                    setPortalPassword('')
+                    setPortalPasswordConfirm('')
+                  }}
+                  disabled={portalLoadingId === portalAccessTeacher.id}
+                  className="rounded-2xl bg-white/10 p-2 text-white hover:bg-white/20 disabled:opacity-50"
+                >
+                  <HiOutlineX size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-5 p-6">
+              <div className="rounded-3xl border border-fuchsia-100 bg-fuchsia-50/70 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600">Clave permanente</p>
+                <p className="mt-1 text-sm font-bold text-gray-600">
+                  Define una clave que el profesor podra usar siempre para entrar al portal mobile.
+                </p>
+                <div className="mt-4 grid grid-cols-1 gap-3">
+                  <input
+                    type="password"
+                    value={portalPassword}
+                    onChange={(e) => setPortalPassword(e.target.value)}
+                    placeholder="Nueva clave"
+                    className="w-full rounded-2xl border border-white bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-fuchsia-200 focus:ring-4 focus:ring-fuchsia-100"
+                  />
+                  <input
+                    type="password"
+                    value={portalPasswordConfirm}
+                    onChange={(e) => setPortalPasswordConfirm(e.target.value)}
+                    placeholder="Confirmar clave"
+                    className="w-full rounded-2xl border border-white bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-fuchsia-200 focus:ring-4 focus:ring-fuchsia-100"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSavePortalPassword}
+                  disabled={portalLoadingId === portalAccessTeacher.id || !portalAccessTeacher.email}
+                  className="mt-4 w-full rounded-2xl bg-slate-950 px-5 py-3 text-[11px] font-black uppercase tracking-widest text-white transition hover:bg-fuchsia-700 disabled:opacity-50"
+                >
+                  {portalLoadingId === portalAccessTeacher.id ? 'Guardando...' : 'Guardar clave permanente'}
+                </button>
+              </div>
+
+              <div className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Clave temporal</p>
+                <p className="mt-1 text-sm font-bold text-gray-600">
+                  Genera una clave automatica para entregar acceso rapido o recuperar el ingreso.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleCreatePortalAccess(portalAccessTeacher)}
+                  disabled={portalLoadingId === portalAccessTeacher.id || !portalAccessTeacher.email}
+                  className="mt-4 w-full rounded-2xl border border-fuchsia-100 bg-white px-5 py-3 text-[11px] font-black uppercase tracking-widest text-fuchsia-600 transition hover:bg-fuchsia-600 hover:text-white disabled:opacity-50"
+                >
+                  {portalLoadingId === portalAccessTeacher.id ? 'Generando...' : 'Generar clave temporal'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {showCreate && (
         <CreateTeacherModal 
           onClose={() => setShowCreate(false)} 

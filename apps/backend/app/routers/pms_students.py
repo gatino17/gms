@@ -127,6 +127,7 @@ async def list_students(
     limit: int = Query(default=20, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
     joined_sort: str = Query(default="desc", pattern="^(asc|desc)$"),
+    name_sort: str | None = Query(default=None, pattern="^(asc|desc)$"),
 ):
     conditions = [Student.tenant_id == tenant_id]
     if q:
@@ -144,11 +145,18 @@ async def list_students(
         .exists()
     )
 
-    order_by = (
-        (Student.joined_at.asc(), Student.created_at.asc())
-        if joined_sort == "asc"
-        else (Student.joined_at.desc(), Student.created_at.desc())
-    )
+    if name_sort:
+        order_by = (
+            (Student.first_name.asc(), Student.last_name.asc(), Student.id.asc())
+            if name_sort == "asc"
+            else (Student.first_name.desc(), Student.last_name.desc(), Student.id.desc())
+        )
+    else:
+        order_by = (
+            (Student.joined_at.asc(), Student.created_at.asc())
+            if joined_sort == "asc"
+            else (Student.joined_at.desc(), Student.created_at.desc())
+        )
 
     # Fetch items with enrollment count
     stmt = (

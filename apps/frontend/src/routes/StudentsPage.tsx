@@ -121,6 +121,7 @@ export default function StudentsPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [joinedSort, setJoinedSort] = useState<'asc' | 'desc'>('desc')
+  const [nameSort, setNameSort] = useState<'asc' | 'desc' | null>(null)
 
   const load = async () => {
     const requestId = ++lastStudentsRequestRef.current
@@ -132,6 +133,7 @@ export default function StudentsPage() {
           limit: pageSize,
           offset: (page - 1) * pageSize,
           joined_sort: joinedSort,
+          name_sort: nameSort || undefined,
         },
       })
       if (requestId !== lastStudentsRequestRef.current) return
@@ -168,7 +170,7 @@ export default function StudentsPage() {
     loadTenantPlanInfo()
   }, [tenantId])
 
-  useEffect(() => { load() }, [tenantId, page, pageSize, debouncedQ, joinedSort])
+  useEffect(() => { load() }, [tenantId, page, pageSize, debouncedQ, joinedSort, nameSort])
   useEffect(() => {
     const nextTotalPages = Math.max(1, Math.ceil(totalItems / pageSize))
     if (page > nextTotalPages) {
@@ -340,19 +342,40 @@ export default function StudentsPage() {
 	                <thead className="hidden md:table-header-group">
 	                  <tr className="bg-gray-50/50 text-left border-b border-gray-100">
 	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">N°</th>
-	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Alumno</th>
+	                    <th className="px-4 py-4">
+	                      <button
+	                        onClick={() => {
+	                          setNameSort((current) => (current === 'asc' ? 'desc' : 'asc'))
+	                          setPage(1)
+	                        }}
+	                        className="inline-flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-fuchsia-600 transition-colors"
+	                      >
+	                        <span>Alumno</span>
+	                        <span className={`rounded-full bg-white px-2 py-0.5 text-[8px] border ${
+	                          nameSort ? 'text-fuchsia-600 border-fuchsia-100' : 'text-gray-400 border-gray-100'
+	                        }`}>
+	                          {nameSort === 'desc' ? 'Z-A' : 'A-Z'}
+	                        </span>
+	                      </button>
+	                    </th>
 	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contacto</th>
 	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
 	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Registro</th>
 	                    <th className="px-4 py-4 text-center">
 	                      <button
-	                        onClick={() => setJoinedSort((current) => (current === 'asc' ? 'desc' : 'asc'))}
+	                        onClick={() => {
+	                          setNameSort(null)
+	                          setJoinedSort((current) => (current === 'asc' ? 'desc' : 'asc'))
+	                          setPage(1)
+	                        }}
 	                        className="inline-flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-fuchsia-600 transition-colors"
 	                      >
 	                        <span>Ingreso</span>
-	                        <span className="rounded-full bg-white px-2 py-0.5 text-[8px] text-fuchsia-600 border border-fuchsia-100">
-	                          {joinedSort === 'asc' ? 'Asc' : 'Desc'}
-	                        </span>
+	                        {!nameSort ? (
+	                          <span className="rounded-full bg-white px-2 py-0.5 text-[8px] text-fuchsia-600 border border-fuchsia-100">
+	                            {joinedSort === 'asc' ? 'Asc' : 'Desc'}
+	                          </span>
+	                        ) : null}
 	                      </button>
 	                    </th>
 	                    <th className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>

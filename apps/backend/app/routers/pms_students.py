@@ -723,6 +723,10 @@ async def student_portal_summary(
         if not e.is_active:
             continue
         expected = _expected_classes_between(e.start_date, e.end_date, c)
+        if not (e.end_date and e.start_date == e.end_date):
+            configured_total = int(getattr(c, "total_classes", None) or 0)
+            if configured_total > 0:
+                expected = configured_total
         if expected <= 0:
             continue
         is_single_class = bool(e.end_date and e.start_date == e.end_date)

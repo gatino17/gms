@@ -80,7 +80,7 @@ export default function StudentPortal() {
   const periodAttended = summary?.attendance?.attended || 0
   const periodExpected = summary?.attendance?.expected || 0
   const elapsedExpected = summary?.attendance?.elapsed_expected || 0
-  const attendanceRate = Math.round(summary?.attendance?.attendance_rate ?? summary?.attendance?.percent ?? 0)
+  const attendanceRate = Math.round(summary?.attendance?.percent ?? summary?.attendance?.attendance_rate ?? 0)
   const periodProgress = Math.round(summary?.attendance?.period_progress_percent ?? summary?.attendance?.percent ?? 0)
 
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function StudentPortal() {
           <div className="rounded-2xl bg-slate-50 px-3 py-3">
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Asistencia</p>
             <p className="mt-1 text-sm font-black text-slate-950">{attendanceRate}%</p>
-            <p className="mt-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">{periodAttended}/{elapsedExpected} realizadas</p>
+            <p className="mt-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">{periodAttended}/{periodExpected} clases</p>
           </div>
           <div className="rounded-2xl bg-slate-50 px-3 py-3">
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Periodo</p>

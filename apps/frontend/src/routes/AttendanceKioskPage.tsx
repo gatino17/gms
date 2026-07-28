@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import { toAbsoluteUrl } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
@@ -57,6 +57,7 @@ type KioskTenantInfo = {
 export default function AttendanceKioskPage() {
   const FEEDBACK_DURATION_MS = 4000
   const COURSES_REFRESH_MS = 1000
+  const STUDENT_SELECTION_IDLE_MS = 60000
   const navigate = useNavigate()
   const { tenantId } = useTenant()
 
@@ -66,6 +67,7 @@ export default function AttendanceKioskPage() {
   const [selectedCourse, setSelectedCourse] = useState<KioskCourse | null>(null)
   const [courseQuery, setCourseQuery] = useState('')
   const [studentQuery, setStudentQuery] = useState('')
+  const studentSelectionIdleRef = useRef<number | null>(null)
 
   // Security Modal
   const [showExitModal, setShowExitModal] = useState(false)
@@ -395,6 +397,36 @@ export default function AttendanceKioskPage() {
     }
   }, [tenantId, selectedCourse?.course.id])
 
+  useEffect(() => {
+    if (!selectedCourse || feedbackMsg) return
+
+    const clearIdleTimer = () => {
+      if (studentSelectionIdleRef.current) {
+        window.clearTimeout(studentSelectionIdleRef.current)
+        studentSelectionIdleRef.current = null
+      }
+    }
+
+    const resetIdleTimer = () => {
+      clearIdleTimer()
+      studentSelectionIdleRef.current = window.setTimeout(() => {
+        setSelectedCourse(null)
+        setStudentQuery('')
+      }, STUDENT_SELECTION_IDLE_MS)
+    }
+
+    resetIdleTimer()
+    window.addEventListener('pointerdown', resetIdleTimer)
+    window.addEventListener('keydown', resetIdleTimer)
+    window.addEventListener('touchstart', resetIdleTimer)
+
+    return () => {
+      clearIdleTimer()
+      window.removeEventListener('pointerdown', resetIdleTimer)
+      window.removeEventListener('keydown', resetIdleTimer)
+      window.removeEventListener('touchstart', resetIdleTimer)
+    }
+  }, [selectedCourse?.course.id, feedbackMsg])
   useEffect(() => {
     if (!tenantId) return
     const tick = () => loadTodayCourses(true)
@@ -807,6 +839,8 @@ export default function AttendanceKioskPage() {
     </div>
   )
 }
+
+
 
 
 

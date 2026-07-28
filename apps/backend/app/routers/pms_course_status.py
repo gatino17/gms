@@ -84,6 +84,7 @@ async def course_status(
     # Subquery for attendance count per (student, course) within THEIR enrollment dates
     att_subquery = (
         select(
+            Enrollment.id.label("enrollment_id"),
             Attendance.student_id, 
             Attendance.course_id, 
             func.count(Attendance.id).label("count")
@@ -99,13 +100,14 @@ async def course_status(
             or_(Enrollment.end_date == None, cast(Attendance.attended_at, Date) <= Enrollment.end_date),
             or_(Attendance.notes == None, Attendance.notes != 'clase_suelta')
         )
-        .group_by(Attendance.student_id, Attendance.course_id)
+        .group_by(Enrollment.id, Attendance.student_id, Attendance.course_id)
         .subquery()
     )
 
     # Subquery for extra attendances per (student, course) OUTSIDE THEIR enrollment dates
     extra_subquery = (
         select(
+            Enrollment.id.label("enrollment_id"),
             Attendance.student_id, 
             Attendance.course_id, 
             func.count(Attendance.id).label("count"),
@@ -123,7 +125,7 @@ async def course_status(
                 Attendance.notes == 'clase_suelta'
             )
         )
-        .group_by(Attendance.student_id, Attendance.course_id)
+        .group_by(Enrollment.id, Attendance.student_id, Attendance.course_id)
         .subquery()
     )
 
@@ -165,8 +167,8 @@ async def course_status(
         .join(Enrollment, enrollment_join, isouter=True)
         .join(Student, student_join, isouter=True)
         .join(Teacher, and_(Teacher.id == Course.teacher_id, Teacher.tenant_id == Course.tenant_id), isouter=True)
-        .join(att_subquery, and_(att_subquery.c.student_id == Student.id, att_subquery.c.course_id == Course.id), isouter=True)
-        .join(extra_subquery, and_(extra_subquery.c.student_id == Student.id, extra_subquery.c.course_id == Course.id), isouter=True)
+        .join(att_subquery, att_subquery.c.enrollment_id == Enrollment.id, isouter=True)
+        .join(extra_subquery, extra_subquery.c.enrollment_id == Enrollment.id, isouter=True)
         .join(single_class_payment_subquery, and_(single_class_payment_subquery.c.student_id == Student.id, single_class_payment_subquery.c.course_id == Course.id), isouter=True)
         .where(Course.tenant_id == tenant_id)
     )

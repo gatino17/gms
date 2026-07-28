@@ -160,6 +160,19 @@ const courseScheduleSummary = (course: Pick<CourseCatalogItem, 'day_of_week' | '
     .join(', ')
 }
 
+const courseDayIndexes = (course: Pick<CourseRow['course'], 'day_of_week' | 'day_of_week_2' | 'day_of_week_3' | 'day_of_week_4' | 'day_of_week_5'>) => {
+  const days = [
+    course.day_of_week,
+    course.day_of_week_2,
+    course.day_of_week_3,
+    course.day_of_week_4,
+    course.day_of_week_5,
+  ]
+    .filter((day): day is number => day != null && day >= 0 && day <= 6)
+
+  return Array.from(new Set(days))
+}
+
 export default function CourseStatusPage() {
   const navigate = useNavigate()
   const { tenantId } = useTenant()
@@ -386,13 +399,18 @@ export default function CourseStatusPage() {
   const groupedByDay = useMemo(() => {
     const groups: Record<string, CourseRow[]> = {}
     filteredData.forEach(row => {
-      const d = row.course.day_of_week ?? 0
-      const dayName = DAY_NAMES[d] || 'Sin dia'
-      if (!groups[dayName]) groups[dayName] = []
-      groups[dayName].push(row)
+      const selectedDayNumber = selectedDay !== '' ? Number(selectedDay) : null
+      const days = selectedDayNumber != null ? [selectedDayNumber] : courseDayIndexes(row.course)
+      const groupDays = days.length ? days : [row.course.day_of_week ?? 0]
+
+      groupDays.forEach((d) => {
+        const dayName = DAY_NAMES[d] || 'Sin dia'
+        if (!groups[dayName]) groups[dayName] = []
+        groups[dayName].push(row)
+      })
     })
     return groups
-  }, [filteredData])
+  }, [filteredData, selectedDay])
 
   const orderedGroupedByDay = useMemo(() => {
     const todayIndex = (new Date().getDay() + 6) % 7

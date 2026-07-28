@@ -19,6 +19,8 @@ export default function MobileInstallPrompt({ portalType }: Props) {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null)
   const [installed, setInstalled] = useState(false)
   const [dismissed, setDismissed] = useState(false)
+  const [readyToShow, setReadyToShow] = useState(false)
+  const [showManualHelp, setShowManualHelp] = useState(false)
 
   const platform = useMemo(() => {
     if (typeof navigator === 'undefined') return 'other'
@@ -30,6 +32,7 @@ export default function MobileInstallPrompt({ portalType }: Props) {
   }, [])
 
   useEffect(() => {
+    const showTimer = window.setTimeout(() => setReadyToShow(true), 1000)
     setInstalled(isStandaloneMode())
     if ((window as any).__gmsDeferredInstallPrompt) {
       setInstallEvent((window as any).__gmsDeferredInstallPrompt as BeforeInstallPromptEvent)
@@ -54,6 +57,7 @@ export default function MobileInstallPrompt({ portalType }: Props) {
     window.addEventListener('gms-pwa-install-ready', onInstallReady)
     window.addEventListener('appinstalled', onInstalled)
     return () => {
+      window.clearTimeout(showTimer)
       window.removeEventListener('beforeinstallprompt', onBeforeInstall)
       window.removeEventListener('gms-pwa-install-ready', onInstallReady)
       window.removeEventListener('appinstalled', onInstalled)
@@ -62,6 +66,7 @@ export default function MobileInstallPrompt({ portalType }: Props) {
 
   const install = async () => {
     if (!installEvent) {
+      setShowManualHelp(true)
       return
     }
     await installEvent.prompt()
@@ -73,7 +78,7 @@ export default function MobileInstallPrompt({ portalType }: Props) {
     ;(window as any).__gmsDeferredInstallPrompt = null
   }
 
-  if (installed || dismissed || platform === 'desktop') return null
+  if (!readyToShow || installed || dismissed || platform === 'desktop') return null
 
   const hasNativePrompt = Boolean(installEvent)
 
@@ -89,12 +94,12 @@ export default function MobileInstallPrompt({ portalType }: Props) {
           <p className="mt-1 text-xs font-semibold leading-5 text-white/70">
             Queda como app en tu celular para entrar mas rapido.
           </p>
-          {platform === 'ios' && !hasNativePrompt ? (
+          {platform === 'ios' && (!hasNativePrompt || showManualHelp) ? (
             <p className="mt-2 rounded-2xl bg-white/10 px-3 py-2 text-[11px] font-bold leading-5 text-white/80">
               En iPhone: toca Compartir y luego Agregar a pantalla de inicio.
             </p>
           ) : null}
-          {platform !== 'ios' && !hasNativePrompt ? (
+          {platform !== 'ios' && (!hasNativePrompt || showManualHelp) ? (
             <p className="mt-2 rounded-2xl bg-white/10 px-3 py-2 text-[11px] font-bold leading-5 text-white/80">
               Si no aparece el boton, abre el menu del navegador y elige Instalar app.
             </p>
@@ -108,7 +113,7 @@ export default function MobileInstallPrompt({ portalType }: Props) {
           className="mobile-bg-primary flex-1 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-950/20"
         >
           <span className="inline-flex items-center justify-center gap-2">
-            <HiOutlineDownload size={16} /> Instalar portal
+            <HiOutlineDownload size={16} /> Instalar aplicación
           </span>
         </button>
         <button

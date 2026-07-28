@@ -68,6 +68,7 @@ class TeacherPortalLoginPayload(BaseModel):
     email: EmailStr
     password: str
     tenant_id: Optional[int] = None
+    remember_me: bool = True
 
 
 class TeacherPortalAttendancePayload(BaseModel):
@@ -318,13 +319,20 @@ async def teacher_portal_login(
     if not teacher:
         raise HTTPException(status_code=403, detail="Acceso mobile no habilitado para este profesor")
 
+    token_expires = (
+        timedelta(days=settings.mobile_access_token_expire_days)
+        if payload.remember_me
+        else timedelta(minutes=settings.access_token_expire_minutes)
+    )
     token = security.create_access_token(
         user.id,
+        expires_delta=token_expires,
         extra={"role": "teacher", "tenant_id": user.tenant_id, "teacher_id": teacher.id},
     )
     return {
         "access_token": token,
         "token_type": "bearer",
+        "expires_in_days": settings.mobile_access_token_expire_days if payload.remember_me else None,
         "tenant": {
             "id": tenant.id,
             "name": tenant.name,

@@ -15,6 +15,7 @@ export default function StaffLogin() {
   const [tenantLoading, setTenantLoading] = useState(!!studioSlug)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
   const tenantLogoSrc = toAbsoluteUrl(tenantInfo?.logo_url)
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function StaffLogin() {
         email: email.trim(),
         password,
         tenant_id: tenantInfo?.id,
+        remember_me: rememberMe,
       })
       const teacher = data.teacher
       if (data.tenant) {
@@ -139,6 +141,21 @@ export default function StaffLogin() {
                   placeholder="Clave asignada"
                 />
               </div>
+            </label>
+
+            <label className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-fuchsia-600"
+              />
+              <span>
+                <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-slate-700">Mantener sesión iniciada</span>
+                <span className="mt-1 block text-[11px] font-bold leading-4 text-slate-500">
+                  Evita pedir la clave todos los días en este dispositivo.
+                </span>
+              </span>
             </label>
 
             {message ? <p className="mobile-bg-primary-soft mobile-text-primary rounded-2xl px-4 py-3 text-sm font-bold">{message}</p> : null}

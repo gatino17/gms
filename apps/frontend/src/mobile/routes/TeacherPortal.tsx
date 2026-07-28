@@ -233,12 +233,16 @@ export default function TeacherPortal() {
                     <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-600">
                       <HiOutlineUserGroup /> {course.student_count} alumnos
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-black text-pink-600">
-                      <IoFemale /> {counts.female}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-black text-sky-600">
-                      <IoMale /> {counts.male}
-                    </span>
+                    {counts.female > 0 ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-black text-pink-600">
+                        <IoFemale /> {counts.female}
+                      </span>
+                    ) : null}
+                    {counts.male > 0 ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-black text-sky-600">
+                        <IoMale /> {counts.male}
+                      </span>
+                    ) : null}
                     {course.room_name ? (
                       <span className="mobile-bg-primary-soft mobile-text-primary inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black">
                         <HiOutlineLocationMarker /> {course.room_name}

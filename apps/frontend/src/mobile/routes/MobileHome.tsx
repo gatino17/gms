@@ -404,8 +404,16 @@ export default function MobileHome() {
               </div>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] p-5 text-white">
                 <h3 className="text-2xl font-black leading-tight text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.75)]">{currentAnnouncement.title}</h3>
-                {currentAnnouncement.subtitle ? <p className="mt-1 text-sm font-black text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">{currentAnnouncement.subtitle}</p> : null}
-                {currentAnnouncement.body ? <p className="mt-3 line-clamp-2 text-sm font-bold leading-6 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.68)]">{currentAnnouncement.body}</p> : null}
+                {currentAnnouncement.subtitle ? (
+                  <p className="mt-2 inline-flex max-w-full rounded-full border border-white/15 bg-white/20 px-3 py-1.5 text-sm font-black text-white shadow-lg shadow-black/20 backdrop-blur-md drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">
+                    {currentAnnouncement.subtitle}
+                  </p>
+                ) : null}
+                {currentAnnouncement.body ? (
+                  <p className="mt-3 line-clamp-2 rounded-2xl border border-white/15 bg-slate-950/32 px-3 py-2 text-sm font-bold leading-6 text-white shadow-lg shadow-black/20 backdrop-blur-md drop-shadow-[0_2px_8px_rgba(0,0,0,0.68)]">
+                    {currentAnnouncement.body}
+                  </p>
+                ) : null}
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <p className="rounded-full border border-white/15 bg-white/18 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-black/20 backdrop-blur-md">
                     {announcementValidityText(currentAnnouncement, user?.role)}

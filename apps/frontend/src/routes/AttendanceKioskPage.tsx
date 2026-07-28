@@ -9,6 +9,10 @@ import {
   HiOutlineX,
   HiOutlineArrowLeft,
   HiOutlineSearch,
+  HiOutlineClock,
+  HiOutlineCalendar,
+  HiOutlineExclamationCircle,
+  HiOutlineExclamation,
 } from 'react-icons/hi'
 import { FiMaximize2, FiMinimize2 } from 'react-icons/fi'
 import { useTenant } from '../lib/tenant'
@@ -505,10 +509,41 @@ export default function AttendanceKioskPage() {
         {/* Success Overlay */}
         {feedbackMsg && (
           <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center">
-            <HiOutlineCheckCircle className={`${feedbackMsg.type === 'renewal' ? 'text-red-400' : feedbackMsg.type === 'last_day' ? 'text-orange-400' : feedbackMsg.type === 'already' ? 'text-amber-300' : 'text-fuchsia-400'} mb-6`} size={120} />
-            <h2 className="text-5xl font-black text-white mb-4 text-center">
-              {'\u00a1'}Hola {feedbackMsg.studentName}!
-            </h2>
+            {feedbackMsg.type === 'blocked' ? (
+              <>
+                <HiOutlineClock className="mb-5 text-rose-300" size={120} />
+                <p className="text-4xl md:text-5xl text-rose-300 font-black tracking-widest uppercase text-center">
+                  Fuera de horario
+                </p>
+                <h2 className="text-4xl md:text-5xl font-black text-white mt-5 mb-4 text-center">
+                  {'\u00a1'}Hola {feedbackMsg.studentName}!
+                </h2>
+              </>
+            ) : feedbackMsg.type === 'renewal' ? (
+              <>
+                <HiOutlineExclamation className="mb-6 text-red-400" size={120} />
+                <h2 className="text-5xl font-black text-white mb-4 text-center">
+                  {'\u00a1'}Hola {feedbackMsg.studentName}!
+                </h2>
+              </>
+            ) : feedbackMsg.type === 'last_day' ? (
+              <>
+                <div className="relative mb-6 text-white">
+                  <HiOutlineCalendar size={120} />
+                  <HiOutlineExclamationCircle className="absolute -right-2 -top-2 rounded-full bg-black text-orange-300" size={42} />
+                </div>
+                <h2 className="text-5xl font-black text-white mb-4 text-center">
+                  {'\u00a1'}Hola {feedbackMsg.studentName}!
+                </h2>
+              </>
+            ) : (
+              <>
+                <HiOutlineCheckCircle className={`${feedbackMsg.type === 'already' ? 'text-amber-300' : 'text-emerald-400'} mb-6`} size={120} />
+                <h2 className="text-5xl font-black text-white mb-4 text-center">
+                  {'\u00a1'}Hola {feedbackMsg.studentName}!
+                </h2>
+              </>
+            )}
             {feedbackMsg.type === 'already' ? (
               <>
                 <p className="text-2xl text-amber-200 font-bold tracking-widest uppercase">
@@ -519,14 +554,9 @@ export default function AttendanceKioskPage() {
                 </p>
               </>
             ) : feedbackMsg.type === 'blocked' ? (
-              <>
-                <p className="text-2xl text-rose-300 font-extrabold tracking-widest uppercase">
-                  Auto-asistencia fuera de horario
-                </p>
-                <p className="text-xl text-rose-100 mt-4 text-center max-w-2xl bg-rose-900/40 border border-rose-500/60 rounded-2xl px-6 py-4 font-bold">
-                  {feedbackMsg.blockedMessage}
-                </p>
-              </>
+              <p className="text-xl text-rose-100 mt-4 text-center max-w-2xl bg-rose-900/40 border border-rose-500/60 rounded-2xl px-6 py-4 font-bold">
+                {feedbackMsg.blockedMessage}
+              </p>
             ) : feedbackMsg.type === 'renewal' ? (
               <>
                 <p className="text-2xl text-red-300 font-extrabold tracking-widest uppercase">
@@ -550,7 +580,7 @@ export default function AttendanceKioskPage() {
                 <p className="text-2xl text-fuchsia-300 font-bold tracking-widest uppercase">
                   Asistencia Registrada Correctamente
                 </p>
-                <p className="text-lg text-zinc-300 mt-4">Disfruta tu clase de {feedbackMsg.courseName}</p>
+                <p className="text-xl md:text-2xl text-zinc-300 mt-4 font-semibold">Disfruta tu clase de {feedbackMsg.courseName}</p>
               </>
             )}
           </div>
@@ -839,6 +869,14 @@ export default function AttendanceKioskPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
 
 
 

@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { HiOutlineMail, HiOutlineShieldCheck } from 'react-icons/hi'
-import { mobileApi, setMobileSession, setMobileTenant, setMobileTenantInfo, type MobileTenantInfo } from '../services/mobileApi'
+import { mobileApi, setMobileLastEntry, setMobileSession, setMobileTenant, setMobileTenantInfo, type MobileTenantInfo } from '../services/mobileApi'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileAuthBackground from '../components/MobileAuthBackground'
+import MobileInstallPrompt from '../components/MobileInstallPrompt'
 import { mobileThemeStyle } from '../../lib/mobileTheme'
 
 export default function MobileLogin() {
@@ -30,6 +31,7 @@ export default function MobileLogin() {
       setTenantLoading(false)
       return
     }
+    setMobileLastEntry(`/mobile/${studioSlug}`)
     setError('')
     setTenantLoading(true)
     mobileApi.get<MobileTenantInfo>(`/api/pms/tenants/public/${studioSlug}`)
@@ -144,6 +146,8 @@ export default function MobileLogin() {
             Ingresa con tu correo para revisar asistencia, pagos, cursos y novedades de tu estudio.
           </p>
         </div>
+
+        <MobileInstallPrompt portalType="alumnos" />
 
         <div className="rounded-[34px] border border-white/10 bg-white p-5 text-slate-950 shadow-2xl">
           <div className="mobile-bg-primary-soft mb-5 rounded-2xl px-4 py-3">

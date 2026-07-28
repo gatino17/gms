@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { getMobileToken, getMobileUser } from './services/mobileApi'
+import { getMobileLastEntry, getMobileToken, getMobileUser } from './services/mobileApi'
 
 export function MobileRequireSession() {
   const token = getMobileToken()
@@ -14,5 +14,6 @@ export function MobileRequireSession() {
 
 export function MobileIndexRedirect() {
   const token = getMobileToken()
-  return <Navigate to={token ? '/mobile/home' : '/mobile/login'} replace />
+  const lastEntry = getMobileLastEntry()
+  return <Navigate to={token ? '/mobile/home' : (lastEntry || '/mobile/login')} replace />
 }

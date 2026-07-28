@@ -5,6 +5,7 @@ export const MOBILE_TOKEN_KEY = 'mobileToken'
 export const MOBILE_USER_KEY = 'mobileUser'
 export const MOBILE_TENANT_KEY = 'mobileTenantId'
 export const MOBILE_TENANT_INFO_KEY = 'mobileTenantInfo'
+export const MOBILE_LAST_ENTRY_KEY = 'mobileLastEntry'
 
 export type MobileRole = 'student' | 'teacher'
 
@@ -78,6 +79,21 @@ export function setMobileTenantInfo(tenant: Partial<MobileTenantInfo>) {
     setMobileTenant(tenant.id)
   }
   localStorage.setItem(MOBILE_TENANT_INFO_KEY, JSON.stringify(tenant))
+}
+
+export function setMobileLastEntry(path: string) {
+  try {
+    localStorage.setItem(MOBILE_LAST_ENTRY_KEY, path)
+  } catch {}
+}
+
+export function getMobileLastEntry() {
+  try {
+    const value = localStorage.getItem(MOBILE_LAST_ENTRY_KEY)
+    return value?.startsWith('/mobile') ? value : null
+  } catch {
+    return null
+  }
 }
 
 export function clearMobileSession() {

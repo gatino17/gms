@@ -5,6 +5,7 @@ import { api, toAbsoluteUrl } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import RenewModal from '../components/RenewModal'
 import EditEnrollmentModal from '../components/EditEnrollmentModal'
+import EditStudentModal from '../components/EditStudentModal'
 import { 
   HiOutlineChevronLeft, 
   HiOutlineMail, 
@@ -1271,6 +1272,17 @@ export default function StudentDetailPage() {
           </div>
         </div>
       , document.body)}
+
+      {showEdit && editMode === 'profile' && student && (
+        <EditStudentModal
+          student={student}
+          onClose={() => setShowEdit(false)}
+          onSuccess={() => {
+            setShowEdit(false)
+            loadData(false)
+          }}
+        />
+      )}
     </div>
   )
 }

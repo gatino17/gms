@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { api, toAbsoluteUrl } from '../lib/api'
@@ -82,6 +82,14 @@ function ymdToCL(ymd?: string | null): string {
   const [y,m,d] = ymd.split('-').map(Number); 
   const dt = new Date(y, (m||1)-1, d||1); 
   return dt.toLocaleDateString('es-CL'); 
+}
+
+function normalizeSortText(value?: string | null): string {
+  return (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
 }
 
 export default function StudentsPage() {
@@ -196,6 +204,17 @@ export default function StudentsPage() {
           : 'bg-emerald-50 text-emerald-700 border-emerald-200'
   const hasReachedCapacity = Boolean(maxActiveStudents && stats.total_active >= maxActiveStudents)
   const enrollmentFeeEnabled = Boolean(tenantPlanInfo.enrollment_fee_enabled)
+  const visibleStudents = useMemo(() => {
+    if (!nameSort) return data
+    const direction = nameSort === 'asc' ? 1 : -1
+    return [...data].sort((a, b) => {
+      const aName = `${normalizeSortText(a.first_name)} ${normalizeSortText(a.last_name)}`
+      const bName = `${normalizeSortText(b.first_name)} ${normalizeSortText(b.last_name)}`
+      const byName = aName.localeCompare(bName, 'es')
+      if (byName !== 0) return byName * direction
+      return (a.id - b.id) * direction
+    })
+  }, [data, nameSort])
 
   const handleOpenCreate = () => {
     if (hasReachedCapacity) {
@@ -385,7 +404,7 @@ export default function StudentsPage() {
 	                  </tr>
 	                </thead>
 	                <tbody className="block space-y-3 p-3 md:space-y-0 md:p-0 md:divide-y md:divide-gray-50 md:table-row-group">
-	                  {data.map((s, index) => (
+	                  {visibleStudents.map((s, index) => (
 	                    <tr key={s.id} className="block w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm md:rounded-none md:border-0 md:bg-transparent md:shadow-none md:table-row hover:bg-fuchsia-50/20 transition-colors group">
 	                      <td className="hidden md:table-cell px-4 py-4 text-center font-black text-xs text-gray-400">
 	                        {(page - 1) * pageSize + index + 1}
@@ -724,3 +743,5 @@ export default function StudentsPage() {
     </div>
   )
 }
+
+

@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, timedelta
-from sqlalchemy import select, func, case, or_, cast, Date
+from sqlalchemy import select, func, case, or_, and_, cast, Date
 from sqlalchemy.orm import selectinload
 import secrets
 from datetime import datetime
+import unicodedata
 
 from app.core import security
 
@@ -118,6 +119,12 @@ def _normalize_student_phone(phone: str | None, tenant: Tenant | None) -> str | 
     return normalize_phone_value(phone, default_prefix=default_prefix, known_prefixes=_known_phone_prefixes())
 
 
+def _normalize_search_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value.strip().lower())
+    without_accents = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return " ".join(without_accents.split())
+
+
 @router.get("/", response_model=StudentListResponse)
 @router.get("", response_model=StudentListResponse)
 async def list_students(
@@ -131,8 +138,21 @@ async def list_students(
 ):
     conditions = [Student.tenant_id == tenant_id]
     if q:
-        like = f"%{q}%"
-        conditions.append((Student.first_name.ilike(like)) | (Student.last_name.ilike(like)) | (Student.email.ilike(like)))
+        normalized_q = _normalize_search_text(q)
+        search_blob = func.translate(
+            func.lower(func.concat_ws(
+                " ",
+                func.coalesce(Student.first_name, ""),
+                func.coalesce(Student.last_name, ""),
+                func.coalesce(Student.email, ""),
+                func.coalesce(Student.phone, ""),
+            )),
+            "áéíóúüñ",
+            "aeiouun",
+        )
+        terms = [term for term in normalized_q.split(" ") if term]
+        if terms:
+            conditions.append(and_(*(search_blob.ilike(f"%{term}%") for term in terms)))
 
     registration_exists = (
         select(Payment.id)
@@ -146,10 +166,12 @@ async def list_students(
     )
 
     if name_sort:
+        first_name_order = func.translate(func.lower(func.coalesce(Student.first_name, "")), "áéíóúüñ", "aeiouun")
+        last_name_order = func.translate(func.lower(func.coalesce(Student.last_name, "")), "áéíóúüñ", "aeiouun")
         order_by = (
-            (Student.first_name.asc(), Student.last_name.asc(), Student.id.asc())
+            (first_name_order.asc(), last_name_order.asc(), Student.id.asc())
             if name_sort == "asc"
-            else (Student.first_name.desc(), Student.last_name.desc(), Student.id.desc())
+            else (first_name_order.desc(), last_name_order.desc(), Student.id.desc())
         )
     else:
         order_by = (
@@ -239,10 +261,22 @@ async def create_student(
     tenant_id: int = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
+    data = payload.model_dump(exclude_unset=True)
+    email = (data.get("email") or "").strip().lower()
+    if email:
+        existing = await db.scalar(
+            select(Student.id).where(
+                Student.tenant_id == tenant_id,
+                func.lower(Student.email) == email,
+            )
+        )
+        if existing:
+            raise HTTPException(status_code=409, detail="Este alumno ya está registrado con ese correo.")
+        data["email"] = email
+
     if payload.is_active is not False:
         await _ensure_student_plan_capacity(db, tenant_id)
     tenant = await db.get(Tenant, tenant_id)
-    data = payload.model_dump(exclude_unset=True)
     data["phone"] = _normalize_student_phone(data.get("phone"), tenant)
     obj = Student(tenant_id=tenant_id, **data)
     db.add(obj)
@@ -268,6 +302,19 @@ async def update_student(
     tenant = await db.get(Tenant, tenant_id)
     prev_is_active = bool(obj.is_active)
     incoming = payload.model_dump(exclude_unset=True)
+    if "email" in incoming:
+        email = (incoming.get("email") or "").strip().lower()
+        if email:
+            existing = await db.scalar(
+                select(Student.id).where(
+                    Student.tenant_id == tenant_id,
+                    Student.id != student_id,
+                    func.lower(Student.email) == email,
+                )
+            )
+            if existing:
+                raise HTTPException(status_code=409, detail="Este alumno ya está registrado con ese correo.")
+        incoming["email"] = email or None
     if "phone" in incoming:
         incoming["phone"] = _normalize_student_phone(incoming.get("phone"), tenant)
     for k, v in incoming.items():

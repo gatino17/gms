@@ -11,7 +11,8 @@ import {
   HiOutlineChevronRight,
   HiOutlinePlus,
   HiOutlineTrash,
-  HiOutlineCheckCircle
+  HiOutlineCheckCircle,
+  HiOutlineExclamationCircle
 } from 'react-icons/hi'
 
 type Props = {
@@ -25,6 +26,8 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
   const [createdStudentId, setCreatedStudentId] = useState<number | null>(null)
   const [attemptedSubmit, setAttemptedSubmit] = useState(false)
   const [tenantPhonePrefix, setTenantPhonePrefix] = useState('+56')
+  const [duplicateStudent, setDuplicateStudent] = useState<any | null>(null)
+  const [checkingDuplicateEmail, setCheckingDuplicateEmail] = useState(false)
   
   // Student Info
   const [form, setForm] = useState({
@@ -68,10 +71,48 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
     })
   }, [])
 
+  useEffect(() => {
+    const email = form.email.trim().toLowerCase()
+    if (!email || !email.includes('@')) {
+      setDuplicateStudent(null)
+      setCheckingDuplicateEmail(false)
+      return
+    }
+
+    let cancelled = false
+    setCheckingDuplicateEmail(true)
+    const id = window.setTimeout(async () => {
+      try {
+        const res = await api.get('/api/pms/students', {
+          params: { q: email, limit: 10, offset: 0 },
+        })
+        if (cancelled) return
+        const existing = (res.data?.items || []).find((student: any) => (
+          String(student.email || '').trim().toLowerCase() === email &&
+          student.id !== createdStudentId
+        ))
+        setDuplicateStudent(existing || null)
+      } catch {
+        if (!cancelled) setDuplicateStudent(null)
+      } finally {
+        if (!cancelled) setCheckingDuplicateEmail(false)
+      }
+    }, 450)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(id)
+    }
+  }, [form.email, createdStudentId])
+
   const handleSave = async (shouldEnroll: boolean = false) => {
     setAttemptedSubmit(true)
     if (hasRequiredErrors) {
       setError('Completa los campos obligatorios marcados en rojo.')
+      return
+    }
+    if (duplicateStudent) {
+      setError('Este alumno ya está registrado con ese correo.')
       return
     }
     setLoading(true)
@@ -230,8 +271,19 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
                           value={form.email}
                           onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
                           placeholder="ejemplo@correo.com"
-                          className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50 rounded-2xl font-bold text-gray-700 transition-all outline-none"
+                          className={`w-full px-6 py-4 bg-gray-50 border-2 rounded-2xl font-bold text-gray-700 transition-all outline-none ${duplicateStudent ? 'border-rose-400 focus:border-rose-500 focus:bg-white focus:ring-8 focus:ring-rose-50' : 'border-transparent focus:border-fuchsia-200 focus:bg-white focus:ring-8 focus:ring-fuchsia-50'}`}
                        />
+                       {checkingDuplicateEmail && (
+                          <p className="px-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            Verificando correo...
+                          </p>
+                       )}
+                       {duplicateStudent && (
+                          <div className="flex items-start gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-600">
+                            <HiOutlineExclamationCircle className="mt-0.5 shrink-0" size={16} />
+                            <span>Este alumno ya está registrado: {duplicateStudent.first_name} {duplicateStudent.last_name}.</span>
+                          </div>
+                       )}
                     </div>
 	                    <div className="space-y-2">
 	                       <label className={`text-[10px] font-black uppercase tracking-widest px-2 ${attemptedSubmit && requiredErrors.phone ? 'text-rose-600' : 'text-gray-400'}`}>WhatsApp / Teléfono <span className="text-rose-500">*</span></label>
@@ -295,7 +347,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
            
            <button 
               onClick={() => handleSave(false)}
-              disabled={loading}
+              disabled={loading || !!duplicateStudent}
               className="px-6 py-4 bg-white border-2 border-gray-200 text-gray-700 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-gray-100 disabled:opacity-50 transition-all flex items-center gap-2"
            >
               {loading ? '...' : 'Solo Guardar'}
@@ -303,7 +355,7 @@ export default function CreateStudentModal({ onClose, onSuccess }: Props) {
 
            <button 
               onClick={() => handleSave(true)}
-              disabled={loading}
+              disabled={loading || !!duplicateStudent}
               className="px-8 py-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-fuchsia-100 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
            >
               {loading ? 'Procesando...' : 'Guardar y Pagar'} <HiOutlineChevronRight size={16} />

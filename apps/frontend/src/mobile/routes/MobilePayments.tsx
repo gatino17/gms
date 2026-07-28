@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { HiOutlineCash, HiOutlineCheckCircle, HiOutlineClock, HiOutlineCreditCard } from 'react-icons/hi'
-import { mobileApi } from '../services/mobileApi'
+import { getMobileCache, getMobileUser, mobileApi, mobileCacheKey, setMobileCache } from '../services/mobileApi'
 
 type PaymentItem = {
   id: number
@@ -50,17 +50,24 @@ const methodLabel = (method?: string | null) => {
 }
 
 export default function MobilePayments() {
-  const [summary, setSummary] = useState<StudentPaymentSummary | null>(null)
-  const [loading, setLoading] = useState(true)
+  const user = getMobileUser()
+  const cacheKey = mobileCacheKey('student-summary', user)
+  const [summary, setSummary] = useState<StudentPaymentSummary | null>(() => getMobileCache<StudentPaymentSummary>(cacheKey))
+  const [loading, setLoading] = useState(() => !getMobileCache<StudentPaymentSummary>(cacheKey))
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setLoading(true)
+    if (!summary) setLoading(true)
     mobileApi.get<StudentPaymentSummary>('/api/pms/students/portal/me')
-      .then((res) => setSummary(res.data))
-      .catch((err) => setError(err?.response?.data?.detail || err?.message || 'No se pudo cargar el historial de pagos.'))
+      .then((res) => {
+        setSummary(res.data)
+        setMobileCache(cacheKey, res.data)
+      })
+      .catch((err) => {
+        if (!summary) setError(err?.response?.data?.detail || err?.message || 'No se pudo cargar el historial de pagos.')
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }, [cacheKey])
 
   const payments = summary?.payments?.recent || []
   const onlineEnabled = !!summary?.tenant?.online_payments_enabled

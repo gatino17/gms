@@ -6,6 +6,7 @@ export const MOBILE_USER_KEY = 'mobileUser'
 export const MOBILE_TENANT_KEY = 'mobileTenantId'
 export const MOBILE_TENANT_INFO_KEY = 'mobileTenantInfo'
 export const MOBILE_LAST_ENTRY_KEY = 'mobileLastEntry'
+const MOBILE_CACHE_PREFIX = 'gmsMobileCache:'
 
 export type MobileRole = 'student' | 'teacher'
 
@@ -96,12 +97,37 @@ export function getMobileLastEntry() {
   }
 }
 
+export function mobileCacheKey(area: string, user?: MobileUser | null) {
+  const role = user?.role || 'anon'
+  const tenantId = user?.tenant_id ?? 'tenant'
+  const userId = user?.id ?? 'user'
+  return `${MOBILE_CACHE_PREFIX}${area}:${role}:${tenantId}:${userId}`
+}
+
+export function getMobileCache<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : null
+  } catch {
+    return null
+  }
+}
+
+export function setMobileCache<T>(key: string, value: T) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value))
+  } catch {}
+}
+
 export function clearMobileSession() {
   try {
     localStorage.removeItem(MOBILE_TOKEN_KEY)
     localStorage.removeItem(MOBILE_USER_KEY)
     localStorage.removeItem(MOBILE_TENANT_KEY)
     localStorage.removeItem(MOBILE_TENANT_INFO_KEY)
+    Object.keys(sessionStorage)
+      .filter((key) => key.startsWith(MOBILE_CACHE_PREFIX))
+      .forEach((key) => sessionStorage.removeItem(key))
   } catch {}
   delete mobileApi.defaults.headers.common.Authorization
 }

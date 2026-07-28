@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { HiOutlineCalendar, HiOutlineSpeakerphone } from 'react-icons/hi'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
-import { getMobileUser, mobileApi } from '../services/mobileApi'
+import { getMobileCache, getMobileUser, mobileApi, mobileCacheKey, setMobileCache } from '../services/mobileApi'
 
 type Announcement = {
   id: number
@@ -80,18 +80,25 @@ const announcementValidityText = (announcement: Announcement, role?: string) => 
 
 export default function MobileAnnouncements() {
   const user = getMobileUser()
-  const [items, setItems] = useState<Announcement[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = mobileCacheKey('announcements', user)
+  const [items, setItems] = useState<Announcement[]>(() => getMobileCache<Announcement[]>(cacheKey) || [])
+  const [loading, setLoading] = useState(() => !getMobileCache<Announcement[]>(cacheKey))
 
   useEffect(() => {
-    setLoading(true)
+    if (!items.length) setLoading(true)
     const audience = user?.role === 'teacher' ? 'teachers' : 'students'
     mobileApi
       .get<Announcement[]>('/api/pms/announcements', { params: { active_only: user?.role !== 'teacher', limit: 50, audience } })
-      .then((res) => setItems((res.data || []).filter((item) => isMobileAnnouncementVisible(item, user?.role))))
-      .catch(() => setItems([]))
+      .then((res) => {
+        const next = (res.data || []).filter((item) => isMobileAnnouncementVisible(item, user?.role))
+        setItems(next)
+        setMobileCache(cacheKey, next)
+      })
+      .catch(() => {
+        if (!items.length) setItems([])
+      })
       .finally(() => setLoading(false))
-  }, [user?.role])
+  }, [cacheKey, user?.role])
 
   if (loading) {
     return (

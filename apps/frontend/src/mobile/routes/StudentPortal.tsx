@@ -1,9 +1,9 @@
 ﻿import { useEffect, useState } from 'react'
 import { HiOutlineAcademicCap, HiOutlineChartBar } from 'react-icons/hi'
-import { mobileApi } from '../services/mobileApi'
+import { getMobileCache, getMobileUser, mobileApi, mobileCacheKey, setMobileCache } from '../services/mobileApi'
 
 interface StudentSummary {
-  attendance?: { percent?: number; recent?: any[] }
+  attendance?: { percent?: number; attended?: number; expected?: number; recent?: any[] }
   enrollments?: Array<{
     course_name?: string
     is_active?: boolean
@@ -37,14 +37,19 @@ const enrollmentStatus = (item: NonNullable<StudentSummary['enrollments']>[numbe
 }
 
 export default function StudentPortal() {
-  const [summary, setSummary] = useState<StudentSummary | null>(null)
+  const user = getMobileUser()
+  const cacheKey = mobileCacheKey('student-summary', user)
+  const [summary, setSummary] = useState<StudentSummary | null>(() => getMobileCache<StudentSummary>(cacheKey))
   const [error, setError] = useState('')
 
   useEffect(() => {
     mobileApi.get('/api/pms/students/portal/me')
-      .then((res) => setSummary(res.data))
+      .then((res) => {
+        setSummary(res.data)
+        setMobileCache(cacheKey, res.data)
+      })
       .catch((err) => setError(err?.message || 'No se pudo cargar el portal.'))
-  }, [])
+  }, [cacheKey])
 
   return (
     <div className="space-y-4">
@@ -53,7 +58,9 @@ export default function StudentPortal() {
           <div>
             <p className="mobile-text-primary mb-2 text-[10px] font-black uppercase tracking-[0.24em]">Progreso</p>
             <h2 className="text-2xl font-black leading-tight text-slate-950">{Math.round(summary?.attendance?.percent || 0)}% asistencia</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">Tu avance registrado en el estudio.</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+              {summary?.attendance?.expected ? `${summary.attendance.attended || 0}/${summary.attendance.expected} clases del periodo.` : 'Tu avance registrado en el estudio.'}
+            </p>
           </div>
           <div className="mobile-bg-primary flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] text-white shadow-lg shadow-slate-300/70">
             <HiOutlineChartBar size={30} />

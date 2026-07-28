@@ -4,13 +4,13 @@ import { HiOutlineAcademicCap, HiOutlineCake, HiOutlineCheckCircle, HiOutlineClo
 import { Link } from 'react-router-dom'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
-import { getMobileUser, mobileApi, mobileUserName } from '../services/mobileApi'
+import { getMobileCache, getMobileUser, mobileApi, mobileCacheKey, mobileUserName, setMobileCache } from '../services/mobileApi'
 
 interface StudentSummary {
   student?: {
     is_active?: boolean
   }
-  attendance?: { percent?: number }
+  attendance?: { percent?: number; attended?: number; expected?: number }
   classes_active?: number
   payments?: { total_last_90?: number }
   enrollments?: Array<{
@@ -271,9 +271,12 @@ const teacherDailyMessage = () => {
 
 export default function MobileHome() {
   const user = getMobileUser()
-  const [summary, setSummary] = useState<StudentSummary | null>(null)
-  const [teacherSummary, setTeacherSummary] = useState<TeacherSummary | null>(null)
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const studentCacheKey = mobileCacheKey('student-summary', user)
+  const teacherCacheKey = mobileCacheKey('teacher-summary', user)
+  const announcementsCacheKey = mobileCacheKey('announcements', user)
+  const [summary, setSummary] = useState<StudentSummary | null>(() => getMobileCache<StudentSummary>(studentCacheKey))
+  const [teacherSummary, setTeacherSummary] = useState<TeacherSummary | null>(() => getMobileCache<TeacherSummary>(teacherCacheKey))
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => getMobileCache<Announcement[]>(announcementsCacheKey) || [])
   const [announcementSlide, setAnnouncementSlide] = useState(0)
   const [expandedAnnouncementImage, setExpandedAnnouncementImage] = useState<{ src: string; title: string } | null>(null)
 
@@ -300,10 +303,16 @@ export default function MobileHome() {
 
   useEffect(() => {
     if (user?.role === 'student') {
-      mobileApi.get('/api/pms/students/portal/me').then((res) => setSummary(res.data)).catch(() => setSummary(null))
+      mobileApi.get('/api/pms/students/portal/me').then((res) => {
+        setSummary(res.data)
+        setMobileCache(studentCacheKey, res.data)
+      }).catch(() => setSummary(null))
     }
     if (user?.role === 'teacher') {
-      mobileApi.get('/api/pms/teachers/portal/me').then((res) => setTeacherSummary(res.data)).catch(() => setTeacherSummary(null))
+      mobileApi.get('/api/pms/teachers/portal/me').then((res) => {
+        setTeacherSummary(res.data)
+        setMobileCache(teacherCacheKey, res.data)
+      }).catch(() => setTeacherSummary(null))
     }
     if (user?.role) {
       const audience = user.role === 'teacher' ? 'teachers' : 'students'
@@ -311,11 +320,13 @@ export default function MobileHome() {
         .get<Announcement[]>('/api/pms/announcements', { params: { active_only: user.role !== 'teacher', limit: 50, audience } })
         .then((res) => {
           const visible = (res.data || []).filter((item) => isMobileAnnouncementVisible(item, user.role))
-          setAnnouncements(sortAnnouncementsNewestFirst(visible))
+          const next = sortAnnouncementsNewestFirst(visible)
+          setAnnouncements(next)
+          setMobileCache(announcementsCacheKey, next)
         })
         .catch(() => setAnnouncements([]))
     }
-  }, [user?.role])
+  }, [user?.role, studentCacheKey, teacherCacheKey, announcementsCacheKey])
 
   const sliderAnnouncements = announcements.slice(0, 3)
   const activeAnnouncementIndex = sliderAnnouncements.length ? Math.min(announcementSlide, sliderAnnouncements.length - 1) : 0

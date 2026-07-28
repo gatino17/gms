@@ -3,7 +3,7 @@ import { HiOutlineAcademicCap, HiOutlineCalendar, HiOutlineCheckCircle, HiOutlin
 import { IoFemale, IoMale } from 'react-icons/io5'
 import { toAbsoluteUrl } from '../../lib/api'
 import MobileCard from '../components/MobileCard'
-import { mobileApi } from '../services/mobileApi'
+import { getMobileCache, getMobileUser, mobileApi, mobileCacheKey, setMobileCache } from '../services/mobileApi'
 
 type StudentItem = {
   id: number
@@ -100,18 +100,21 @@ const enrollmentLabel = (student: StudentItem) => {
 }
 
 export default function TeacherPortal() {
-  const [summary, setSummary] = useState<TeacherPortalSummary | null>(null)
+  const user = getMobileUser()
+  const cacheKey = mobileCacheKey('teacher-summary', user)
+  const [summary, setSummary] = useState<TeacherPortalSummary | null>(() => getMobileCache<TeacherPortalSummary>(cacheKey))
   const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null)
   const [markingStudentId, setMarkingStudentId] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !getMobileCache<TeacherPortalSummary>(cacheKey))
   const [error, setError] = useState('')
 
   const loadSummary = async (silent = false) => {
-    if (!silent) setLoading(true)
+    if (!silent && !summary) setLoading(true)
     if (!silent) setError('')
     try {
       const res = await mobileApi.get<TeacherPortalSummary>('/api/pms/teachers/portal/me')
       setSummary(res.data)
+      setMobileCache(cacheKey, res.data)
       setExpandedCourseId((current) => {
         if (current && res.data?.courses?.some((course) => course.id === current)) return current
         return null
@@ -124,7 +127,7 @@ export default function TeacherPortal() {
   }
 
   useEffect(() => {
-    loadSummary()
+    loadSummary(Boolean(summary))
     const id = window.setInterval(() => loadSummary(true), 8000)
     const onFocus = () => loadSummary(true)
     const onVisible = () => {
@@ -138,7 +141,7 @@ export default function TeacherPortal() {
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [])
+  }, [cacheKey])
 
   const markPresent = async (courseId: number, studentId: number) => {
     setMarkingStudentId(studentId)
@@ -150,7 +153,7 @@ export default function TeacherPortal() {
       })
       setSummary((current) => {
         if (!current) return current
-        return {
+        const next = {
           ...current,
           courses: current.courses.map((course) => {
             if (course.id !== courseId) return course
@@ -159,6 +162,8 @@ export default function TeacherPortal() {
             return { ...course, attended_today_student_ids: Array.from(ids) }
           }),
         }
+        setMobileCache(cacheKey, next)
+        return next
       })
     } catch (err: any) {
       setError(err?.message || 'No se pudo marcar asistencia.')

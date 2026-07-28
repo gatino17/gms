@@ -41,6 +41,32 @@ def _create_student_portal_code(student: Student, tenant_id: int, minutes: int =
     return {"code": code, "expires_in_minutes": minutes}
 
 
+def _course_weekdays(course: Course) -> list[int]:
+    days: set[int] = set()
+    for attr in ("day_of_week", "day_of_week_2", "day_of_week_3", "day_of_week_4", "day_of_week_5"):
+        value = getattr(course, attr, None)
+        if value is not None:
+            days.add(int(value))
+    return sorted(days)
+
+
+def _expected_classes_between(start: date | None, end: date | None, course: Course) -> int:
+    if not start:
+        return 0
+    if end and start == end:
+        return 1
+    period_end = end or date.today()
+    if period_end < start:
+        return 0
+    total = 0
+    for target_dow in _course_weekdays(course):
+        cur = start + timedelta(days=(target_dow - start.weekday() + 7) % 7)
+        while cur <= period_end:
+            total += 1
+            cur += timedelta(days=7)
+    return total
+
+
 def _student_mobile_access_payload(
     student: Student,
     tenant: Tenant | None,
@@ -529,8 +555,29 @@ async def student_portal_summary(
         for a, name in att_rows
     ]
 
-    att_count = len(attendance_recent)
-    att_percent = int(round((att_count / 5) * 100)) if att_count < 5 else 100
+    expected_total = 0
+    attended_total = 0
+    for e, c in enroll_rows:
+        if not e.is_active:
+            continue
+        expected = _expected_classes_between(e.start_date, e.end_date, c)
+        if expected <= 0:
+            continue
+        is_single_class = bool(e.end_date and e.start_date == e.end_date)
+        attendance_filters = [
+            Attendance.tenant_id == tenant_id,
+            Attendance.student_id == student_id,
+            Attendance.course_id == c.id,
+            cast(Attendance.attended_at, Date) >= e.start_date,
+        ]
+        if e.end_date:
+            attendance_filters.append(cast(Attendance.attended_at, Date) <= e.end_date)
+        if not is_single_class:
+            attendance_filters.append(or_(Attendance.notes == None, Attendance.notes != 'clase_suelta'))
+        a_count_res = await db.execute(select(func.count(Attendance.id)).where(*attendance_filters))
+        expected_total += expected
+        attended_total += int(a_count_res.scalar() or 0)
+    att_percent = int(round((min(attended_total, expected_total) / expected_total) * 100)) if expected_total > 0 else 0
 
     pres = await db.execute(
         select(Payment, Course, Teacher)
@@ -596,7 +643,7 @@ async def student_portal_summary(
             "emergency_contact": getattr(student, "emergency_contact", None),
             "emergency_phone": getattr(student, "emergency_phone", None),
         },
-        "attendance": { "percent": att_percent, "recent": attendance_recent },
+        "attendance": { "percent": att_percent, "attended": attended_total, "expected": expected_total, "recent": attendance_recent },
         "enrollments": enrollments,
         "classes_active": sum(1 for e in enrollments if e.get("is_active")),
             "payments": { "recent": payments_recent, "total_last_90": total_paid_recent },

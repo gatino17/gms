@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, timedelta
-from sqlalchemy import select, func, case, or_
+from sqlalchemy import select, func, case, or_, cast, Date
 from sqlalchemy.orm import selectinload
 import secrets
 from datetime import datetime
@@ -809,8 +809,8 @@ async def get_student_full_stats(
                 Attendance.tenant_id == tenant_id,
                 Attendance.student_id == student_id,
                 Attendance.course_id == course_id,
-                Attendance.attended_at >= start,
-                Attendance.attended_at <= future_horizon,
+                cast(Attendance.attended_at, Date) >= start,
+                cast(Attendance.attended_at, Date) <= future_horizon,
                 or_(Attendance.notes == None, Attendance.notes != 'clase_suelta')
             )
         )
@@ -826,10 +826,10 @@ async def get_student_full_stats(
                     Attendance.student_id == student_id,
                     Attendance.course_id == course_id,
                     or_(
-                        Attendance.attended_at > end,
+                        cast(Attendance.attended_at, Date) > end,
                         Attendance.notes == 'clase_suelta'
                     ),
-                    Attendance.attended_at <= future_horizon
+                    cast(Attendance.attended_at, Date) <= future_horizon
                 )
             )
             extra_outside = a_extra_res.scalar() or 0

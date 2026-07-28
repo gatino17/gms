@@ -95,8 +95,8 @@ async def course_status(
         ))
         .where(
             Attendance.tenant_id == tenant_id,
-            Attendance.attended_at >= Enrollment.start_date,
-            or_(Enrollment.end_date == None, Attendance.attended_at <= Enrollment.end_date),
+            cast(Attendance.attended_at, Date) >= Enrollment.start_date,
+            or_(Enrollment.end_date == None, cast(Attendance.attended_at, Date) <= Enrollment.end_date),
             or_(Attendance.notes == None, Attendance.notes != 'clase_suelta')
         )
         .group_by(Attendance.student_id, Attendance.course_id)
@@ -119,7 +119,7 @@ async def course_status(
         .where(
             Attendance.tenant_id == tenant_id,
             or_(
-                and_(Enrollment.end_date != None, Attendance.attended_at > Enrollment.end_date),
+                and_(Enrollment.end_date != None, cast(Attendance.attended_at, Date) > Enrollment.end_date),
                 Attendance.notes == 'clase_suelta'
             )
         )

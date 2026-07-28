@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { HiOutlineCash, HiOutlineCheckCircle, HiOutlineClock, HiOutlineCreditCard } from 'react-icons/hi'
+import { HiOutlineCash, HiOutlineCheckCircle, HiOutlineClock, HiOutlineCreditCard, HiOutlineEye, HiOutlineX } from 'react-icons/hi'
 import { getMobileCache, getMobileUser, mobileApi, mobileCacheKey, setMobileCache } from '../services/mobileApi'
 
 type PaymentItem = {
@@ -55,6 +55,7 @@ export default function MobilePayments() {
   const [summary, setSummary] = useState<StudentPaymentSummary | null>(() => getMobileCache<StudentPaymentSummary>(cacheKey))
   const [loading, setLoading] = useState(() => !getMobileCache<StudentPaymentSummary>(cacheKey))
   const [error, setError] = useState('')
+  const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null)
 
   useEffect(() => {
     if (!summary) setLoading(true)
@@ -138,32 +139,30 @@ export default function MobilePayments() {
           <div className="space-y-3">
             {payments.map((payment) => (
               <article key={payment.id} className="relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70 p-4 shadow-sm shadow-slate-200/60">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-base font-black text-slate-950">{payment.course_name || payment.reference || paymentTypeLabel(payment.type)}</p>
-                    {payment.teacher_name ? <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-fuchsia-600">Prof. {payment.teacher_name}</p> : null}
-                    <p className="mt-2 text-xs font-bold text-slate-500">{formatDate(payment.payment_date)}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
+                        {formatDate(payment.payment_date)}
+                      </span>
+                      <span className="rounded-full bg-fuchsia-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-fuchsia-600">
+                        {paymentTypeLabel(payment.type)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-black text-slate-950">{money(payment.amount)}</p>
-                    <span className="mt-1 inline-flex rounded-full bg-white px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
-                      #{payment.id}
-                    </span>
-                  </div>
+                  <p className="shrink-0 text-lg font-black text-slate-950">{money(payment.amount)}</p>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-blue-600">
-                    <HiOutlineCreditCard size={12} /> {methodLabel(payment.method)}
-                  </span>
-                  <span className="rounded-full bg-fuchsia-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-fuchsia-600">
-                    {paymentTypeLabel(payment.type)}
-                  </span>
+                <div className="mt-3 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPayment(payment)}
+                    className="mobile-bg-primary-soft mobile-text-primary mobile-border-primary inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-[9px] font-black uppercase tracking-widest"
+                  >
+                    <HiOutlineEye size={14} />
+                    Ver detalle
+                  </button>
                 </div>
-                {(payment.period_start || payment.period_end) ? (
-                  <div className="mt-3 rounded-xl bg-white px-3 py-2 text-[10px] font-black text-slate-500">
-                    Periodo: {formatDate(payment.period_start)} / {formatDate(payment.period_end)}
-                  </div>
-                ) : null}
                 <HiOutlineCheckCircle className="absolute -bottom-3 -right-3 text-emerald-100" size={58} />
               </article>
             ))}
@@ -172,6 +171,69 @@ export default function MobilePayments() {
           <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-500">Aún no hay pagos registrados para mostrar.</p>
         )}
       </section>
+
+      {selectedPayment ? (
+        <div className="fixed inset-0 z-[999] flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={() => setSelectedPayment(null)}
+            className="absolute inset-0"
+            aria-label="Cerrar detalle"
+          />
+          <div className="relative w-full max-w-md overflow-hidden rounded-[30px] border border-white bg-white shadow-2xl shadow-slate-950/30">
+            <div className="relative bg-slate-950 p-5 text-white">
+              <HiOutlineCheckCircle className="pointer-events-none absolute -right-9 top-0 text-emerald-300/40 drop-shadow-sm" size={148} />
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/60">Detalle del pago</p>
+                  <h3 className="mt-2 text-3xl font-black leading-tight">{money(selectedPayment.amount)}</h3>
+                  <p className="mt-2 text-sm font-black text-white">{selectedPayment.course_name || paymentTypeLabel(selectedPayment.type)}</p>
+                  {selectedPayment.teacher_name ? (
+                    <p className="mt-1 text-[11px] font-black uppercase tracking-widest text-fuchsia-300">{selectedPayment.teacher_name}</p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPayment(null)}
+                  className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white"
+                >
+                  <HiOutlineX size={18} />
+                </button>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white">
+                  <HiOutlineCreditCard size={14} />
+                  {paymentTypeLabel(selectedPayment.type)}
+                </div>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                  <HiOutlineCheckCircle size={15} />
+                  Pagado
+                </div>
+              </div>
+              <span className="absolute bottom-5 right-5 rounded-full bg-white/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white/55">
+                ID #{selectedPayment.id}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 p-5">
+              <div className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50 px-4 py-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-fuchsia-500">Fecha de pago</p>
+                <p className="mt-1 text-sm font-black text-slate-950">{formatDate(selectedPayment.payment_date)}</p>
+              </div>
+              <div className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50 px-4 py-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-fuchsia-500">Método</p>
+                <p className="mt-1 text-sm font-black text-slate-950">{methodLabel(selectedPayment.method)}</p>
+              </div>
+              {(selectedPayment.period_start || selectedPayment.period_end) ? (
+                <div className="col-span-2 rounded-2xl border border-fuchsia-100 bg-fuchsia-50 px-4 py-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-fuchsia-500">Periodo</p>
+                  <p className="mt-1 text-sm font-black text-slate-950">{formatDate(selectedPayment.period_start)} / {formatDate(selectedPayment.period_end)}</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

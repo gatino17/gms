@@ -139,8 +139,8 @@ export default function MobileAnnouncements() {
                 </div>
                 <h3 className="mt-2 line-clamp-2 text-base font-black leading-tight text-slate-950">{item.title}</h3>
                 {item.subtitle ? <p className="mobile-text-primary mt-1 line-clamp-1 text-xs font-black">{item.subtitle}</p> : null}
-                {item.body ? <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-slate-600">{item.body}</p> : null}
-                <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                {item.body ? <p className="mt-2 line-clamp-2 text-xs font-bold leading-5 text-slate-800">{item.body}</p> : null}
+                <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-700">
                   <HiOutlineCalendar className="mobile-text-primary" />
                   {announcementValidityText(item, user?.role)}
                 </div>

@@ -19,7 +19,6 @@ export default function MobileInstallPrompt({ portalType }: Props) {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null)
   const [installed, setInstalled] = useState(false)
   const [dismissed, setDismissed] = useState(false)
-  const [readyToShow, setReadyToShow] = useState(false)
   const [showManualHelp, setShowManualHelp] = useState(false)
 
   const platform = useMemo(() => {
@@ -32,7 +31,6 @@ export default function MobileInstallPrompt({ portalType }: Props) {
   }, [])
 
   useEffect(() => {
-    const showTimer = window.setTimeout(() => setReadyToShow(true), 1000)
     setInstalled(isStandaloneMode())
     if ((window as any).__gmsDeferredInstallPrompt) {
       setInstallEvent((window as any).__gmsDeferredInstallPrompt as BeforeInstallPromptEvent)
@@ -57,7 +55,6 @@ export default function MobileInstallPrompt({ portalType }: Props) {
     window.addEventListener('gms-pwa-install-ready', onInstallReady)
     window.addEventListener('appinstalled', onInstalled)
     return () => {
-      window.clearTimeout(showTimer)
       window.removeEventListener('beforeinstallprompt', onBeforeInstall)
       window.removeEventListener('gms-pwa-install-ready', onInstallReady)
       window.removeEventListener('appinstalled', onInstalled)
@@ -78,7 +75,7 @@ export default function MobileInstallPrompt({ portalType }: Props) {
     ;(window as any).__gmsDeferredInstallPrompt = null
   }
 
-  if (!readyToShow || installed || dismissed || platform === 'desktop') return null
+  if (installed || dismissed || platform === 'desktop') return null
 
   const hasNativePrompt = Boolean(installEvent)
 

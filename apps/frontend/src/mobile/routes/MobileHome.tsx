@@ -357,10 +357,10 @@ export default function MobileHome() {
           <h2 className="text-lg font-black text-slate-950">Avisos activos</h2>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-950 px-3 py-1 text-[10px] font-black text-white">
+          <span className="rounded-full bg-slate-950 px-3 py-1 text-[10px] font-black text-white shadow-sm">
             {activeAnnouncementIndex + 1} / {sliderAnnouncements.length}
           </span>
-          <span className="mobile-bg-primary-soft mobile-text-primary rounded-full px-3 py-1 text-[10px] font-black">{announcements.length}</span>
+          <span className="mobile-bg-primary-soft mobile-text-primary rounded-full px-3 py-1 text-[10px] font-black shadow-sm">{announcements.length}</span>
         </div>
       </div>
       {(() => {
@@ -403,9 +403,9 @@ export default function MobileHome() {
                 <HiOutlineSpeakerphone size={18} />
               </div>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] p-5 text-white">
-                <h3 className="text-2xl font-black leading-tight drop-shadow-lg">{currentAnnouncement.title}</h3>
-                {currentAnnouncement.subtitle ? <p className="mt-1 text-sm font-black text-white/90 drop-shadow">{currentAnnouncement.subtitle}</p> : null}
-                {currentAnnouncement.body ? <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-white/85">{currentAnnouncement.body}</p> : null}
+                <h3 className="text-2xl font-black leading-tight text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.75)]">{currentAnnouncement.title}</h3>
+                {currentAnnouncement.subtitle ? <p className="mt-1 text-sm font-black text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">{currentAnnouncement.subtitle}</p> : null}
+                {currentAnnouncement.body ? <p className="mt-3 line-clamp-2 text-sm font-bold leading-6 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.68)]">{currentAnnouncement.body}</p> : null}
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <p className="rounded-full border border-white/15 bg-white/18 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-black/20 backdrop-blur-md">
                     {announcementValidityText(currentAnnouncement, user?.role)}

@@ -7,9 +7,12 @@ import { AuthProvider } from './context/AuthContext'
 import './styles.css'
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => undefined)
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault()
+    ;(window as any).__gmsDeferredInstallPrompt = event
+    window.dispatchEvent(new Event('gms-pwa-install-ready'))
   })
+  navigator.serviceWorker.register('/sw.js').catch(() => undefined)
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

@@ -31,31 +31,46 @@ export default function MobileInstallPrompt({ portalType }: Props) {
 
   useEffect(() => {
     setInstalled(isStandaloneMode())
+    if ((window as any).__gmsDeferredInstallPrompt) {
+      setInstallEvent((window as any).__gmsDeferredInstallPrompt as BeforeInstallPromptEvent)
+    }
     const onBeforeInstall = (event: Event) => {
       event.preventDefault()
+      ;(window as any).__gmsDeferredInstallPrompt = event
       setInstallEvent(event as BeforeInstallPromptEvent)
+    }
+    const onInstallReady = () => {
+      if ((window as any).__gmsDeferredInstallPrompt) {
+        setInstallEvent((window as any).__gmsDeferredInstallPrompt as BeforeInstallPromptEvent)
+      }
     }
     const onInstalled = () => {
       setInstalled(true)
       setInstallEvent(null)
+      ;(window as any).__gmsDeferredInstallPrompt = null
     }
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
+    window.addEventListener('gms-pwa-install-ready', onInstallReady)
     window.addEventListener('appinstalled', onInstalled)
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+      window.removeEventListener('gms-pwa-install-ready', onInstallReady)
       window.removeEventListener('appinstalled', onInstalled)
     }
   }, [])
 
   const install = async () => {
-    if (!installEvent) return
+    if (!installEvent) {
+      return
+    }
     await installEvent.prompt()
     const choice = await installEvent.userChoice
     if (choice.outcome === 'accepted') {
       setInstalled(true)
     }
     setInstallEvent(null)
+    ;(window as any).__gmsDeferredInstallPrompt = null
   }
 
   if (installed || dismissed || platform === 'desktop') return null
@@ -87,17 +102,15 @@ export default function MobileInstallPrompt({ portalType }: Props) {
         </div>
       </div>
       <div className="mt-3 flex gap-2">
-        {hasNativePrompt ? (
-          <button
-            type="button"
-            onClick={install}
-            className="mobile-bg-primary flex-1 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-950/20"
-          >
-            <span className="inline-flex items-center justify-center gap-2">
-              <HiOutlineDownload size={16} /> Instalar portal
-            </span>
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={install}
+          className="mobile-bg-primary flex-1 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-950/20"
+        >
+          <span className="inline-flex items-center justify-center gap-2">
+            <HiOutlineDownload size={16} /> Instalar portal
+          </span>
+        </button>
         <button
           type="button"
           onClick={() => setDismissed(true)}

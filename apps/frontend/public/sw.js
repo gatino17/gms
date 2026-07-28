@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gms-mobile-v1'
+const CACHE_NAME = 'gms-mobile-v2'
 const APP_SHELL = ['/', '/mobile', '/mobile/login', '/manifest.webmanifest', '/Logo_gms.ico', '/gms-soluciones-digitales.jpg']
 
 self.addEventListener('install', (event) => {

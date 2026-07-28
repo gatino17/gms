@@ -67,6 +67,167 @@ def _expected_classes_between(start: date | None, end: date | None, course: Cour
     return total
 
 
+def _subtract_months(value: date, months: int) -> date:
+    month = value.month - months
+    year = value.year
+    while month <= 0:
+        month += 12
+        year -= 1
+    last_day = [
+        31,
+        29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+        31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+    ][month - 1]
+    return date(year, month, min(value.day, last_day))
+
+
+def _full_months_between(start: date | None, end: date) -> int:
+    if not start or start > end:
+        return 0
+    months = (end.year - start.year) * 12 + (end.month - start.month)
+    if end.day < start.day:
+        months -= 1
+    return max(0, months)
+
+
+async def _student_highlight_progress(
+    db: AsyncSession,
+    tenant_id: int,
+    student: Student,
+    enroll_rows: list[tuple[Enrollment, Course]],
+    today: date,
+) -> dict[str, object]:
+    tiers = [
+        {"months": 4, "threshold": 90.0, "label": "Constancia 4M"},
+        {"months": 6, "threshold": 95.0, "label": "Disciplina 6M"},
+        {"months": 12, "threshold": 95.0, "label": "Excelencia 12M"},
+    ]
+    active_rows = [(enr, course) for enr, course in enroll_rows if enr.is_active and getattr(course, "is_active", True)]
+    if not active_rows:
+        return {
+            "status": "no_courses",
+            "message": "Inscríbete en un curso para comenzar tu camino destacado.",
+            "payments_current": False,
+            "months_completed": 0,
+            "progress_percent": 0,
+            "next_tier_months": 4,
+            "next_tier_label": "Constancia 4M",
+            "required_attendance": 90.0,
+            "attendance_rate": 0,
+            "attended": 0,
+            "expected": 0,
+        }
+
+    base_start = getattr(student, "joined_at", None) or min(enr.start_date for enr, _course in active_rows if enr.start_date)
+    months_completed = _full_months_between(base_start, today)
+    payments_current = all(enr.end_date is not None and enr.end_date >= today for enr, _course in active_rows)
+
+    min_cutoff = _subtract_months(today, 12)
+    course_ids = [course.id for _enr, course in active_rows]
+    attendance_set: set[tuple[int, date]] = set()
+    if course_ids:
+        rows = (
+            await db.execute(
+                select(Attendance.course_id, Attendance.attended_at)
+                .where(
+                    Attendance.tenant_id == tenant_id,
+                    Attendance.student_id == student.id,
+                    Attendance.course_id.in_(course_ids),
+                    Attendance.attended_at >= datetime.combine(min_cutoff, datetime.min.time()),
+                    Attendance.attended_at < datetime.combine(today + timedelta(days=1), datetime.min.time()),
+                    or_(Attendance.notes == None, Attendance.notes != "clase_suelta"),
+                )
+            )
+        ).all()
+        attendance_set = {(int(course_id), attended_at.date()) for course_id, attended_at in rows}
+
+    def evaluate(months: int) -> dict[str, object]:
+        cutoff = _subtract_months(today, months)
+        enough_time = bool(base_start and base_start <= cutoff and any(enr.start_date <= cutoff for enr, _course in active_rows))
+        expected = 0
+        attended = 0
+        for enr, course in active_rows:
+            window_start = max(enr.start_date, cutoff if enough_time else (base_start or enr.start_date))
+            window_end = min(enr.end_date or today, today)
+            if window_start > window_end:
+                continue
+            expected += _expected_classes_between(window_start, window_end, course)
+            attended += sum(
+                1
+                for course_id, att_date in attendance_set
+                if course_id == course.id and window_start <= att_date <= window_end
+            )
+        rate = min(100.0, round((attended / expected) * 100, 1)) if expected > 0 else 0.0
+        return {
+            "months": months,
+            "enough_time": enough_time,
+            "expected": expected,
+            "attended": attended,
+            "attendance_rate": rate,
+        }
+
+    evaluations = {int(tier["months"]): evaluate(int(tier["months"])) for tier in tiers}
+    achieved: dict[str, object] | None = None
+    for tier in reversed(tiers):
+        data = evaluations[int(tier["months"])]
+        if (
+            payments_current
+            and data["enough_time"]
+            and data["expected"]
+            and float(data["attendance_rate"]) >= float(tier["threshold"])
+        ):
+            achieved = {**tier, **data}
+            break
+
+    next_tier = None
+    if achieved:
+        for tier in tiers:
+            if int(tier["months"]) > int(achieved["months"]):
+                next_tier = tier
+                break
+    else:
+        next_tier = tiers[0]
+
+    active_tier = next_tier or achieved or tiers[-1]
+    active_eval = evaluations[int(active_tier["months"])]
+    month_progress = min(100.0, round((months_completed / int(active_tier["months"])) * 100, 1)) if active_tier else 0.0
+    attendance_progress = min(100.0, round((float(active_eval["attendance_rate"]) / float(active_tier["threshold"])) * 100, 1)) if active_tier else 0.0
+    progress_percent = int(round(min(month_progress, attendance_progress)))
+
+    status = "completed" if achieved and not next_tier else "achieved" if achieved else "in_progress"
+    if not payments_current:
+        status = "payment_pending"
+    elif not active_eval["expected"]:
+        status = "not_enough_data"
+
+    if status == "payment_pending":
+        message = "Regulariza tu curso para seguir acumulando hacia alumno destacado."
+    elif status == "completed":
+        message = "Ya alcanzaste la meta de excelencia 12M."
+    elif achieved:
+        message = f"Ya lograste {achieved['label']}. Siguiente meta: {active_tier['label']}."
+    else:
+        message = f"Avanza hacia {active_tier['label']} con asistencia constante y pagos al día."
+
+    return {
+        "status": status,
+        "message": message,
+        "payments_current": payments_current,
+        "months_completed": months_completed,
+        "progress_percent": progress_percent,
+        "current_tier_months": int(achieved["months"]) if achieved else None,
+        "current_tier_label": achieved["label"] if achieved else None,
+        "next_tier_months": int(next_tier["months"]) if next_tier else None,
+        "next_tier_label": next_tier["label"] if next_tier else None,
+        "target_tier_months": int(active_tier["months"]) if active_tier else None,
+        "target_tier_label": active_tier["label"] if active_tier else None,
+        "required_attendance": float(active_tier["threshold"]) if active_tier else None,
+        "attendance_rate": active_eval["attendance_rate"],
+        "attended": active_eval["attended"],
+        "expected": active_eval["expected"],
+    }
+
+
 def _student_mobile_access_payload(
     student: Student,
     tenant: Tenant | None,
@@ -556,6 +717,7 @@ async def student_portal_summary(
     ]
 
     expected_total = 0
+    elapsed_expected_total = 0
     attended_total = 0
     for e, c in enroll_rows:
         if not e.is_active:
@@ -576,8 +738,13 @@ async def student_portal_summary(
             attendance_filters.append(or_(Attendance.notes == None, Attendance.notes != 'clase_suelta'))
         a_count_res = await db.execute(select(func.count(Attendance.id)).where(*attendance_filters))
         expected_total += expected
+        elapsed_end = min(e.end_date or today_dt, today_dt)
+        elapsed_expected_total += _expected_classes_between(e.start_date, elapsed_end, c)
         attended_total += int(a_count_res.scalar() or 0)
     att_percent = int(round((min(attended_total, expected_total) / expected_total) * 100)) if expected_total > 0 else 0
+    attendance_rate = int(round((min(attended_total, elapsed_expected_total) / elapsed_expected_total) * 100)) if elapsed_expected_total > 0 else 0
+    period_progress_percent = int(round((elapsed_expected_total / expected_total) * 100)) if expected_total > 0 else 0
+    highlight_progress = await _student_highlight_progress(db, tenant_id, student, enroll_rows, today_dt)
 
     pres = await db.execute(
         select(Payment, Course, Teacher)
@@ -643,7 +810,16 @@ async def student_portal_summary(
             "emergency_contact": getattr(student, "emergency_contact", None),
             "emergency_phone": getattr(student, "emergency_phone", None),
         },
-        "attendance": { "percent": att_percent, "attended": attended_total, "expected": expected_total, "recent": attendance_recent },
+        "attendance": {
+            "percent": att_percent,
+            "attendance_rate": attendance_rate,
+            "period_progress_percent": period_progress_percent,
+            "attended": attended_total,
+            "expected": expected_total,
+            "elapsed_expected": elapsed_expected_total,
+            "recent": attendance_recent,
+        },
+        "highlight_progress": highlight_progress,
         "enrollments": enrollments,
         "classes_active": sum(1 for e in enrollments if e.get("is_active")),
             "payments": { "recent": payments_recent, "total_last_90": total_paid_recent },

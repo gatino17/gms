@@ -1,9 +1,34 @@
 ﻿import { useEffect, useState } from 'react'
-import { HiOutlineAcademicCap, HiOutlineChartBar } from 'react-icons/hi'
+import { HiOutlineAcademicCap, HiOutlineChartBar, HiOutlineSparkles } from 'react-icons/hi'
 import { getMobileCache, getMobileUser, mobileApi, mobileCacheKey, setMobileCache } from '../services/mobileApi'
 
 interface StudentSummary {
-  attendance?: { percent?: number; attended?: number; expected?: number; recent?: any[] }
+  attendance?: {
+    percent?: number
+    attendance_rate?: number
+    period_progress_percent?: number
+    attended?: number
+    expected?: number
+    elapsed_expected?: number
+    recent?: any[]
+  }
+  highlight_progress?: {
+    status?: string
+    message?: string
+    payments_current?: boolean
+    months_completed?: number
+    progress_percent?: number
+    current_tier_months?: number | null
+    current_tier_label?: string | null
+    next_tier_months?: number | null
+    next_tier_label?: string | null
+    target_tier_months?: number | null
+    target_tier_label?: string | null
+    required_attendance?: number | null
+    attendance_rate?: number
+    attended?: number
+    expected?: number
+  }
   enrollments?: Array<{
     course_name?: string
     is_active?: boolean
@@ -41,6 +66,22 @@ export default function StudentPortal() {
   const cacheKey = mobileCacheKey('student-summary', user)
   const [summary, setSummary] = useState<StudentSummary | null>(() => getMobileCache<StudentSummary>(cacheKey))
   const [error, setError] = useState('')
+  const highlight = summary?.highlight_progress
+  const targetMonths = highlight?.target_tier_months || highlight?.next_tier_months || highlight?.current_tier_months || 4
+  const progressPercent = Math.min(100, Math.max(0, Math.round(highlight?.progress_percent || 0)))
+  const highlightTitle = highlight?.current_tier_label
+    ? `Alumno destacado ${highlight.current_tier_months}M`
+    : `Camino a destacado ${targetMonths}M`
+  const highlightStatus = highlight?.payments_current === false
+    ? 'Pago pendiente'
+    : highlight?.current_tier_label
+      ? 'Meta lograda'
+      : 'En progreso'
+  const periodAttended = summary?.attendance?.attended || 0
+  const periodExpected = summary?.attendance?.expected || 0
+  const elapsedExpected = summary?.attendance?.elapsed_expected || 0
+  const attendanceRate = Math.round(summary?.attendance?.attendance_rate ?? summary?.attendance?.percent ?? 0)
+  const periodProgress = Math.round(summary?.attendance?.period_progress_percent ?? summary?.attendance?.percent ?? 0)
 
   useEffect(() => {
     mobileApi.get('/api/pms/students/portal/me')
@@ -54,23 +95,49 @@ export default function StudentPortal() {
   return (
     <div className="space-y-4">
       <section className="relative overflow-hidden rounded-[28px] border border-slate-100 bg-white p-5 shadow-xl shadow-slate-200/70">
-        <div className="relative flex items-center justify-between gap-4">
-          <div>
-            <p className="mobile-text-primary mb-2 text-[10px] font-black uppercase tracking-[0.24em]">Progreso</p>
-            <h2 className="text-2xl font-black leading-tight text-slate-950">{Math.round(summary?.attendance?.percent || 0)}% asistencia</h2>
+        <HiOutlineSparkles className="pointer-events-none absolute -right-4 -top-4 text-fuchsia-100" size={104} />
+        <div className="relative flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="mobile-text-primary mb-2 text-[10px] font-black uppercase tracking-[0.24em]">Progreso destacado</p>
+            <h2 className="text-2xl font-black leading-tight text-slate-950">{highlightTitle}</h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-              {summary?.attendance?.expected ? `${summary.attendance.attended || 0}/${summary.attendance.expected} clases del periodo.` : 'Tu avance registrado en el estudio.'}
+              {highlight?.message || 'Tu avance registrado en el estudio.'}
             </p>
           </div>
           <div className="mobile-bg-primary flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] text-white shadow-lg shadow-slate-300/70">
             <HiOutlineChartBar size={30} />
           </div>
         </div>
-        <div className="relative mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="mobile-bg-primary h-full rounded-full"
-            style={{ width: `${Math.min(100, Math.max(0, Math.round(summary?.attendance?.percent || 0)))}%` }}
-          />
+
+        <div className="relative mt-5 grid grid-cols-2 gap-2">
+          <div className="rounded-2xl bg-slate-50 px-3 py-3">
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Asistencia</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{attendanceRate}%</p>
+            <p className="mt-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">{periodAttended}/{elapsedExpected} realizadas</p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 px-3 py-3">
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Periodo</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{periodProgress}%</p>
+            <p className="mt-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">{elapsedExpected}/{periodExpected} clases</p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 px-3 py-3">
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Meses</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{highlight?.months_completed || 0}/{targetMonths}</p>
+          </div>
+          <div className={`rounded-2xl px-3 py-3 ${highlight?.payments_current === false ? 'bg-rose-50' : 'bg-emerald-50'}`}>
+            <p className={`text-[8px] font-black uppercase tracking-widest ${highlight?.payments_current === false ? 'text-rose-500' : 'text-emerald-500'}`}>Pagos</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{highlight?.payments_current === false ? 'Pend.' : 'Al día'}</p>
+          </div>
+        </div>
+
+        <div className="relative mt-5 flex items-center justify-between">
+          <span className="rounded-full bg-slate-950 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white">{highlightStatus}</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Meta destacado: {Math.round(highlight?.attendance_rate ?? 0)}%
+          </span>
+        </div>
+        <div className="relative mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
+          <div className="mobile-bg-primary h-full rounded-full" style={{ width: `${progressPercent}%` }} />
         </div>
       </section>
 

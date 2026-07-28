@@ -78,6 +78,7 @@ export default function MobileInstallPrompt({ portalType }: Props) {
   if (installed || dismissed || platform === 'desktop') return null
 
   const hasNativePrompt = Boolean(installEvent)
+  const portalLabel = portalType === 'alumnos' ? 'alumnos' : 'profesores'
 
   return (
     <div className="mb-5 rounded-[26px] border border-white/15 bg-white/10 p-3 text-left text-white shadow-xl shadow-slate-950/20 backdrop-blur-xl">
@@ -87,9 +88,9 @@ export default function MobileInstallPrompt({ portalType }: Props) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/70">App mobile</p>
-          <h3 className="mt-0.5 text-sm font-black">Instala el portal de {portalType}</h3>
+          <h3 className="mt-0.5 text-sm font-black">Instala el portal de {portalLabel}</h3>
           <p className="mt-1 text-xs font-semibold leading-5 text-white/70">
-            Queda como app en tu celular para entrar mas rapido.
+            Queda como aplicacion en tu celular para entrar directo al portal.
           </p>
           {platform === 'ios' && (!hasNativePrompt || showManualHelp) ? (
             <p className="mt-2 rounded-2xl bg-white/10 px-3 py-2 text-[11px] font-bold leading-5 text-white/80">
@@ -110,7 +111,7 @@ export default function MobileInstallPrompt({ portalType }: Props) {
           className="mobile-bg-primary flex-1 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-950/20"
         >
           <span className="inline-flex items-center justify-center gap-2">
-            <HiOutlineDownload size={16} /> Instalar aplicación
+            <HiOutlineDownload size={16} /> Instalar app {portalLabel}
           </span>
         </button>
         <button

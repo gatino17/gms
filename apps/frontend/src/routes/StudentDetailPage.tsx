@@ -582,31 +582,33 @@ export default function StudentDetailPage() {
                           <div className="text-sm font-bold text-gray-700">{student.phone || 'Sin Teléfono'}</div>
                        </div>
                     </div>
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-3xl border border-gray-100/50">
-                       <div className="p-3 bg-white rounded-2xl text-fuchsia-600"><HiOutlineCalendar size={20} /></div>
-                       <div>
-                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Matricula</div>
-                          <div className={`text-sm font-black ${hasEnrollmentFee ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {hasEnrollmentFee ? 'Con matricula' : 'Sin matricula'}
+                    {feeSettings?.enrollment_fee_enabled && (
+                      <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-3xl border border-gray-100/50">
+                         <div className="p-3 bg-white rounded-2xl text-fuchsia-600"><HiOutlineCalendar size={20} /></div>
+                         <div>
+                            <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Matricula</div>
+                            <div className={`text-sm font-black ${hasEnrollmentFee ? 'text-emerald-600' : 'text-rose-600'}`}>
+                              {hasEnrollmentFee ? 'Con matricula' : 'Sin matricula'}
+                            </div>
+                            <div className="text-[10px] font-bold text-gray-500 mt-0.5">
+                              {hasEnrollmentFee
+                                ? `${enrollmentKind} | Ultimo cobro: ${ymdToCL(latestEnrollmentPayment?.payment_date)}`
+                                : 'No registra cobro de matricula'}
+                            </div>
+                            {canPayEnrollmentFee && (
+                              <button
+                                onClick={() => {
+                                  setFeeReference(`Matrícula ${feeSettings?.enrollment_fee_kind === 'annual' ? 'anual' : 'incorporación'}`)
+                                  setShowFeeModal(true)
+                                }}
+                                className="mt-2 inline-flex items-center px-3 py-1.5 rounded-xl bg-fuchsia-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 transition-colors"
+                              >
+                                Pagar matrícula
+                              </button>
+                            )}
                           </div>
-                          <div className="text-[10px] font-bold text-gray-500 mt-0.5">
-                            {hasEnrollmentFee
-                              ? `${enrollmentKind} | Ultimo cobro: ${ymdToCL(latestEnrollmentPayment?.payment_date)}`
-                              : 'No registra cobro de matricula'}
-                          </div>
-                          {canPayEnrollmentFee && (
-                            <button
-                              onClick={() => {
-                                setFeeReference(`Matrícula ${feeSettings?.enrollment_fee_kind === 'annual' ? 'anual' : 'incorporación'}`)
-                                setShowFeeModal(true)
-                              }}
-                              className="mt-2 inline-flex items-center px-3 py-1.5 rounded-xl bg-fuchsia-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 transition-colors"
-                            >
-                              Pagar matrícula
-                            </button>
-                          )}
-                        </div>
-                    </div>
+                      </div>
+                    )}
                     {student.joined_at && (
                       <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-3xl border border-gray-100/50">
                         <div className="p-3 bg-white rounded-2xl text-fuchsia-600"><HiOutlineCalendar size={20} /></div>

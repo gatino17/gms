@@ -74,6 +74,7 @@ type EnrollmentCourseSnapshot = {
 type TenantPlanInfo = {
   max_active_students?: number | null
   plan_name?: string | null
+  enrollment_fee_enabled?: boolean | null
 }
 
 function ymdToCL(ymd?: string | null): string { 
@@ -162,6 +163,7 @@ export default function StudentsPage() {
         setTenantPlanInfo({
           max_active_students: tenantRes.data?.max_active_students ?? null,
           plan_name: tenantRes.data?.plan_name ?? null,
+          enrollment_fee_enabled: tenantRes.data?.enrollment_fee_enabled ?? false,
         })
       } catch {
         setTenantPlanInfo({})
@@ -193,6 +195,7 @@ export default function StudentsPage() {
           ? 'bg-amber-50 text-amber-700 border-amber-200'
           : 'bg-emerald-50 text-emerald-700 border-emerald-200'
   const hasReachedCapacity = Boolean(maxActiveStudents && stats.total_active >= maxActiveStudents)
+  const enrollmentFeeEnabled = Boolean(tenantPlanInfo.enrollment_fee_enabled)
 
   const handleOpenCreate = () => {
     if (hasReachedCapacity) {
@@ -430,9 +433,11 @@ export default function StudentsPage() {
                           <span className={`inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${s.portal_enabled ? 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm shadow-fuchsia-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                             {s.portal_enabled ? 'Mobile activo' : 'Sin mobile'}
                           </span>
-	                          <span className={`hidden md:inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${s.has_registration_fee ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-	                            {s.has_registration_fee ? 'Con matrícula' : 'Sin matrícula'}
-	                          </span>
+                          {enrollmentFeeEnabled && (
+	                            <span className={`hidden md:inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${s.has_registration_fee ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+	                              {s.has_registration_fee ? 'Con matrícula' : 'Sin matrícula'}
+	                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="hidden md:table-cell px-4 py-4 text-center font-bold text-xs text-gray-500">

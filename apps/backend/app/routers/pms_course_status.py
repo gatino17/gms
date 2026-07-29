@@ -268,18 +268,31 @@ async def course_status(
             payment_status = "activo" if current_period_active else "pendiente"
             display_attendance_count = int(att_count or 0)
             display_extra_count = int(extra_count or 0)
-            display_extra_dates = [d.isoformat() for d in (extra_dates or []) if d]
+            raw_extra_dates = sorted([d for d in (extra_dates or []) if d])
+            display_extra_dates = [d.isoformat() for d in raw_extra_dates]
             enrollment_mode = "regular"
 
             if is_single_class:
                 enrollment_mode = "single_class"
-                payment_status = "activo" if single_class_date >= today else "inactivo"
                 expected = 1
-                # Standalone single-class attendance is tracked via `notes=clase_suelta`,
-                # so reuse that signal for display instead of showing it as an "extra".
-                display_attendance_count = 1 if int(extra_count or 0) > 0 else 0
-                display_extra_count = 0
-                display_extra_dates = []
+                paid_extra_dates = [d for d in raw_extra_dates if d <= single_class_date]
+                unpaid_extra_dates = [d for d in raw_extra_dates if d > single_class_date]
+
+                # Paid one-off attendance counts as the expected class. Any later
+                # attendance means the student came again without a new single-class payment.
+                display_attendance_count = max(display_attendance_count, 1 if paid_extra_dates else 0)
+                if single_class_date >= today:
+                    payment_status = "activo"
+                    display_extra_count = 0
+                    display_extra_dates = []
+                elif unpaid_extra_dates:
+                    payment_status = "pendiente"
+                    display_extra_count = len(unpaid_extra_dates)
+                    display_extra_dates = [d.isoformat() for d in unpaid_extra_dates]
+                else:
+                    payment_status = "inactivo"
+                    display_extra_count = 0
+                    display_extra_dates = []
 
             student_data = {
                 "id": student_obj.id,

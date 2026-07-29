@@ -778,13 +778,15 @@ export default function CourseStatusPage() {
                                                      <div className="h-1.5 md:h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner relative">
                                                         <div className={`h-full transition-all duration-1000 ${progress >= 100 ? 'bg-emerald-500' : progress >= 50 ? 'bg-fuchsia-500' : 'bg-rose-400'}`} style={{ width: `${progress}%` }} />
                                                      </div>
-                                                      {!isSingleClass && !!s.extra_count && s.extra_count > 0 && (
+                                                      {!!s.extra_count && s.extra_count > 0 && (
 	                                                         <div className="mt-2 flex justify-center">
                                                             <span tabIndex={0} className="group relative px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md cursor-help transition-colors hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200">
 	                                                               +{s.extra_count} Extra{s.extra_count > 1 ? 's' : ''}
                                                               <span className="pointer-events-none absolute left-1/2 bottom-full z-30 mb-2 w-64 -translate-x-1/2 rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-left text-[10px] font-bold normal-case tracking-normal text-white opacity-0 shadow-2xl shadow-black/30 transition-all duration-200 group-hover:opacity-100 group-focus:opacity-100">
                                                                 <span className="block text-[9px] font-black uppercase tracking-[0.24em] text-amber-300">Clase Extra</span>
-                                                                <span className="mt-1 block leading-relaxed text-zinc-200">Registrada fuera de las fechas de su plan regular.</span>
+                                                                <span className="mt-1 block leading-relaxed text-zinc-200">
+                                                                  {isSingleClass ? 'Asistencia posterior al ultimo pago de clase suelta.' : 'Registrada fuera de las fechas de su plan regular.'}
+                                                                </span>
                                                                 {s.extra_dates?.length ? (
                                                                   <span className="mt-2 block rounded-xl bg-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-100">
                                                                     {s.extra_dates.map(ymdToWeekdayCL).join(' · ')}

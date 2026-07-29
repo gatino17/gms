@@ -4,6 +4,7 @@ import { toAbsoluteUrl } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
 import {
   HiOutlineLockClosed,
+  HiOutlineAcademicCap,
   HiOutlineCheckCircle,
   HiOutlineUserGroup,
   HiOutlineX,
@@ -668,8 +669,8 @@ export default function AttendanceKioskPage() {
 		                      </div>
 		                      {row.teacher?.name && (
 		                        <p className="text-zinc-600 text-sm md:text-base mt-3 flex items-center gap-2 font-semibold line-clamp-1">
-	                          <span className="w-2 h-2 rounded-full bg-fuchsia-500 inline-block" />
-		                          Prof: {row.teacher.name}
+	                          <HiOutlineAcademicCap className="text-fuchsia-600 shrink-0" size={18} />
+		                          {row.teacher.name}
 		                        </p>
 		                      )}
 	                        <div className="mt-5 flex flex-wrap gap-2.5">

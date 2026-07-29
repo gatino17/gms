@@ -81,6 +81,20 @@ def _subtract_months(value: date, months: int) -> date:
     return date(year, month, min(value.day, last_day))
 
 
+def _add_months(value: date, months: int) -> date:
+    month = value.month + months
+    year = value.year
+    while month > 12:
+        month -= 12
+        year += 1
+    last_day = [
+        31,
+        29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+        31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+    ][month - 1]
+    return date(year, month, min(value.day, last_day))
+
+
 def _full_months_between(start: date | None, end: date) -> int:
     if not start or start > end:
         return 0
@@ -110,6 +124,8 @@ async def _student_highlight_progress(
             "payments_current": False,
             "months_completed": 0,
             "progress_percent": 0,
+            "stage_months": 1,
+            "stage_progress_percent": 0,
             "next_tier_months": 4,
             "next_tier_label": "Constancia 4M",
             "required_attendance": 90.0,
@@ -193,6 +209,38 @@ async def _student_highlight_progress(
     month_progress = min(100.0, round((months_completed / int(active_tier["months"])) * 100, 1)) if active_tier else 0.0
     attendance_progress = min(100.0, round((float(active_eval["attendance_rate"]) / float(active_tier["threshold"])) * 100, 1)) if active_tier else 0.0
     progress_percent = int(round(min(month_progress, attendance_progress)))
+    current_expected = 0
+    current_attended = 0
+    for enr, course in active_rows:
+        expected_for_period = _expected_classes_between(enr.start_date, enr.end_date, course)
+        if not (enr.end_date and enr.start_date == enr.end_date):
+            configured_total = int(getattr(course, "total_classes", None) or 0)
+            if configured_total > 0:
+                expected_for_period = configured_total
+        if expected_for_period <= 0:
+            continue
+        period_end = enr.end_date or today
+        current_expected += expected_for_period
+        current_attended += sum(
+            1
+            for course_id, att_date in attendance_set
+            if course_id == course.id and enr.start_date <= att_date <= period_end
+        )
+    period_completion = min(100.0, round((current_attended / current_expected) * 100, 1)) if current_expected > 0 else 0.0
+    if months_completed < 4:
+        stage_months = min(4, max(1, months_completed + 1))
+    elif achieved and next_tier:
+        stage_months = int(next_tier["months"])
+    else:
+        stage_months = int(active_tier["months"])
+    if base_start and stage_months > 0:
+        stage_target = _add_months(base_start, stage_months)
+        stage_total_days = max(1, (stage_target - base_start).days)
+        stage_elapsed_days = max(0, min(stage_total_days, (today - base_start).days))
+        time_progress = (stage_elapsed_days / stage_total_days) * 100
+        stage_progress_percent = int(round(max(time_progress, period_completion)))
+    else:
+        stage_progress_percent = int(round(period_completion))
 
     status = "completed" if achieved and not next_tier else "achieved" if achieved else "in_progress"
     if not payments_current:
@@ -206,8 +254,40 @@ async def _student_highlight_progress(
         message = "Ya alcanzaste la meta de excelencia 12M."
     elif achieved:
         message = f"Ya lograste {achieved['label']}. Siguiente meta: {active_tier['label']}."
+    elif months_completed < 4:
+        stage_messages = {
+            0: "Primer objetivo: completar 1 mes.",
+            1: "Primer mes listo. Vamos por el segundo.",
+            2: "Dos meses listos. Vamos por el tercero.",
+            3: "Tres meses listos. Vamos por Constancia 4M.",
+        }
+        message = stage_messages.get(months_completed, f"Siguiente objetivo: {stage_months}M.")
     else:
-        message = f"Avanza hacia {active_tier['label']} con asistencia constante y pagos al día."
+        message = f"Avanza hacia {active_tier['label']} con asistencia constante y pagos al dia."
+    celebration_months = None
+    if payments_current and months_completed in {1, 2, 3, 4, 6, 12}:
+        celebration_months = months_completed
+    celebration_title = None
+    celebration_message = None
+    if celebration_months:
+        if celebration_months == 1:
+            celebration_title = "Primer mes listo"
+            celebration_message = "Vas construyendo constancia. Sigue asi."
+        elif celebration_months == 2:
+            celebration_title = "Dos meses firmes"
+            celebration_message = "Tu ritmo ya se nota. Sigue sumando pasos."
+        elif celebration_months == 3:
+            celebration_title = "Tres meses constantes"
+            celebration_message = "Estas muy cerca de la meta 4M."
+        elif celebration_months == 4:
+            celebration_title = "Constancia 4M lograda"
+            celebration_message = "Este avance merece reconocimiento."
+        elif celebration_months == 6:
+            celebration_title = "Disciplina 6M lograda"
+            celebration_message = "Tu compromiso marca diferencia."
+        elif celebration_months == 12:
+            celebration_title = "Excelencia 12M lograda"
+            celebration_message = "Un ano completo de constancia."
 
     return {
         "status": status,
@@ -215,6 +295,13 @@ async def _student_highlight_progress(
         "payments_current": payments_current,
         "months_completed": months_completed,
         "progress_percent": progress_percent,
+        "stage_months": stage_months,
+        "stage_progress_percent": stage_progress_percent,
+        "period_completion_percent": period_completion,
+        "celebration_key": f"highlight-{celebration_months}m" if celebration_months else None,
+        "celebration_months": celebration_months,
+        "celebration_title": celebration_title,
+        "celebration_message": celebration_message,
         "current_tier_months": int(achieved["months"]) if achieved else None,
         "current_tier_label": achieved["label"] if achieved else None,
         "next_tier_months": int(next_tier["months"]) if next_tier else None,

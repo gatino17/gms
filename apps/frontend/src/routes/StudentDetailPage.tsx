@@ -22,7 +22,9 @@ import {
   HiOutlineChevronRight,
   HiOutlineBadgeCheck,
   HiOutlineShieldCheck,
-  HiOutlineExternalLink
+  HiOutlineExternalLink,
+  HiOutlineChartBar,
+  HiOutlineSparkles
 } from 'react-icons/hi'
 
 type PortalData = {
@@ -52,6 +54,33 @@ type PortalData = {
       teacher_name?:string|null; image_url?:string|null 
     }
   }[]
+  attendance?: {
+    percent?: number
+    attendance_rate?: number
+    period_progress_percent?: number
+    attended?: number
+    expected?: number
+    elapsed_expected?: number
+  }
+  highlight_progress?: {
+    status?: string
+    message?: string
+    payments_current?: boolean
+    months_completed?: number
+    progress_percent?: number
+    stage_months?: number
+    stage_progress_percent?: number
+    current_tier_months?: number | null
+    current_tier_label?: string | null
+    next_tier_months?: number | null
+    next_tier_label?: string | null
+    target_tier_months?: number | null
+    target_tier_label?: string | null
+    required_attendance?: number | null
+    attendance_rate?: number
+    attended?: number
+    expected?: number
+  }
   classes_active: number
   payments: {
     total_last_90:number
@@ -487,6 +516,21 @@ export default function StudentDetailPage() {
   const { student, enrollments, payments } = data
   const activeEnrollments = enrollments.filter((e) => !!e.is_active)
   const historicalEnrollments = enrollments.filter((e) => !e.is_active)
+  const highlight = data.highlight_progress
+  const highlightTargetMonths = highlight?.target_tier_months || highlight?.next_tier_months || highlight?.current_tier_months || 4
+  const highlightStageMonths = highlight?.stage_months || highlightTargetMonths
+  const highlightProgress = Math.min(100, Math.max(0, Math.round(highlight?.stage_progress_percent ?? highlight?.progress_percent ?? 0)))
+  const highlightTitle = highlight?.current_tier_label
+    ? `Alumno destacado ${highlight.current_tier_months}M`
+    : `Camino a destacado ${highlightTargetMonths}M`
+  const highlightStatus = highlight?.payments_current === false
+    ? 'Pago pendiente'
+    : highlight?.current_tier_label
+      ? 'Meta lograda'
+      : 'En progreso'
+  const highlightAttendance = Math.round(data.attendance?.percent ?? data.attendance?.attendance_rate ?? highlight?.attendance_rate ?? 0)
+  const highlightAttended = data.attendance?.attended ?? highlight?.attended ?? 0
+  const highlightExpected = data.attendance?.expected ?? highlight?.expected ?? 0
   const enrollmentPayments = (payments.recent || []).filter((p) => {
     const t = String(p.type || '').toLowerCase()
     const ref = String(p.reference || '').toLowerCase()
@@ -620,6 +664,48 @@ export default function StudentDetailPage() {
                       </div>
                     )}
                  </div>
+              </div>
+           </div>
+
+           {/* Highlight Progress Card */}
+           <div className="relative overflow-hidden rounded-[36px] border border-fuchsia-100 bg-white p-6 shadow-xl shadow-gray-100/60">
+              <HiOutlineSparkles className="pointer-events-none absolute -right-5 -top-5 text-fuchsia-100" size={96} />
+              <div className="relative flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-[0.24em] text-fuchsia-500">Avance destacado</p>
+                  <h2 className="mt-2 text-2xl font-black leading-tight text-gray-950">{highlightTitle}</h2>
+                  <p className="mt-2 text-sm font-bold leading-6 text-gray-500">
+                    {highlight?.message || 'Seguimiento de constancia, asistencia y pagos.'}
+                  </p>
+                </div>
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-purple-700 text-white shadow-lg shadow-fuchsia-100">
+                  <HiOutlineChartBar size={26} />
+                </div>
+              </div>
+
+              <div className="relative mt-5 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-gray-50 px-4 py-3 border border-gray-100">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Asistencia</p>
+                  <p className="mt-1 text-lg font-black text-gray-950">{highlightAttendance}%</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">{highlightAttended}/{highlightExpected} clases</p>
+                </div>
+                <div className="rounded-2xl bg-gray-50 px-4 py-3 border border-gray-100">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Meses</p>
+                  <p className="mt-1 text-lg font-black text-gray-950">{highlight?.months_completed || 0}/{highlightStageMonths}</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Objetivo actual</p>
+                </div>
+                <div className={`col-span-2 rounded-2xl px-4 py-3 border ${highlight?.payments_current === false ? 'border-rose-100 bg-rose-50' : 'border-emerald-100 bg-emerald-50'}`}>
+                  <p className={`text-[8px] font-black uppercase tracking-widest ${highlight?.payments_current === false ? 'text-rose-500' : 'text-emerald-500'}`}>Estado de pagos</p>
+                  <p className="mt-1 text-sm font-black text-gray-950">{highlight?.payments_current === false ? 'Pendiente de pago' : 'Al día'}</p>
+                </div>
+              </div>
+
+              <div className="relative mt-5 flex items-center justify-between gap-3">
+                <span className="rounded-full bg-gray-950 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white">{highlightStatus}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Objetivo: {highlightStageMonths}M</span>
+              </div>
+              <div className="relative mt-3 h-3 overflow-hidden rounded-full bg-gray-100">
+                <div className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-700 transition-all duration-700" style={{ width: `${highlightProgress}%` }} />
               </div>
            </div>
 

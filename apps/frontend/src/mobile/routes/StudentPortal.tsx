@@ -1,8 +1,23 @@
-﻿import { useEffect, useState } from 'react'
-import { HiOutlineAcademicCap, HiOutlineChartBar, HiOutlineSparkles } from 'react-icons/hi'
+import { useEffect, useState } from 'react'
+import {
+  HiOutlineAcademicCap,
+  HiOutlineChartBar,
+  HiOutlineEmojiHappy,
+  HiOutlineFire,
+  HiOutlineGift,
+  HiOutlineLightningBolt,
+  HiOutlineSparkles,
+  HiOutlineStar,
+} from 'react-icons/hi'
+import { toAbsoluteUrl } from '../../lib/api'
 import { getMobileCache, getMobileUser, mobileApi, mobileCacheKey, setMobileCache } from '../services/mobileApi'
 
 interface StudentSummary {
+  tenant?: {
+    id?: number
+    name?: string | null
+    logo_url?: string | null
+  }
   attendance?: {
     percent?: number
     attendance_rate?: number
@@ -18,6 +33,8 @@ interface StudentSummary {
     payments_current?: boolean
     months_completed?: number
     progress_percent?: number
+    stage_months?: number
+    stage_progress_percent?: number
     current_tier_months?: number | null
     current_tier_label?: string | null
     next_tier_months?: number | null
@@ -28,6 +45,10 @@ interface StudentSummary {
     attendance_rate?: number
     attended?: number
     expected?: number
+    celebration_key?: string | null
+    celebration_months?: number | null
+    celebration_title?: string | null
+    celebration_message?: string | null
   }
   enrollments?: Array<{
     course_name?: string
@@ -51,7 +72,7 @@ const enrollmentStatus = (item: NonNullable<StudentSummary['enrollments']>[numbe
   }
   if (item.payment_status === 'activo') {
     return {
-      label: 'Al día',
+      label: 'Al dia',
       className: 'bg-emerald-500 text-white border-emerald-300 shadow-emerald-200/80',
     }
   }
@@ -61,14 +82,68 @@ const enrollmentStatus = (item: NonNullable<StudentSummary['enrollments']>[numbe
   }
 }
 
+const celebrationVariants = {
+  1: {
+    Icon: HiOutlineSparkles,
+    Decoration: HiOutlineSparkles,
+    accent: 'mobile-text-primary',
+    badge: 'mobile-bg-primary',
+    glow: 'shadow-fuchsia-200/80',
+    dot: 'bg-fuchsia-300',
+  },
+  2: {
+    Icon: HiOutlineStar,
+    Decoration: HiOutlineStar,
+    accent: 'text-amber-500',
+    badge: 'bg-gradient-to-br from-amber-300 to-yellow-500',
+    glow: 'shadow-amber-200/80',
+    dot: 'bg-amber-300',
+  },
+  3: {
+    Icon: HiOutlineFire,
+    Decoration: HiOutlineFire,
+    accent: 'text-orange-500',
+    badge: 'bg-gradient-to-br from-orange-500 to-rose-600',
+    glow: 'shadow-orange-200/80',
+    dot: 'bg-orange-300',
+  },
+  4: {
+    Icon: HiOutlineEmojiHappy,
+    Decoration: HiOutlineSparkles,
+    accent: 'text-emerald-500',
+    badge: 'bg-gradient-to-br from-emerald-400 to-teal-600',
+    glow: 'shadow-emerald-200/80',
+    dot: 'bg-emerald-300',
+  },
+  6: {
+    Icon: HiOutlineLightningBolt,
+    Decoration: HiOutlineLightningBolt,
+    accent: 'text-sky-500',
+    badge: 'bg-gradient-to-br from-sky-400 to-indigo-600',
+    glow: 'shadow-sky-200/80',
+    dot: 'bg-sky-300',
+  },
+  12: {
+    Icon: HiOutlineGift,
+    Decoration: HiOutlineStar,
+    accent: 'text-rose-500',
+    badge: 'bg-gradient-to-br from-rose-500 to-slate-950',
+    glow: 'shadow-rose-200/80',
+    dot: 'bg-rose-300',
+  },
+}
+
 export default function StudentPortal() {
   const user = getMobileUser()
   const cacheKey = mobileCacheKey('student-summary', user)
   const [summary, setSummary] = useState<StudentSummary | null>(() => getMobileCache<StudentSummary>(cacheKey))
   const [error, setError] = useState('')
+  const [celebrationOpen, setCelebrationOpen] = useState(false)
   const highlight = summary?.highlight_progress
+  const tenantLogo = toAbsoluteUrl(summary?.tenant?.logo_url)
   const targetMonths = highlight?.target_tier_months || highlight?.next_tier_months || highlight?.current_tier_months || 4
-  const progressPercent = Math.min(100, Math.max(0, Math.round(highlight?.progress_percent || 0)))
+  const progressPercent = Math.min(100, Math.max(0, Math.round(highlight?.stage_progress_percent ?? highlight?.progress_percent ?? 0)))
+  const stageMonths = highlight?.stage_months || targetMonths
   const highlightTitle = highlight?.current_tier_label
     ? `Alumno destacado ${highlight.current_tier_months}M`
     : `Camino a destacado ${targetMonths}M`
@@ -82,6 +157,10 @@ export default function StudentPortal() {
   const elapsedExpected = summary?.attendance?.elapsed_expected || 0
   const attendanceRate = Math.round(summary?.attendance?.percent ?? summary?.attendance?.attendance_rate ?? 0)
   const periodProgress = Math.round(summary?.attendance?.period_progress_percent ?? summary?.attendance?.percent ?? 0)
+  const celebrationMonth = (highlight?.celebration_months || 1) as keyof typeof celebrationVariants
+  const celebrationVariant = celebrationVariants[celebrationMonth] || celebrationVariants[1]
+  const CelebrationIcon = celebrationVariant.Icon
+  const CelebrationDecoration = celebrationVariant.Decoration
 
   useEffect(() => {
     mobileApi.get('/api/pms/students/portal/me')
@@ -91,6 +170,22 @@ export default function StudentPortal() {
       })
       .catch((err) => setError(err?.message || 'No se pudo cargar el portal.'))
   }, [cacheKey])
+
+  useEffect(() => {
+    const key = highlight?.celebration_key
+    if (!key || !summary?.tenant?.id || !user?.id) return
+    const storageKey = `gms-mobile-celebration:${summary.tenant.id}:${user.id}:${key}`
+    if (localStorage.getItem(storageKey)) return
+    setCelebrationOpen(true)
+  }, [highlight?.celebration_key, summary?.tenant?.id, user?.id])
+
+  const closeCelebration = () => {
+    const key = highlight?.celebration_key
+    if (key && summary?.tenant?.id && user?.id) {
+      localStorage.setItem(`gms-mobile-celebration:${summary.tenant.id}:${user.id}:${key}`, '1')
+    }
+    setCelebrationOpen(false)
+  }
 
   return (
     <div className="space-y-4">
@@ -122,18 +217,18 @@ export default function StudentPortal() {
           </div>
           <div className="rounded-2xl bg-slate-50 px-3 py-3">
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Meses</p>
-            <p className="mt-1 text-sm font-black text-slate-950">{highlight?.months_completed || 0}/{targetMonths}</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{highlight?.months_completed || 0}/{stageMonths}</p>
           </div>
           <div className={`rounded-2xl px-3 py-3 ${highlight?.payments_current === false ? 'bg-rose-50' : 'bg-emerald-50'}`}>
             <p className={`text-[8px] font-black uppercase tracking-widest ${highlight?.payments_current === false ? 'text-rose-500' : 'text-emerald-500'}`}>Pagos</p>
-            <p className="mt-1 text-sm font-black text-slate-950">{highlight?.payments_current === false ? 'Pend.' : 'Al día'}</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{highlight?.payments_current === false ? 'Pend.' : 'Al dia'}</p>
           </div>
         </div>
 
         <div className="relative mt-5 flex items-center justify-between">
           <span className="rounded-full bg-slate-950 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white">{highlightStatus}</span>
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            Meta destacado: {Math.round(highlight?.attendance_rate ?? 0)}%
+            Objetivo: {stageMonths}M
           </span>
         </div>
         <div className="relative mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
@@ -172,6 +267,43 @@ export default function StudentPortal() {
       </section>
 
       {error ? <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">{error}</p> : null}
+
+      {celebrationOpen && highlight?.celebration_key ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 px-4 pb-5 pt-10 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm overflow-hidden rounded-[34px] bg-white p-6 text-center shadow-2xl shadow-slate-950/40">
+            <CelebrationDecoration className={`${celebrationVariant.accent} absolute -left-3 top-7 opacity-25`} size={74} />
+            <HiOutlineSparkles className={`${celebrationVariant.accent} absolute -right-2 top-24 opacity-20`} size={54} />
+            <span className={`absolute left-10 top-28 h-2 w-2 rounded-full ${celebrationVariant.dot}`} />
+            <span className={`absolute right-12 top-12 h-3 w-3 rounded-full ${celebrationVariant.dot} opacity-70`} />
+            <span className={`absolute right-20 bottom-28 h-1.5 w-1.5 rounded-full ${celebrationVariant.dot} opacity-80`} />
+            <div className={`relative mx-auto flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-slate-950 shadow-xl ${celebrationVariant.glow}`}>
+              {tenantLogo ? (
+                <img src={tenantLogo} alt={summary?.tenant?.name || 'Estudio'} className="h-full w-full rounded-full object-cover" />
+              ) : (
+                <span className="text-3xl font-black text-white">{(summary?.tenant?.name || 'GMS').slice(0, 1).toUpperCase()}</span>
+              )}
+            </div>
+            <p className={`${celebrationVariant.accent} mt-5 text-[10px] font-black uppercase tracking-[0.28em]`}>Logro desbloqueado</p>
+            <h3 className="mt-2 text-3xl font-black leading-tight text-slate-950">
+              {highlight.celebration_title || 'Meta cumplida'}
+            </h3>
+            <p className="mx-auto mt-3 max-w-[260px] text-sm font-bold leading-6 text-slate-500">
+              {highlight.celebration_message || 'Tu constancia ya esta dando resultados.'}
+            </p>
+            <div className={`${celebrationVariant.badge} ${celebrationVariant.glow} mx-auto mt-5 flex h-16 min-w-20 items-center justify-center gap-2 rounded-2xl px-4 text-xl font-black text-white shadow-lg`}>
+              <CelebrationIcon size={24} />
+              <span>{highlight.celebration_months}M</span>
+            </div>
+            <button
+              type="button"
+              onClick={closeCelebration}
+              className="mobile-bg-primary mt-6 w-full rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-slate-300/80"
+            >
+              Seguir avanzando
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

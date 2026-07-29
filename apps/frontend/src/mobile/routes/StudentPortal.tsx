@@ -204,28 +204,31 @@ export default function StudentPortal() {
           </div>
         </div>
 
-        <div className="relative mt-5 grid grid-cols-2 gap-2">
-          <div className="rounded-2xl bg-slate-50 px-3 py-3">
+        <div className="relative mt-5 flex items-center justify-end">
+          <span className={`rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest ${highlight?.payments_current === false ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+            {highlight?.payments_current === false ? 'Pendiente' : 'Al dia'}
+          </span>
+        </div>
+
+        <div className="relative mt-4 grid grid-cols-3 gap-2">
+          <div className="rounded-2xl bg-slate-50 px-2 py-3 text-center">
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Asistencia</p>
             <p className="mt-1 text-sm font-black text-slate-950">{attendanceRate}%</p>
             <p className="mt-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">{periodAttended}/{periodExpected} clases</p>
           </div>
-          <div className="rounded-2xl bg-slate-50 px-3 py-3">
+          <div className="rounded-2xl bg-slate-50 px-2 py-3 text-center">
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Periodo</p>
             <p className="mt-1 text-sm font-black text-slate-950">{periodProgress}%</p>
             <p className="mt-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">{elapsedExpected}/{periodExpected} clases</p>
           </div>
-          <div className="rounded-2xl bg-slate-50 px-3 py-3">
+          <div className="rounded-2xl bg-slate-50 px-2 py-3 text-center">
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Meses</p>
             <p className="mt-1 text-sm font-black text-slate-950">{highlight?.months_completed || 0}/{stageMonths}</p>
-          </div>
-          <div className={`rounded-2xl px-3 py-3 ${highlight?.payments_current === false ? 'bg-rose-50' : 'bg-emerald-50'}`}>
-            <p className={`text-[8px] font-black uppercase tracking-widest ${highlight?.payments_current === false ? 'text-rose-500' : 'text-emerald-500'}`}>Pagos</p>
-            <p className="mt-1 text-sm font-black text-slate-950">{highlight?.payments_current === false ? 'Pend.' : 'Al dia'}</p>
+            <p className="mt-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">Objetivo</p>
           </div>
         </div>
 
-        <div className="relative mt-5 flex items-center justify-between">
+        <div className="relative mt-4 flex items-center justify-between gap-3">
           <span className="rounded-full bg-slate-950 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white">{highlightStatus}</span>
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
             Objetivo: {stageMonths}M

@@ -375,14 +375,17 @@ export default function DashboardPage() {
           <section className="bg-gradient-to-br from-rose-50/80 to-white rounded-[32px] border border-rose-100 shadow-xl shadow-rose-100/20 overflow-hidden relative group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-rose-500/10 transition-all" />
             
-            <div className="px-6 py-6 border-b border-rose-100/50 flex items-center gap-4 bg-rose-100/20 backdrop-blur-sm">
-              <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-200">
-                 <HiExclamationCircle className="text-2xl" />
+            <div className="px-6 py-6 border-b border-rose-100/50 flex items-center justify-between gap-4 bg-rose-100/20 backdrop-blur-sm">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-200 shrink-0">
+                   <HiExclamationCircle className="text-2xl" />
+                </div>
+                <div className="min-w-0">
+                   <h2 className="text-lg font-black text-rose-900 tracking-tight">Pendientes</h2>
+                   <p className="text-[9px] font-bold text-rose-600/60 uppercase tracking-widest">Seguimiento</p>
+                </div>
               </div>
-              <div>
-                 <h2 className="text-lg font-black text-rose-900 tracking-tight">Pendientes</h2>
-                 <p className="text-[9px] font-bold text-rose-600/60 uppercase tracking-widest">Seguimiento</p>
-              </div>
+              <Link to="/course-status?view=pending" className="shrink-0 text-[9px] md:text-[10px] font-black text-rose-700 uppercase tracking-widest hover:text-white transition-all bg-rose-50 border border-rose-100 hover:bg-rose-600 px-3 md:px-4 py-2 rounded-full shadow-sm hover:shadow-lg hover:shadow-rose-200/60">Ver Todo</Link>
             </div>
             
             <div className="p-6 space-y-6">

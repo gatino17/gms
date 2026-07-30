@@ -11,6 +11,7 @@ from datetime import datetime
 import unicodedata
 
 from app.core import security
+from app.core.config import settings
 
 from app.pms.models import Student, Tenant, TenantPlan
 from app.pms.models import Course, Enrollment, Attendance, Payment, Teacher
@@ -986,6 +987,7 @@ async def portal_login(payload: dict, db: AsyncSession = Depends(get_db_session)
         raise HTTPException(status_code=403, detail="Acceso mobile no habilitado para este alumno")
     token = security.create_access_token(
         student.id,
+        expires_delta=timedelta(days=settings.mobile_access_token_expire_days),
         extra={"role": "student", "tenant_id": tid}
     )
     # invalidar
@@ -994,6 +996,7 @@ async def portal_login(payload: dict, db: AsyncSession = Depends(get_db_session)
     return {
         "access_token": token,
         "token_type": "bearer",
+        "expires_in_days": settings.mobile_access_token_expire_days,
         "student": {
             "id": student.id,
             "email": student.email,

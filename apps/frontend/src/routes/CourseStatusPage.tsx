@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { api, toAbsoluteUrl } from '../lib/api'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   HiOutlineMail,
   HiOutlinePhone,
@@ -175,6 +175,7 @@ const courseDayIndexes = (course: Pick<CourseRow['course'], 'day_of_week' | 'day
 
 export default function CourseStatusPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { tenantId } = useTenant()
   const [data, setData] = useState<CourseRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -183,7 +184,12 @@ export default function CourseStatusPage() {
   const [renewModalData, setRenewModalData] = useState<{ studentId: number; courseId: number; enrollmentId: number } | null>(null)
 
   // View state: 'detailed' | 'pending' | 'summary' | 'gender'
-  const [viewMode, setViewMode] = useState<'detailed' | 'pending' | 'summary' | 'gender'>('detailed')
+  const [viewMode, setViewMode] = useState<'detailed' | 'pending' | 'summary' | 'gender'>(() => (
+    searchParams.get('view') === 'pending' ? 'pending' : 'detailed'
+  ))
+  useEffect(() => {
+    if (searchParams.get('view') === 'pending') setViewMode('pending')
+  }, [searchParams])
 
   // Filters
   const [courseQ, setCourseQ] = useState('')

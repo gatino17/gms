@@ -288,26 +288,25 @@ async def course_status(
             if is_single_class:
                 enrollment_mode = "single_class"
                 expected = 1
-                paid_extra_dates = [d for d in raw_extra_dates if d in paid_single_class_dates or d <= single_class_date]
                 unpaid_extra_dates = [d for d in raw_extra_dates if d > single_class_date]
+                fallback_dates = [d for d in raw_att_dates if d > single_class_date]
+                pending_extra_dates = unpaid_extra_dates or fallback_dates
 
                 # Course-status presents the latest single-class payment as the
                 # covered class. Any attendance after that date is an unpaid extra.
-                display_attendance_count = max(display_attendance_count, 1 if paid_extra_dates else 0)
-                total_attendance_for_single = max(display_attendance_count, len(raw_extra_dates), len(raw_att_dates))
-                over_attendance_count = max(0, total_attendance_for_single - expected)
+                display_attendance_count = expected + len(pending_extra_dates)
                 if single_class_date >= today:
                     payment_status = "activo"
+                    display_attendance_count = expected
                     display_extra_count = 0
                     display_extra_dates = []
-                elif unpaid_extra_dates or over_attendance_count > 0:
+                elif pending_extra_dates:
                     payment_status = "pendiente"
-                    unpaid_dates = [d for d in raw_extra_dates if d > single_class_date]
-                    fallback_dates = [d for d in raw_att_dates if d > single_class_date]
-                    display_extra_count = len(unpaid_dates or fallback_dates) or over_attendance_count
-                    display_extra_dates = [d.isoformat() for d in (unpaid_dates or fallback_dates)]
+                    display_extra_count = len(pending_extra_dates)
+                    display_extra_dates = [d.isoformat() for d in pending_extra_dates]
                 else:
                     payment_status = "inactivo"
+                    display_attendance_count = expected
                     display_extra_count = 0
                     display_extra_dates = []
 

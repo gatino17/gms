@@ -24,11 +24,17 @@ type Course = {
   teacher_name?: string | null
   room_name?: string | null
   image_url?: string | null
+  start_date?: string | null
 }
 
 const DAY_NAMES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
 const hhmm = (t?: string | null) => (t ? String(t).slice(0,5) : '--:--')
 const toHour = (t?: string | null) => t ? Number(t.split(':')[0]) : null
+const toDDMMYYYY = (ymd?: string | null) => {
+  if (!ymd) return null
+  const [year, month, day] = String(ymd).slice(0, 10).split('-')
+  return year && month && day ? `${day}-${month}-${year}` : null
+}
 
 const THEME_COLORS = [
   { from: 'from-fuchsia-600', via: 'via-fuchsia-600/90', to: 'to-purple-700', text: 'text-fuchsia-600', light: 'bg-fuchsia-50' },
@@ -229,6 +235,12 @@ export default function CalendarPage() {
                                         <HiOutlineLocationMarker size={12} />
                                         <span className="truncate max-w-[60px] md:max-w-[80px]">{c.room_name || 'Gral.'}</span>
                                       </div>
+                                      {c.start_date && (
+                                        <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-bold text-white bg-white/15 backdrop-blur-sm px-2 py-1 rounded-lg w-fit shrink-0 border border-white/15">
+                                          <HiOutlineCalendar size={12} />
+                                          <span>Inicio {toDDMMYYYY(c.start_date)}</span>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                   

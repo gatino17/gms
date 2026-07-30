@@ -183,7 +183,28 @@ async def course_status(
     if course_q: stmt = stmt.where(Course.name.ilike(f"%{course_q}%"))
     if course_id: stmt = stmt.where(Course.id == course_id)
     if student_q:
-        stmt = stmt.where(or_(Student.first_name.ilike(f"%{student_q}%"), Student.last_name.ilike(f"%{student_q}%")))
+        clean_student_q = " ".join(student_q.split())
+        student_full_name = func.concat(
+            func.coalesce(Student.first_name, ""),
+            " ",
+            func.coalesce(Student.last_name, ""),
+        )
+        student_reverse_name = func.concat(
+            func.coalesce(Student.last_name, ""),
+            " ",
+            func.coalesce(Student.first_name, ""),
+        )
+        student_tokens = [token for token in clean_student_q.split(" ") if token]
+        if student_tokens:
+            stmt = stmt.where(and_(*[
+                or_(
+                    Student.first_name.ilike(f"%{token}%"),
+                    Student.last_name.ilike(f"%{token}%"),
+                    student_full_name.ilike(f"%{token}%"),
+                    student_reverse_name.ilike(f"%{token}%"),
+                )
+                for token in student_tokens
+            ]))
     effective_day = day_of_week
     local_now = datetime.now(ZoneInfo(settings.tz))
     if effective_day is None and use_today:

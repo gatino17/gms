@@ -385,11 +385,28 @@ export default function CourseStatusPage() {
     if (m.includes('no entregado')) return 'text-rose-600'
     return 'text-gray-500'
   }
+  const normalizeSearch = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim()
+
+  const studentMatchesQuery = (s: StudentStatus, query: string) => {
+    const normalizedQuery = normalizeSearch(query)
+    if (!normalizedQuery) return true
+    const tokens = normalizedQuery.split(' ').filter(Boolean)
+    const fullName = normalizeSearch(`${s.first_name || ''} ${s.last_name || ''}`)
+    const reverseName = normalizeSearch(`${s.last_name || ''} ${s.first_name || ''}`)
+    return tokens.every(token => fullName.includes(token) || reverseName.includes(token))
+  }
+
   const filteredData = useMemo(() => {
     return data.map(row => ({
       ...row,
       students: row.students.filter(s => {
-        const matchesStudent = !studentQ || (s.first_name + ' ' + s.last_name).toLowerCase().includes(studentQ.toLowerCase())
+        const matchesStudent = studentMatchesQuery(s, studentQ)
         const matchesPending = viewMode !== 'pending' || isPendingStatus(s.payment_status)
         return matchesStudent && matchesPending
       })

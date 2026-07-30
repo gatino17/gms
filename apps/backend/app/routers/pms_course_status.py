@@ -87,7 +87,8 @@ async def course_status(
             Enrollment.id.label("enrollment_id"),
             Attendance.student_id, 
             Attendance.course_id, 
-            func.count(Attendance.id).label("count")
+            func.count(Attendance.id).label("count"),
+            func.array_agg(func.distinct(cast(Attendance.attended_at, Date))).label("dates"),
         )
         .join(Enrollment, and_(
             Enrollment.student_id == Attendance.student_id,
@@ -136,6 +137,7 @@ async def course_status(
             Payment.student_id,
             Payment.course_id,
             func.max(Payment.payment_date).label("latest_single_class_date"),
+            func.array_agg(func.distinct(Payment.payment_date)).label("single_class_paid_dates"),
         )
         .where(
             Payment.tenant_id == tenant_id,
@@ -160,9 +162,11 @@ async def course_status(
             Enrollment.start_date.label("enr_start"),
             Enrollment.end_date.label("enr_end"),
             func.coalesce(att_subquery.c.count, 0).label("att_count"),
+            att_subquery.c.dates.label("att_dates"),
             func.coalesce(extra_subquery.c.count, 0).label("extra_count"),
             extra_subquery.c.dates.label("extra_dates"),
             single_class_payment_subquery.c.latest_single_class_date.label("latest_single_class_date"),
+            single_class_payment_subquery.c.single_class_paid_dates.label("single_class_paid_dates"),
         )
         .join(Enrollment, enrollment_join, isouter=True)
         .join(Student, student_join, isouter=True)
@@ -215,7 +219,7 @@ async def course_status(
                 count += 1
         return count
 
-    for course_obj, t_name, student_obj, enr_id, enr_start, enr_end, att_count, extra_count, extra_dates, latest_single_class_date in rows:
+    for course_obj, t_name, student_obj, enr_id, enr_start, enr_end, att_count, att_dates, extra_count, extra_dates, latest_single_class_date, single_class_paid_dates in rows:
         cid = course_obj.id
         if cid not in grouped:
             attendance_window = _attendance_window_payload(course_obj, local_now)
@@ -255,40 +259,53 @@ async def course_status(
             expected = count_weekdays(enr_start, enr_end or today, dows)
             current_period_active = bool(enr_end and enr_end >= today)
 
-            # A standalone single-class should read as:
-            # - Paid on or before its class date
-            # - Inactive after that day
-            # and it should not be reported as a pending monthly renewal.
-            single_class_date = None
-            if latest_single_class_date and not current_period_active:
-                if enr_end is None or latest_single_class_date >= enr_end:
-                    single_class_date = latest_single_class_date
-
-            is_single_class = single_class_date is not None
             payment_status = "activo" if current_period_active else "pendiente"
             display_attendance_count = int(att_count or 0)
             display_extra_count = int(extra_count or 0)
+            raw_att_dates = sorted([d for d in (att_dates or []) if d])
             raw_extra_dates = sorted([d for d in (extra_dates or []) if d])
+            paid_single_class_dates = sorted([d for d in (single_class_paid_dates or []) if d])
             display_extra_dates = [d.isoformat() for d in raw_extra_dates]
             enrollment_mode = "regular"
+
+            # A standalone single-class should read as:
+            # - Paid on or before its class date
+            # - Inactive after that day
+            # - Pending when there are attendances above the paid single classes
+            #
+            # Some single-class enrollments can keep a different end_date after
+            # extra attendances, so the presence of single-class payments/marks is
+            # enough to keep this row in single-class mode once the period is not active.
+            single_class_date = None
+            has_single_class_activity = bool(latest_single_class_date or paid_single_class_dates)
+            if has_single_class_activity and not current_period_active:
+                single_class_date = latest_single_class_date or enr_end
+            if not single_class_date and enr_end and enr_start == enr_end:
+                single_class_date = enr_end
+
+            is_single_class = single_class_date is not None
 
             if is_single_class:
                 enrollment_mode = "single_class"
                 expected = 1
-                paid_extra_dates = [d for d in raw_extra_dates if d <= single_class_date]
+                paid_extra_dates = [d for d in raw_extra_dates if d in paid_single_class_dates or d <= single_class_date]
                 unpaid_extra_dates = [d for d in raw_extra_dates if d > single_class_date]
 
-                # Paid one-off attendance counts as the expected class. Any later
-                # attendance means the student came again without a new single-class payment.
+                # Course-status presents the latest single-class payment as the
+                # covered class. Any attendance after that date is an unpaid extra.
                 display_attendance_count = max(display_attendance_count, 1 if paid_extra_dates else 0)
+                total_attendance_for_single = max(display_attendance_count, len(raw_extra_dates), len(raw_att_dates))
+                over_attendance_count = max(0, total_attendance_for_single - expected)
                 if single_class_date >= today:
                     payment_status = "activo"
                     display_extra_count = 0
                     display_extra_dates = []
-                elif unpaid_extra_dates:
+                elif unpaid_extra_dates or over_attendance_count > 0:
                     payment_status = "pendiente"
-                    display_extra_count = len(unpaid_extra_dates)
-                    display_extra_dates = [d.isoformat() for d in unpaid_extra_dates]
+                    unpaid_dates = [d for d in raw_extra_dates if d > single_class_date]
+                    fallback_dates = [d for d in raw_att_dates if d > single_class_date]
+                    display_extra_count = len(unpaid_dates or fallback_dates) or over_attendance_count
+                    display_extra_dates = [d.isoformat() for d in (unpaid_dates or fallback_dates)]
                 else:
                     payment_status = "inactivo"
                     display_extra_count = 0

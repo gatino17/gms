@@ -212,6 +212,7 @@ async def _student_highlight_progress(
     progress_percent = int(round(min(month_progress, attendance_progress)))
     current_expected = 0
     current_attended = 0
+    period_completed_recently = False
     for enr, course in active_rows:
         expected_for_period = _expected_classes_between(enr.start_date, enr.end_date, course)
         if not (enr.end_date and enr.start_date == enr.end_date):
@@ -228,6 +229,11 @@ async def _student_highlight_progress(
             if course_id == course.id and enr.start_date <= att_date <= period_end
         )
     period_completion = min(100.0, round((current_attended / current_expected) * 100, 1)) if current_expected > 0 else 0.0
+    if current_expected > 0 and current_attended >= current_expected:
+        period_completed_recently = any(
+            bool(enr.end_date and today - timedelta(days=7) <= enr.end_date <= today)
+            for enr, _course in active_rows
+        )
     if months_completed < 4:
         stage_months = min(4, max(1, months_completed + 1))
     elif achieved and next_tier:
@@ -249,7 +255,9 @@ async def _student_highlight_progress(
     elif not active_eval["expected"]:
         status = "not_enough_data"
 
-    if status == "payment_pending":
+    if status == "payment_pending" and period_completed_recently:
+        message = "Primer mes listo. Renueva para seguir avanzando."
+    elif status == "payment_pending":
         message = "Regulariza tu curso para seguir acumulando hacia alumno destacado."
     elif status == "completed":
         message = "Ya alcanzaste la meta de excelencia 12M."
@@ -268,6 +276,8 @@ async def _student_highlight_progress(
     celebration_months = None
     if payments_current and months_completed in {1, 2, 3, 4, 6, 12}:
         celebration_months = months_completed
+    elif period_completed_recently:
+        celebration_months = max(1, months_completed)
     celebration_title = None
     celebration_message = None
     if celebration_months:

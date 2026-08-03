@@ -231,7 +231,8 @@ async def _student_highlight_progress(
             if course_id == course.id and enr.start_date <= att_date <= period_end
         )
     period_completion = min(100.0, round((current_attended / current_expected) * 100, 1)) if current_expected > 0 else 0.0
-    if current_expected > 0 and current_attended >= current_expected:
+    period_completion_threshold = float(tiers[0]["threshold"])
+    if current_expected > 0 and period_completion >= period_completion_threshold:
         period_completed_recently = any(
             bool(enr.end_date and today - timedelta(days=7) <= enr.end_date <= today)
             for enr, _course in active_rows

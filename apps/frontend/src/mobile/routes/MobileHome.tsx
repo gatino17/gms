@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { HiOutlineAcademicCap, HiOutlineCake, HiOutlineCheckCircle, HiOutlineClock, HiOutlineSparkles, HiOutlineSpeakerphone, HiOutlineUserGroup, HiOutlineX } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
@@ -279,6 +279,8 @@ export default function MobileHome() {
   const [announcements, setAnnouncements] = useState<Announcement[]>(() => getMobileCache<Announcement[]>(announcementsCacheKey) || [])
   const [announcementSlide, setAnnouncementSlide] = useState(0)
   const [expandedAnnouncementImage, setExpandedAnnouncementImage] = useState<{ src: string; title: string } | null>(null)
+  const announcementTouchStart = useRef<{ x: number; y: number } | null>(null)
+  const announcementTouchMoved = useRef(false)
 
   const birthdayStudents = useMemo(() => {
     const byStudent = new Map<number, { id: number; name: string; photo_url?: string | null; courses: string[] }>()
@@ -380,6 +382,26 @@ export default function MobileHome() {
         const openAnnouncementImage = () => {
           if (image) setExpandedAnnouncementImage({ src: image, title: currentAnnouncement.title })
         }
+        const handleAnnouncementTouchStart = (event: TouchEvent<HTMLButtonElement>) => {
+          const touch = event.touches[0]
+          announcementTouchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null
+          announcementTouchMoved.current = false
+        }
+        const handleAnnouncementTouchMove = (event: TouchEvent<HTMLButtonElement>) => {
+          const start = announcementTouchStart.current
+          const touch = event.touches[0]
+          if (!start || !touch) return
+          const movedX = Math.abs(touch.clientX - start.x)
+          const movedY = Math.abs(touch.clientY - start.y)
+          if (movedX > 8 || movedY > 8) announcementTouchMoved.current = true
+        }
+        const handleAnnouncementClick = () => {
+          if (announcementTouchMoved.current) {
+            announcementTouchMoved.current = false
+            return
+          }
+          openAnnouncementImage()
+        }
         return (
           <article
             key={currentAnnouncement.id}
@@ -387,8 +409,9 @@ export default function MobileHome() {
           >
             <button
               type="button"
-              onClick={openAnnouncementImage}
-              onTouchStart={openAnnouncementImage}
+              onClick={handleAnnouncementClick}
+              onTouchStart={handleAnnouncementTouchStart}
+              onTouchMove={handleAnnouncementTouchMove}
               disabled={!image}
               className="relative block min-h-[330px] w-full overflow-hidden bg-slate-950 text-left disabled:cursor-default"
               aria-label={image ? 'Ver imagen del aviso en grande' : currentAnnouncement.title}

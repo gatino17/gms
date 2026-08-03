@@ -118,6 +118,8 @@ async def _student_highlight_progress(
         {"months": 12, "threshold": 95.0, "label": "Excelencia 12M"},
     ]
     active_rows = [(enr, course) for enr, course in enroll_rows if enr.is_active and getattr(course, "is_active", True)]
+    if len(active_rows) >= 2:
+        tiers[0] = {**tiers[0], "threshold": 80.0}
     if not active_rows:
         return {
             "status": "no_courses",

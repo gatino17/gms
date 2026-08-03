@@ -338,11 +338,17 @@ export default function StudentDetailPage() {
 
   const handleDayClick = async (day: CalDay) => {
     if (day.date > todayYMD) return
-    if (day.attended && day.attended_course_ids && day.attended_course_ids.length > 0) {
-      setDeleteAttendanceModal({ date: day.date, courseIds: day.attended_course_ids })
+    const expectedCourseIds = day.expected_course_ids || []
+    const attendedCourseIds = day.attended_course_ids || []
+    const missingExpectedCourseIds = expectedCourseIds.filter((courseId) => !attendedCourseIds.includes(courseId))
+    if (missingExpectedCourseIds.length > 0) {
+      setMarkAttendanceModal({ date: day.date, mode: 'expected', courseIds: missingExpectedCourseIds })
       return
     }
-    const expectedCourseIds = day.expected_course_ids || []
+    if (day.attended && attendedCourseIds.length > 0) {
+      setDeleteAttendanceModal({ date: day.date, courseIds: attendedCourseIds })
+      return
+    }
     if (expectedCourseIds.length > 0) {
       setMarkAttendanceModal({ date: day.date, mode: 'expected', courseIds: expectedCourseIds })
       return
@@ -383,16 +389,18 @@ export default function StudentDetailPage() {
     }
   }
 
-  const markAttendanceForCourse = async (courseId: number, attendedDate: string, isRecovery = false) => {
+  const markAttendanceForCourses = async (courseIds: number[], attendedDate: string, isRecovery = false) => {
     if (!id) return
     setSavingAttendance(true)
     try {
-      await api.post('/api/pms/attendance', {
-        student_id: Number(id),
-        course_id: courseId,
-        date: attendedDate,
-        is_recovery: isRecovery,
-      })
+      for (const courseId of courseIds) {
+        await api.post('/api/pms/attendance', {
+          student_id: Number(id),
+          course_id: courseId,
+          date: attendedDate,
+          is_recovery: isRecovery,
+        })
+      }
       await loadCalendar()
       await loadData(false)
       setMarkAttendanceModal(null)
@@ -401,6 +409,10 @@ export default function StudentDetailPage() {
     } finally {
       setSavingAttendance(false)
     }
+  }
+
+  const markAttendanceForCourse = async (courseId: number, attendedDate: string, isRecovery = false) => {
+    await markAttendanceForCourses([courseId], attendedDate, isRecovery)
   }
 
   const openStudentPdfReport = async () => {
@@ -1166,12 +1178,29 @@ export default function StudentDetailPage() {
                 Día {ymdToCL(markAttendanceModal.date)}.
                 {' '}
                 {markAttendanceModal.mode === 'expected'
-                  ? 'Selecciona el curso para registrar la asistencia olvidada.'
+                  ? 'Selecciona el curso o registra todos los pendientes del día.'
                   : 'Selecciona el curso para registrar una asistencia fuera del horario habitual.'}
               </p>
             </div>
 
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {markAttendanceModal.courseIds.length > 1 && (
+                <button
+                  onClick={() => markAttendanceForCourses(markAttendanceModal.courseIds, markAttendanceModal.date, markAttendanceModal.mode === 'recovery')}
+                  disabled={savingAttendance}
+                  className="w-full text-left p-4 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 hover:border-fuchsia-300 hover:bg-fuchsia-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-black text-fuchsia-700">Registrar todos los cursos pendientes</div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-fuchsia-400 mt-1">
+                        {markAttendanceModal.courseIds.length} cursos para este día
+                      </div>
+                    </div>
+                    <HiOutlineCheckCircle className="text-fuchsia-600 shrink-0" size={22} />
+                  </div>
+                </button>
+              )}
               {markAttendanceModal.courseIds.map((courseId) => (
                 <button
                   key={courseId}

@@ -176,10 +176,15 @@ export default function MobilePayments() {
                   key={`${item.id || courseName}-${index}`}
                   type="button"
                   onClick={() => {
+                    if (!onlineEnabled) return
                     setCheckoutError('')
                     setSelectedPendingEnrollment(item)
                   }}
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-left"
+                  className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left ${
+                    onlineEnabled
+                      ? 'border-slate-100 bg-slate-50 active:scale-[0.99]'
+                      : 'cursor-default border-rose-100 bg-rose-50/70'
+                  }`}
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-black text-slate-950">{courseName}</p>
@@ -187,7 +192,7 @@ export default function MobilePayments() {
                       {formatDate(item.next_payment_period_start || item.start_date)} / {formatDate(item.next_payment_period_end || item.end_date)}
                     </p>
                   </div>
-                  <span className={`${onlineEnabled ? 'mobile-bg-primary text-white' : 'bg-slate-200 text-slate-600'} shrink-0 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest`}>
+                  <span className={`${onlineEnabled ? 'mobile-bg-primary text-white' : 'bg-rose-600 text-white'} shrink-0 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest shadow-sm ${onlineEnabled ? '' : 'shadow-rose-200'}`}>
                     {onlineEnabled ? 'Pagar' : 'Pendiente'}
                   </span>
                 </button>

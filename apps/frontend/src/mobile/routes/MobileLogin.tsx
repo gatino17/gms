@@ -16,6 +16,7 @@ export default function MobileLogin() {
   const [tenantLoading, setTenantLoading] = useState(!!studioSlug)
   const [code, setCode] = useState('')
   const [debugCode, setDebugCode] = useState('')
+  const [codeCopied, setCodeCopied] = useState(false)
   const [loading, setLoading] = useState(false)
   const [requestingCode, setRequestingCode] = useState(false)
   const [error, setError] = useState('')
@@ -58,11 +59,27 @@ export default function MobileLogin() {
       }
       const { data } = await mobileApi.post('/api/pms/students/portal/request_code', payload)
       setDebugCode(data?.code || '')
-      if (data?.code) setCode(data.code)
+      setCodeCopied(false)
     } catch (err: any) {
       setError(err?.message || 'No se pudo solicitar el codigo.')
     } finally {
       setRequestingCode(false)
+    }
+  }
+
+  const applyDebugCode = () => {
+    if (!debugCode) return
+    setCode(debugCode)
+  }
+
+  const copyDebugCode = async () => {
+    if (!debugCode) return
+    try {
+      await navigator.clipboard?.writeText(debugCode)
+      setCodeCopied(true)
+    } catch {
+      setCode(debugCode)
+      setCodeCopied(true)
     }
   }
 
@@ -149,6 +166,39 @@ export default function MobileLogin() {
 
         <MobileInstallPrompt portalType="alumnos" />
 
+        {debugCode ? (
+          <div className="mb-4 overflow-hidden rounded-[24px] border border-white/10 bg-white text-slate-950 shadow-2xl shadow-slate-950/30">
+            <div className="mobile-bg-primary px-4 py-3 text-white">
+              <p className="text-[9px] font-black uppercase tracking-[0.26em] text-white/80">Codigo listo</p>
+              <p className="mt-1 text-sm font-black">Usa tu codigo temporal para ingresar.</p>
+            </div>
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <div>
+                <p className="font-mono text-2xl font-black tracking-[0.18em] text-slate-950">{debugCode}</p>
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  {codeCopied ? 'Copiado al portapapeles' : 'Puedes copiarlo o aplicarlo directo'}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  onClick={copyDebugCode}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-600"
+                >
+                  Copiar
+                </button>
+                <button
+                  type="button"
+                  onClick={applyDebugCode}
+                  className="mobile-bg-primary rounded-2xl px-3 py-2 text-[9px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-300/70"
+                >
+                  Aplicar
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="rounded-[34px] border border-white/10 bg-white p-5 text-slate-950 shadow-2xl">
           <div className="mobile-bg-primary-soft mb-5 rounded-2xl px-4 py-3">
             <p className="mobile-text-primary text-[10px] font-black uppercase tracking-[0.24em]">Acceso alumno</p>
@@ -200,11 +250,6 @@ export default function MobileLogin() {
                   placeholder="000000"
                 />
               </div>
-              {debugCode ? (
-                <p className="mobile-bg-primary-soft mobile-text-primary mt-2 rounded-xl px-3 py-2 text-xs font-bold">
-                  Codigo de prueba: {debugCode}
-                </p>
-              ) : null}
             </label>
 
             {error ? <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">{error}</p> : null}

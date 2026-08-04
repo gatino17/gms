@@ -155,7 +155,7 @@ export default function MobilePayments() {
         ) : null}
       </section>
 
-      {onlineEnabled && pendingEnrollments.length ? (
+      {pendingEnrollments.length ? (
         <section className="rounded-[28px] border border-rose-100 bg-white p-4 shadow-xl shadow-slate-200/70">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -187,8 +187,8 @@ export default function MobilePayments() {
                       {formatDate(item.next_payment_period_start || item.start_date)} / {formatDate(item.next_payment_period_end || item.end_date)}
                     </p>
                   </div>
-                  <span className="mobile-bg-primary shrink-0 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white">
-                    Pagar
+                  <span className={`${onlineEnabled ? 'mobile-bg-primary text-white' : 'bg-slate-200 text-slate-600'} shrink-0 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest`}>
+                    {onlineEnabled ? 'Pagar' : 'Pendiente'}
                   </span>
                 </button>
               )
@@ -361,23 +361,34 @@ export default function MobilePayments() {
                   </p>
                 </div>
               ) : null}
-              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-amber-600">Mercado Pago</p>
-                <p className="mt-1 text-sm font-bold leading-6 text-slate-700">
-                  Seras redirigido al checkout de prueba para completar el pago.
-                </p>
-              </div>
+              {onlineEnabled ? (
+                <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-amber-600">Mercado Pago</p>
+                  <p className="mt-1 text-sm font-bold leading-6 text-slate-700">
+                    Seras redirigido al checkout de prueba para completar el pago.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Pago en recepcion</p>
+                  <p className="mt-1 text-sm font-bold leading-6 text-slate-700">
+                    Este curso esta pendiente. Regulariza el pago directamente con tu estudio.
+                  </p>
+                </div>
+              )}
               {checkoutError ? (
                 <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-black text-rose-600">{checkoutError}</p>
               ) : null}
-              <button
-                type="button"
-                onClick={() => startMercadoPagoCheckout(selectedPendingEnrollment)}
-                disabled={checkoutLoading}
-                className="mobile-bg-primary w-full rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-slate-300/70 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {checkoutLoading ? 'Preparando pago...' : 'Pagar con Mercado Pago'}
-              </button>
+              {onlineEnabled ? (
+                <button
+                  type="button"
+                  onClick={() => startMercadoPagoCheckout(selectedPendingEnrollment)}
+                  disabled={checkoutLoading}
+                  className="mobile-bg-primary w-full rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-slate-300/70 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {checkoutLoading ? 'Preparando pago...' : 'Pagar con Mercado Pago'}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

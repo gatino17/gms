@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import {
   HiOutlineAcademicCap,
   HiOutlineChartBar,
+  HiOutlineCreditCard,
   HiOutlineEmojiHappy,
   HiOutlineFire,
   HiOutlineGift,
   HiOutlineLightningBolt,
   HiOutlineSparkles,
   HiOutlineStar,
+  HiOutlineX,
 } from 'react-icons/hi'
 import { toAbsoluteUrl } from '../../lib/api'
 import { getMobileCache, getMobileUser, mobileApi, mobileCacheKey, setMobileCache } from '../services/mobileApi'
@@ -17,6 +19,7 @@ interface StudentSummary {
     id?: number
     name?: string | null
     logo_url?: string | null
+    online_payments_enabled?: boolean
   }
   attendance?: {
     percent?: number
@@ -51,12 +54,17 @@ interface StudentSummary {
     celebration_message?: string | null
   }
   enrollments?: Array<{
+    id?: number
     course_name?: string
     is_active?: boolean
     payment_status?: string | null
     start_date?: string
     end_date?: string
+    next_payment_period_start?: string | null
+    next_payment_period_end?: string | null
+    payment_amount?: number | null
     course?: {
+      id?: number
       name?: string | null
       teacher_name?: string | null
     }
@@ -139,8 +147,12 @@ export default function StudentPortal() {
   const [summary, setSummary] = useState<StudentSummary | null>(() => getMobileCache<StudentSummary>(cacheKey))
   const [error, setError] = useState('')
   const [celebrationOpen, setCelebrationOpen] = useState(false)
+  const [selectedPaymentEnrollment, setSelectedPaymentEnrollment] = useState<NonNullable<StudentSummary['enrollments']>[number] | null>(null)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [checkoutError, setCheckoutError] = useState('')
   const highlight = summary?.highlight_progress
   const tenantLogo = toAbsoluteUrl(summary?.tenant?.logo_url)
+  const onlinePaymentsEnabled = !!summary?.tenant?.online_payments_enabled
   const targetMonths = highlight?.target_tier_months || highlight?.next_tier_months || highlight?.current_tier_months || 4
   const progressPercent = Math.min(100, Math.max(0, Math.round(highlight?.stage_progress_percent ?? highlight?.progress_percent ?? 0)))
   const stageMonths = highlight?.stage_months || targetMonths
@@ -185,6 +197,28 @@ export default function StudentPortal() {
       localStorage.setItem(`gms-mobile-celebration:${summary.tenant.id}:${user.id}:${key}`, '1')
     }
     setCelebrationOpen(false)
+  }
+
+  const startMercadoPagoCheckout = async (enrollment: NonNullable<StudentSummary['enrollments']>[number]) => {
+    if (!enrollment.id) {
+      setCheckoutError('No se encontro la inscripcion del curso.')
+      return
+    }
+    try {
+      setCheckoutLoading(true)
+      setCheckoutError('')
+      const { data } = await mobileApi.post('/api/pms/mercadopago/checkout', {
+        enrollment_id: enrollment.id,
+      })
+      const checkoutUrl = data?.sandbox_init_point || data?.init_point
+      if (!checkoutUrl) {
+        throw new Error('Mercado Pago no devolvio link de pago.')
+      }
+      window.location.assign(checkoutUrl)
+    } catch (err: any) {
+      setCheckoutError(err?.message || 'No se pudo iniciar el pago online.')
+      setCheckoutLoading(false)
+    }
   }
 
   return (
@@ -253,6 +287,7 @@ export default function StudentPortal() {
           {summary?.enrollments?.length ? summary.enrollments.map((item, index) => {
             const courseName = item.course?.name || item.course_name || 'Curso sin nombre'
             const status = enrollmentStatus(item)
+            const canPayOnline = onlinePaymentsEnabled && item.is_active !== false && item.payment_status !== 'activo'
             return (
               <div key={`${courseName}-${index}`} className="relative mt-4 rounded-2xl border border-white/80 bg-white p-4 pt-7 text-slate-950 shadow-sm shadow-slate-300/50">
                 <span className={`absolute right-4 top-0 -translate-y-1/2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-widest shadow-lg ${status.className}`}>
@@ -263,6 +298,19 @@ export default function StudentPortal() {
                   <p className="mobile-text-primary mt-1 text-[10px] font-black uppercase tracking-widest">Prof. {item.course.teacher_name}</p>
                 ) : null}
                 <p className="mt-1 text-xs font-bold text-slate-500">{item.start_date || '-'} / {item.end_date || '-'}</p>
+                {canPayOnline ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCheckoutError('')
+                      setSelectedPaymentEnrollment(item)
+                    }}
+                    className="mobile-bg-primary mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-300/70"
+                  >
+                    <HiOutlineCreditCard size={16} />
+                    Pagar curso
+                  </button>
+                ) : null}
               </div>
             )
           }) : <p className="text-sm font-semibold text-slate-600">Sin cursos para mostrar.</p>}
@@ -304,6 +352,74 @@ export default function StudentPortal() {
             >
               Seguir avanzando
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {selectedPaymentEnrollment ? (
+        <div className="fixed inset-0 z-[999] flex items-end justify-center bg-slate-950/70 px-4 pb-5 pt-10 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={() => setSelectedPaymentEnrollment(null)}
+            className="absolute inset-0"
+            aria-label="Cerrar pago"
+          />
+          <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-[30px] bg-white shadow-2xl shadow-slate-950/35">
+            <div className="mobile-bg-primary p-5 text-white">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.26em] text-white/75">Pago online</p>
+                  <h3 className="mt-2 text-2xl font-black leading-tight">
+                    {selectedPaymentEnrollment.course?.name || selectedPaymentEnrollment.course_name || 'Curso'}
+                  </h3>
+                  {selectedPaymentEnrollment.course?.teacher_name ? (
+                    <p className="mt-2 text-[11px] font-black uppercase tracking-widest text-white/80">
+                      Prof. {selectedPaymentEnrollment.course.teacher_name}
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentEnrollment(null)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-white"
+                >
+                  <HiOutlineX size={18} />
+                </button>
+              </div>
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Periodo a pagar</p>
+                <p className="mt-1 text-sm font-black text-slate-950">
+                  {selectedPaymentEnrollment.next_payment_period_start || selectedPaymentEnrollment.start_date || '-'} / {selectedPaymentEnrollment.next_payment_period_end || selectedPaymentEnrollment.end_date || '-'}
+                </p>
+              </div>
+              {selectedPaymentEnrollment.payment_amount != null ? (
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Monto</p>
+                  <p className="mt-1 text-lg font-black text-slate-950">
+                    ${Number(selectedPaymentEnrollment.payment_amount || 0).toLocaleString('es-CL')}
+                  </p>
+                </div>
+              ) : null}
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-amber-600">Estado</p>
+                <p className="mt-1 text-sm font-black text-slate-950">
+                  Curso pendiente de pago. Seras enviado a Mercado Pago para completar la prueba.
+                </p>
+              </div>
+              {checkoutError ? (
+                <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-black text-rose-600">{checkoutError}</p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => startMercadoPagoCheckout(selectedPaymentEnrollment)}
+                disabled={checkoutLoading}
+                className="mobile-bg-primary w-full rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-slate-300/70 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {checkoutLoading ? 'Preparando pago...' : 'Pagar con Mercado Pago'}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

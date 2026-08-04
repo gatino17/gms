@@ -31,6 +31,9 @@ class Settings(BaseModel):
     twilio_api_key_secret: str = os.getenv("TWILIO_API_KEY_SECRET", "")
     twilio_whatsapp_from: str = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
     twilio_whatsapp_template_sid: str = os.getenv("TWILIO_WHATSAPP_TEMPLATE_SID", "")
+    frontend_public_url: str = os.getenv("FRONTEND_PUBLIC_URL", "http://localhost:5173")
+    mercadopago_access_token: str = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
+    mercadopago_webhook_url: str = os.getenv("MERCADOPAGO_WEBHOOK_URL", "")
 
 
 settings = Settings()

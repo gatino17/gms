@@ -68,6 +68,46 @@ def _expected_classes_between(start: date | None, end: date | None, course: Cour
     return total
 
 
+def _next_course_date(after_date: date, course: Course) -> date:
+    days = _course_weekdays(course)
+    if not days:
+        return after_date + timedelta(days=1)
+    current = after_date + timedelta(days=1)
+    for _ in range(14):
+        if current.weekday() in days:
+            return current
+        current += timedelta(days=1)
+    return after_date + timedelta(days=1)
+
+
+def _period_end_for_course(start: date, course: Course) -> date:
+    total_classes = int(getattr(course, "total_classes", None) or 4)
+    if total_classes <= 1:
+        return start
+    days = _course_weekdays(course)
+    if not days:
+        return start + timedelta(days=21)
+    class_dates: list[date] = []
+    current = start
+    guard = 0
+    while len(class_dates) < total_classes and guard < 370:
+        if current.weekday() in days:
+            class_dates.append(current)
+        current += timedelta(days=1)
+        guard += 1
+    return class_dates[-1] if class_dates else start + timedelta(days=21)
+
+
+def _next_payment_period(enrollment: Enrollment, course: Course, today_dt: date) -> tuple[date, date]:
+    if enrollment.end_date:
+        start = _next_course_date(enrollment.end_date, course)
+    else:
+        start = today_dt
+    if start < today_dt:
+        start = today_dt if today_dt.weekday() in _course_weekdays(course) else _next_course_date(today_dt - timedelta(days=1), course)
+    return start, _period_end_for_course(start, course)
+
+
 def _subtract_months(value: date, months: int) -> date:
     month = value.month - months
     year = value.year
@@ -766,11 +806,15 @@ async def student_portal_summary(
         is_paid = False
         if e.end_date and e.end_date >= today_dt:
             is_paid = True
+        next_period_start, next_period_end = _next_payment_period(e, c, today_dt)
 
         enrollments.append({
             "id": e.id,
             "start_date": e.start_date.isoformat() if e.start_date else None,
             "end_date": e.end_date.isoformat() if e.end_date else None,
+            "next_payment_period_start": next_period_start.isoformat() if not is_paid else None,
+            "next_payment_period_end": next_period_end.isoformat() if not is_paid else None,
+            "payment_amount": float(c.price) if getattr(c, "price", None) is not None else None,
             "is_active": bool(e.is_active),
             "payment_status": "activo" if is_paid else "pendiente",
             "course": {

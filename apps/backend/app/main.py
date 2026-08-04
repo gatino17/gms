@@ -19,6 +19,7 @@ from app.routers import auth
 from app.routers import pms_dashboard
 from app.routers import pms_reports
 from app.routers import pms_whatsapp
+from app.routers import pms_mercadopago
 
 app = FastAPI(title=settings.api_title)
 
@@ -86,6 +87,7 @@ app.include_router(auth.router, tags=["login"])
 app.include_router(pms_dashboard.router)
 app.include_router(pms_reports.router)
 app.include_router(pms_whatsapp.router)
+app.include_router(pms_mercadopago.router)
 
 # Static files (for uploaded images)
 static_dir = Path(__file__).resolve().parent / "static"

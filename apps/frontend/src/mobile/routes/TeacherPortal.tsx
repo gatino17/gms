@@ -107,6 +107,7 @@ export default function TeacherPortal() {
   const [markingStudentId, setMarkingStudentId] = useState<number | null>(null)
   const [loading, setLoading] = useState(() => !getMobileCache<TeacherPortalSummary>(cacheKey))
   const [error, setError] = useState('')
+  const [attendanceNotice, setAttendanceNotice] = useState('')
 
   const loadSummary = async (silent = false) => {
     if (!silent && !summary) setLoading(true)
@@ -146,8 +147,9 @@ export default function TeacherPortal() {
   const markPresent = async (courseId: number, studentId: number) => {
     setMarkingStudentId(studentId)
     setError('')
+    setAttendanceNotice('')
     try {
-      await mobileApi.post('/api/pms/teachers/portal/attendance', {
+      const { data } = await mobileApi.post('/api/pms/teachers/portal/attendance', {
         course_id: courseId,
         student_id: studentId,
       })
@@ -165,6 +167,9 @@ export default function TeacherPortal() {
         setMobileCache(cacheKey, next)
         return next
       })
+      if (data?.renewal_required) {
+        setAttendanceNotice(data?.renewal_message || 'Asistencia registrada con renovacion pendiente.')
+      }
     } catch (err: any) {
       setError(err?.message || 'No se pudo marcar asistencia.')
     } finally {
@@ -213,6 +218,11 @@ export default function TeacherPortal() {
       </section>
 
       {error ? <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">{error}</p> : null}
+      {attendanceNotice ? (
+        <p className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-black text-amber-700">
+          {attendanceNotice}
+        </p>
+      ) : null}
 
       {summary?.courses?.length ? summary.courses.map((course) => {
         const expanded = expandedCourseId === course.id

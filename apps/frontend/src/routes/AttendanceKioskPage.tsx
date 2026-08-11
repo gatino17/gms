@@ -725,7 +725,7 @@ export default function AttendanceKioskPage() {
                   setSelectedCourse(null)
                   setStudentQuery('')
                 }}
-                className="w-12 h-12 md:w-14 md:h-14 bg-zinc-900 hover:bg-zinc-800 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg border border-zinc-700"
+                className="w-12 h-12 md:w-14 md:h-14 bg-fuchsia-600 hover:bg-fuchsia-500 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg shadow-fuchsia-950/30 border border-fuchsia-300/40"
               >
                 <HiOutlineArrowLeft size={24} />
               </button>

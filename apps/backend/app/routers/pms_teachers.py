@@ -389,17 +389,23 @@ async def teacher_portal_mark_attendance(
     local_tz = ZoneInfo(settings.tz)
     mark_date = payload.date or datetime.now(local_tz).date()
     enrollment_res = await db.execute(
-        select(Enrollment.id).where(
+        select(Enrollment.id, Enrollment.start_date, Enrollment.end_date).where(
             Enrollment.tenant_id == teacher.tenant_id,
             Enrollment.student_id == student.id,
             Enrollment.course_id == course.id,
             Enrollment.is_active == True,
-            Enrollment.start_date <= mark_date,
-            or_(Enrollment.end_date == None, Enrollment.end_date >= mark_date),
-        )
+        ).order_by(Enrollment.start_date.desc())
     )
-    if not enrollment_res.scalar_one_or_none():
+    enrollment_row = enrollment_res.first()
+    if not enrollment_row:
         raise HTTPException(status_code=400, detail="Alumno sin inscripcion activa para este curso")
+
+    enrollment_start = enrollment_row[1]
+    enrollment_end = enrollment_row[2]
+    renewal_required = bool(
+        (enrollment_start and enrollment_start > mark_date)
+        or (enrollment_end is not None and enrollment_end < mark_date)
+    )
 
     attended_at = datetime.now(local_tz).replace(tzinfo=None)
     if payload.date:
@@ -422,6 +428,8 @@ async def teacher_portal_mark_attendance(
             "student_id": student.id,
             "course_id": course.id,
             "attended_at": existing.attended_at.isoformat(),
+            "renewal_required": renewal_required,
+            "renewal_message": "Asistencia registrada con renovacion pendiente." if renewal_required else None,
         }
 
     attendance = Attendance(
@@ -441,6 +449,8 @@ async def teacher_portal_mark_attendance(
         "student_id": student.id,
         "course_id": course.id,
         "attended_at": attendance.attended_at.isoformat(),
+        "renewal_required": renewal_required,
+        "renewal_message": "Asistencia registrada con renovacion pendiente." if renewal_required else None,
     }
 
 

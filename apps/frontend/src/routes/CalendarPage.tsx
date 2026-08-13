@@ -129,7 +129,12 @@ export default function CalendarPage() {
            </div>
            <div>
               <div className="text-[8px] md:text-[9px] font-black text-white/70 uppercase tracking-widest">Mes Actual</div>
-              <div className="text-sm md:text-base font-black text-white uppercase">{new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}</div>
+              <div className="flex items-center gap-2">
+                 <div className="text-sm md:text-base font-black text-white uppercase">{new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}</div>
+                 <span className="rounded-full bg-white/15 px-2.5 py-1 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-white border border-white/20">
+                    {data.length} cursos
+                 </span>
+              </div>
            </div>
         </div>
       </div>

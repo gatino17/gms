@@ -463,8 +463,35 @@ async def list_students(
     offset: int = Query(default=0, ge=0),
     joined_sort: str = Query(default="desc", pattern="^(asc|desc)$"),
     name_sort: str | None = Query(default=None, pattern="^(asc|desc)$"),
+    status: str | None = Query(default=None, pattern="^(active|inactive|new_week|without_course)$"),
 ):
-    conditions = [Student.tenant_id == tenant_id]
+    base_conditions = [Student.tenant_id == tenant_id]
+    conditions = list(base_conditions)
+    week_cut = date.today() - timedelta(days=7)
+    active_enrollment_exists = (
+        select(Enrollment.id)
+        .select_from(Enrollment)
+        .where(
+            Enrollment.tenant_id == tenant_id,
+            Enrollment.student_id == Student.id,
+            Enrollment.is_active == True,
+        )
+        .correlate(Student)
+        .limit(1)
+        .exists()
+    )
+
+    if status == "active":
+        conditions.append(Student.is_active == True)
+    elif status == "inactive":
+        conditions.append(Student.is_active == False)
+    elif status == "new_week":
+        conditions.append(Student.joined_at != None)
+        conditions.append(Student.joined_at >= week_cut)
+    elif status == "without_course":
+        conditions.append(Student.is_active == True)
+        conditions.append(~active_enrollment_exists)
+
     if q:
         normalized_q = _normalize_search_text(q)
         search_blob = func.translate(
@@ -480,15 +507,19 @@ async def list_students(
         )
         terms = [term for term in normalized_q.split(" ") if term]
         if terms:
-            conditions.append(and_(*(search_blob.ilike(f"%{term}%") for term in terms)))
+            search_condition = and_(*(search_blob.ilike(f"%{term}%") for term in terms))
+            base_conditions.append(search_condition)
+            conditions.append(search_condition)
 
     registration_exists = (
         select(Payment.id)
+        .select_from(Payment)
         .where(
             Payment.tenant_id == tenant_id,
             Payment.student_id == Student.id,
             func.lower(Payment.type) == "registration",
         )
+        .correlate(Student)
         .limit(1)
         .exists()
     )
@@ -511,7 +542,14 @@ async def list_students(
     # Fetch items with enrollment count
     stmt = (
         select(Student, func.count(Enrollment.id), registration_exists.label("has_registration_fee"))
-        .outerjoin(Enrollment, Enrollment.student_id == Student.id)
+        .outerjoin(
+            Enrollment,
+            and_(
+                Enrollment.student_id == Student.id,
+                Enrollment.tenant_id == tenant_id,
+                Enrollment.is_active == True,
+            ),
+        )
         .where(*conditions)
         .group_by(Student.id)
         .order_by(*order_by)
@@ -520,6 +558,10 @@ async def list_students(
     )
     res = await db.execute(stmt)
     rows = res.all()
+
+    total_filtered = await db.scalar(
+        select(func.count()).select_from(Student).where(*conditions)
+    )
     
     items = []
     for s, count, has_registration_fee in rows:
@@ -531,17 +573,6 @@ async def list_students(
     lower_gender = func.lower(Student.gender)
     female_case = case((lower_gender.like('f%'), 1), (lower_gender.like('muj%'), 1), else_=0)
     male_case = case((lower_gender.like('m%'), 1), (lower_gender.like('hombre%'), 1), (lower_gender.like('masculino%'), 1), else_=0)
-    week_cut = date.today() - timedelta(days=7)
-    enrollment_exists = (
-        select(Enrollment.id)
-        .where(
-            Enrollment.tenant_id == tenant_id,
-            Enrollment.student_id == Student.id,
-        )
-        .limit(1)
-        .exists()
-    )
-    
     stats_stmt = select(
         func.count().label('total'),
         func.sum(case((Student.is_active == True, 1), else_=0)).label('active'),
@@ -549,8 +580,8 @@ async def list_students(
         func.sum(female_case).label('female'),
         func.sum(male_case).label('male'),
         func.sum(case(((Student.joined_at != None) & (Student.joined_at >= week_cut), 1), else_=0)).label('new_week'),
-        func.sum(case((~enrollment_exists, 1), else_=0)).label('without_course'),
-    ).where(*conditions)
+        func.sum(case(((Student.is_active == True) & ~active_enrollment_exists, 1), else_=0)).label('without_course'),
+    ).where(*base_conditions)
     
     sres = await db.execute(stats_stmt)
     row = sres.one()
@@ -564,7 +595,7 @@ async def list_students(
         without_course=int(row.without_course or 0),
     )
 
-    return {"items": items, "total": int(row.total or 0), "stats": stats}
+    return {"items": items, "total": int(total_filtered or 0), "stats": stats}
 
 
 @router.get("/{student_id}", response_model=StudentOut)

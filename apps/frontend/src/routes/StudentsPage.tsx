@@ -131,6 +131,7 @@ export default function StudentsPage() {
   const [pageSize, setPageSize] = useState(10)
   const [joinedSort, setJoinedSort] = useState<'asc' | 'desc'>('desc')
   const [nameSort, setNameSort] = useState<'asc' | 'desc' | null>(null)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'new_week' | 'without_course'>('all')
 
   const load = async () => {
     const requestId = ++lastStudentsRequestRef.current
@@ -143,6 +144,7 @@ export default function StudentsPage() {
           offset: (page - 1) * pageSize,
           joined_sort: joinedSort,
           name_sort: nameSort || undefined,
+          status: statusFilter === 'all' ? undefined : statusFilter,
         },
       })
       if (requestId !== lastStudentsRequestRef.current) return
@@ -180,7 +182,7 @@ export default function StudentsPage() {
     loadTenantPlanInfo()
   }, [tenantId])
 
-  useEffect(() => { load() }, [tenantId, page, pageSize, debouncedQ, joinedSort, nameSort])
+  useEffect(() => { load() }, [tenantId, page, pageSize, debouncedQ, joinedSort, nameSort, statusFilter])
   useEffect(() => {
     const nextTotalPages = Math.max(1, Math.ceil(totalItems / pageSize))
     if (page > nextTotalPages) {
@@ -229,6 +231,11 @@ export default function StudentsPage() {
       await api.delete(`/api/pms/students/${id}`)
       load()
     }
+  }
+
+  const handleStatusCardClick = (nextStatus: 'active' | 'inactive' | 'new_week' | 'without_course') => {
+    setStatusFilter((current) => current === nextStatus ? 'all' : nextStatus)
+    setPage(1)
   }
 
   const portalLink = mobileAccessResult?.portal_path ? `${window.location.origin}${mobileAccessResult.portal_path}` : ''
@@ -304,13 +311,24 @@ export default function StudentsPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
         {[
-          { label: 'Total Activos', value: stats.total_active, icon: HiOutlineCheckCircle, color: 'emerald' },
-          { label: 'Inactivos', value: stats.total_inactive, icon: HiOutlineXCircle, color: 'gray' },
-          { label: 'Nuevos (Semana)', value: stats.new_this_week, icon: HiOutlineUserAdd, color: 'fuchsia' },
-          { label: 'Sin Curso', value: stats.without_course, icon: HiOutlineCalendar, color: 'amber' },
+          { label: 'Total Activos', value: stats.total_active, icon: HiOutlineCheckCircle, color: 'emerald', filter: 'active' as const },
+          { label: 'Inactivos', value: stats.total_inactive, icon: HiOutlineXCircle, color: 'gray', filter: 'inactive' as const },
+          { label: 'Nuevos (Semana)', value: stats.new_this_week, icon: HiOutlineUserAdd, color: 'fuchsia', filter: 'new_week' as const },
+          { label: 'Sin Curso', value: stats.without_course, icon: HiOutlineCalendar, color: 'amber', filter: 'without_course' as const },
           { label: 'Género', value: `${stats.female}/${stats.male}`, icon: HiOutlineUserGroup, color: 'blue', isGender: true, mobileFull: true },
         ].map((s, i) => (
-          <div key={i} className={`bg-white p-3 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3 md:gap-4 ${s.mobileFull ? 'col-span-2 sm:col-span-1' : ''}`}>
+          <button
+            key={i}
+            type="button"
+            onClick={() => s.filter ? handleStatusCardClick(s.filter) : undefined}
+            className={`text-left bg-white p-3 md:p-5 rounded-2xl border shadow-sm flex items-center gap-3 md:gap-4 transition-all ${s.mobileFull ? 'col-span-2 sm:col-span-1' : ''} ${
+              s.filter
+                ? statusFilter === s.filter
+                  ? 'border-fuchsia-200 ring-4 ring-fuchsia-50 shadow-lg shadow-fuchsia-100/60'
+                  : 'border-gray-100 hover:border-fuchsia-100 hover:shadow-md'
+                : 'border-gray-100'
+            }`}
+          >
             <div className={`p-2 w-9 h-9 md:w-11 md:h-11 rounded-xl bg-${s.color}-50 text-${s.color}-600 flex items-center justify-center shrink-0`}>
               <s.icon size={16} className="md:w-5 md:h-5" />
             </div>
@@ -331,7 +349,7 @@ export default function StudentsPage() {
                  <div className="text-lg md:text-xl font-black text-gray-900 truncate leading-none mt-1">{s.value}</div>
                )}
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -349,6 +367,31 @@ export default function StudentsPage() {
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
+      {statusFilter !== 'all' && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-fuchsia-100 bg-fuchsia-50 px-4 py-3">
+          <span className="text-[10px] font-black uppercase tracking-widest text-fuchsia-700">
+            Mostrando {
+              statusFilter === 'inactive'
+                ? 'alumnos inactivos'
+                : statusFilter === 'active'
+                  ? 'alumnos activos'
+                  : statusFilter === 'new_week'
+                    ? 'alumnos nuevos de la semana'
+                    : 'alumnos sin curso asignado'
+            }
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter('all')
+              setPage(1)
+            }}
+            className="text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-fuchsia-700 transition-colors"
+          >
+            Ver todos
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-[28px] md:rounded-[32px] shadow-sm border border-gray-100 overflow-hidden mx-0 md:mx-0">

@@ -8,6 +8,7 @@ from sqlalchemy import select, func, case, or_
 from app.pms.models import Payment, Course, Teacher, Student
 from app.pms.schemas import PaymentOut, PaymentCreate, PaymentUpdate, PaymentListResponse, PaymentByTeacherListResponse
 from app.pms.deps import get_tenant_id, get_db_session
+from app.pms.attendance_regularization import regularize_extra_attendance_for_paid_period
 
 router = APIRouter(prefix="/api/pms/payments", tags=["pms-payments"])
 
@@ -264,6 +265,14 @@ async def create_payment(
     obj = Payment(tenant_id=tenant_id, **data)
     db.add(obj)
     await db.flush()
+    await regularize_extra_attendance_for_paid_period(
+        db,
+        tenant_id=tenant_id,
+        student_id=obj.student_id,
+        course_id=obj.course_id,
+        period_start=obj.period_start,
+        period_end=obj.period_end,
+    )
     await db.refresh(obj)
     await db.commit()
     return obj
@@ -283,6 +292,14 @@ async def update_payment(
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(obj, k, v)
     await db.flush()
+    await regularize_extra_attendance_for_paid_period(
+        db,
+        tenant_id=tenant_id,
+        student_id=obj.student_id,
+        course_id=obj.course_id,
+        period_start=obj.period_start,
+        period_end=obj.period_end,
+    )
     await db.refresh(obj)
     await db.commit()
     return obj

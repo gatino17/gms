@@ -185,7 +185,7 @@ export default function StudentDetailPage() {
   const [deletingAttendance, setDeletingAttendance] = useState(false)
   const [markAttendanceModal, setMarkAttendanceModal] = useState<{
     date: string
-    mode: 'expected' | 'recovery'
+    mode: 'expected' | 'manual'
     courseIds: number[]
   } | null>(null)
   const [savingAttendance, setSavingAttendance] = useState(false)
@@ -357,7 +357,7 @@ export default function StudentDetailPage() {
       .filter((e) => e.is_active)
       .map((e) => e.course.id)
     if (recoveryCourseIds.length > 0) {
-      setMarkAttendanceModal({ date: day.date, mode: 'recovery', courseIds: recoveryCourseIds })
+      setMarkAttendanceModal({ date: day.date, mode: 'manual', courseIds: recoveryCourseIds })
     }
   }
 
@@ -389,7 +389,7 @@ export default function StudentDetailPage() {
     }
   }
 
-  const markAttendanceForCourses = async (courseIds: number[], attendedDate: string, isRecovery = false) => {
+  const markAttendanceForCourses = async (courseIds: number[], attendedDate: string, kind: 'normal' | 'recovery' | 'extra' = 'normal') => {
     if (!id) return
     setSavingAttendance(true)
     try {
@@ -398,7 +398,8 @@ export default function StudentDetailPage() {
           student_id: Number(id),
           course_id: courseId,
           date: attendedDate,
-          is_recovery: isRecovery,
+          is_recovery: kind === 'recovery',
+          notes: kind === 'extra' ? 'clase_suelta' : undefined,
         })
       }
       await loadCalendar()
@@ -411,8 +412,8 @@ export default function StudentDetailPage() {
     }
   }
 
-  const markAttendanceForCourse = async (courseId: number, attendedDate: string, isRecovery = false) => {
-    await markAttendanceForCourses([courseId], attendedDate, isRecovery)
+  const markAttendanceForCourse = async (courseId: number, attendedDate: string, kind: 'normal' | 'recovery' | 'extra' = 'normal') => {
+    await markAttendanceForCourses([courseId], attendedDate, kind)
   }
 
   const openStudentPdfReport = async () => {
@@ -1169,57 +1170,116 @@ export default function StudentDetailPage() {
 
       {markAttendanceModal && createPortal(
         <div className="fixed left-0 top-0 z-[999] h-screen w-screen bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-xl bg-white border border-gray-200 rounded-3xl shadow-2xl p-6 md:p-8 space-y-5">
-            <div>
-              <h3 className="text-lg md:text-xl font-black text-gray-900">
-                {markAttendanceModal.mode === 'expected' ? 'Marcar asistencia' : 'Marcar recuperación'}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Día {ymdToCL(markAttendanceModal.date)}.
-                {' '}
-                {markAttendanceModal.mode === 'expected'
-                  ? 'Selecciona el curso o registra todos los pendientes del día.'
-                  : 'Selecciona el curso para registrar una asistencia fuera del horario habitual.'}
-              </p>
-            </div>
+	          <div className="w-full max-w-xl bg-white border border-gray-200 rounded-3xl shadow-2xl p-6 md:p-8 space-y-5">
+	            <div>
+	              <h3 className="text-lg md:text-xl font-black text-gray-900">
+	                {markAttendanceModal.mode === 'expected' ? 'Marcar asistencia' : 'Registrar asistencia manual'}
+	              </h3>
+	              <p className="text-sm text-gray-500 mt-1">
+	                Día {ymdToCL(markAttendanceModal.date)}.
+	                {' '}
+	                {markAttendanceModal.mode === 'expected'
+	                  ? 'Selecciona el curso o registra todos los pendientes del día.'
+	                  : 'Elige si corresponde a recuperación o clase extra fuera del plan.'}
+	              </p>
+	            </div>
 
-            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-              {markAttendanceModal.courseIds.length > 1 && (
-                <button
-                  onClick={() => markAttendanceForCourses(markAttendanceModal.courseIds, markAttendanceModal.date, markAttendanceModal.mode === 'recovery')}
-                  disabled={savingAttendance}
-                  className="w-full text-left p-4 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 hover:border-fuchsia-300 hover:bg-fuchsia-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-black text-fuchsia-700">Registrar todos los cursos pendientes</div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-fuchsia-400 mt-1">
-                        {markAttendanceModal.courseIds.length} cursos para este día
-                      </div>
-                    </div>
-                    <HiOutlineCheckCircle className="text-fuchsia-600 shrink-0" size={22} />
-                  </div>
-                </button>
-              )}
-              {markAttendanceModal.courseIds.map((courseId) => (
-                <button
-                  key={courseId}
-                  onClick={() => markAttendanceForCourse(courseId, markAttendanceModal.date, markAttendanceModal.mode === 'recovery')}
-                  disabled={savingAttendance}
-                  className="w-full text-left p-4 rounded-2xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-black text-gray-900">{getCourseNameById(courseId)}</div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mt-1">
-                        {markAttendanceModal.mode === 'expected' ? 'Registrar asistencia normal' : 'Registrar como recuperación'}
-                      </div>
-                    </div>
-                    <HiOutlineCheckCircle className="text-emerald-500 shrink-0" size={20} />
-                  </div>
-                </button>
-              ))}
-            </div>
+	            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+	              {markAttendanceModal.courseIds.length > 1 && (
+	                markAttendanceModal.mode === 'expected' ? (
+	                  <button
+	                    onClick={() => markAttendanceForCourses(markAttendanceModal.courseIds, markAttendanceModal.date, 'normal')}
+	                    disabled={savingAttendance}
+	                    className="w-full text-left p-4 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 hover:border-fuchsia-300 hover:bg-fuchsia-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+	                  >
+	                    <div className="flex items-center justify-between gap-3">
+	                      <div>
+	                        <div className="text-sm font-black text-fuchsia-700">Registrar todos los cursos pendientes</div>
+	                        <div className="text-[11px] font-bold uppercase tracking-wider text-fuchsia-400 mt-1">
+	                          {markAttendanceModal.courseIds.length} cursos para este día
+	                        </div>
+	                      </div>
+	                      <HiOutlineCheckCircle className="text-fuchsia-600 shrink-0" size={22} />
+	                    </div>
+	                  </button>
+	                ) : (
+	                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+	                    <button
+	                      onClick={() => markAttendanceForCourses(markAttendanceModal.courseIds, markAttendanceModal.date, 'recovery')}
+	                      disabled={savingAttendance}
+	                      className="w-full text-left p-4 rounded-2xl border border-blue-200 bg-blue-50 hover:border-blue-300 hover:bg-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+	                    >
+	                      <div className="flex items-center justify-between gap-3">
+	                        <div>
+	                          <div className="text-sm font-black text-blue-700">Todos como recuperación</div>
+	                          <div className="text-[11px] font-bold uppercase tracking-wider text-blue-400 mt-1">Queda azul</div>
+	                        </div>
+	                        <HiOutlineRefresh className="text-blue-600 shrink-0" size={22} />
+	                      </div>
+	                    </button>
+	                    <button
+	                      onClick={() => markAttendanceForCourses(markAttendanceModal.courseIds, markAttendanceModal.date, 'extra')}
+	                      disabled={savingAttendance}
+	                      className="w-full text-left p-4 rounded-2xl border border-amber-200 bg-amber-50 hover:border-amber-300 hover:bg-amber-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+	                    >
+	                      <div className="flex items-center justify-between gap-3">
+	                        <div>
+	                          <div className="text-sm font-black text-amber-700">Todos como clase extra</div>
+	                          <div className="text-[11px] font-bold uppercase tracking-wider text-amber-500 mt-1">Queda amarillo</div>
+	                        </div>
+	                        <HiOutlineLightningBolt className="text-amber-600 shrink-0" size={22} />
+	                      </div>
+	                    </button>
+	                  </div>
+	                )
+	              )}
+	              {markAttendanceModal.courseIds.map((courseId) => (
+	                <div key={courseId} className="rounded-2xl border border-gray-200 bg-white p-4">
+	                  <div className="text-sm font-black text-gray-900">{getCourseNameById(courseId)}</div>
+	                  {markAttendanceModal.mode === 'expected' ? (
+	                    <button
+	                      onClick={() => markAttendanceForCourse(courseId, markAttendanceModal.date, 'normal')}
+	                      disabled={savingAttendance}
+	                      className="mt-3 w-full text-left p-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:border-emerald-300 hover:bg-emerald-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+	                    >
+	                      <div className="flex items-center justify-between gap-3">
+	                        <div className="text-[11px] font-black uppercase tracking-wider text-emerald-700">Asistido normal · queda verde</div>
+	                        <HiOutlineCheckCircle className="text-emerald-500 shrink-0" size={20} />
+	                      </div>
+	                    </button>
+	                  ) : (
+	                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+	                      <button
+	                        onClick={() => markAttendanceForCourse(courseId, markAttendanceModal.date, 'recovery')}
+	                        disabled={savingAttendance}
+	                        className="text-left p-3 rounded-xl border border-blue-200 bg-blue-50 hover:border-blue-300 hover:bg-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+	                      >
+	                        <div className="flex items-center justify-between gap-3">
+	                          <div>
+	                            <div className="text-[11px] font-black uppercase tracking-wider text-blue-700">Recuperación</div>
+	                            <div className="text-[10px] font-bold uppercase tracking-wider text-blue-400 mt-0.5">Queda azul</div>
+	                          </div>
+	                          <HiOutlineRefresh className="text-blue-600 shrink-0" size={19} />
+	                        </div>
+	                      </button>
+	                      <button
+	                        onClick={() => markAttendanceForCourse(courseId, markAttendanceModal.date, 'extra')}
+	                        disabled={savingAttendance}
+	                        className="text-left p-3 rounded-xl border border-amber-200 bg-amber-50 hover:border-amber-300 hover:bg-amber-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+	                      >
+	                        <div className="flex items-center justify-between gap-3">
+	                          <div>
+	                            <div className="text-[11px] font-black uppercase tracking-wider text-amber-700">Clase extra</div>
+	                            <div className="text-[10px] font-bold uppercase tracking-wider text-amber-500 mt-0.5">Queda amarillo</div>
+	                          </div>
+	                          <HiOutlineLightningBolt className="text-amber-600 shrink-0" size={19} />
+	                        </div>
+	                      </button>
+	                    </div>
+	                  )}
+	                </div>
+	              ))}
+	            </div>
 
             <div className="flex gap-3 pt-1">
               <button

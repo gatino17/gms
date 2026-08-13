@@ -812,7 +812,11 @@ export default function CourseStatusPage() {
                                                                 </span>
                                                                 {s.extra_dates?.length ? (
                                                                   <span className="mt-2 block rounded-xl bg-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-100">
-                                                                    {s.extra_dates.map(ymdToWeekdayCL).join(' · ')}
+                                                                    {s.extra_dates.map((extraDate) => (
+                                                                      <span key={extraDate} className="block leading-relaxed">
+                                                                        {ymdToWeekdayCL(extraDate)}
+                                                                      </span>
+                                                                    ))}
                                                                   </span>
                                                                 ) : null}
                                                                 <span className="absolute left-1/2 top-full h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-zinc-700 bg-zinc-950" />

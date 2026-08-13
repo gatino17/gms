@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.pms.deps import get_current_student, get_db_session
+from app.pms.attendance_regularization import regularize_extra_attendance_for_paid_period
 from app.pms.models import Course, Enrollment, Payment, Student, Teacher, Tenant
 
 router = APIRouter(prefix="/api/pms/mercadopago", tags=["pms-mercadopago"])
@@ -174,6 +175,14 @@ async def _register_approved_payment(db: AsyncSession, payment_data: dict[str, A
             period_start=period_start,
             period_end=period_end,
         )
+    )
+    await regularize_extra_attendance_for_paid_period(
+        db,
+        tenant_id=tenant_id,
+        student_id=student_id,
+        course_id=course_id,
+        period_start=period_start,
+        period_end=period_end,
     )
     await db.commit()
     return True

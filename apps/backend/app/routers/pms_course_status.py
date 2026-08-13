@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_, func, cast, Date
+from sqlalchemy import select, or_, and_, func, cast, Date, exists, not_
 from datetime import date, timedelta, datetime, time
 from zoneinfo import ZoneInfo
 
@@ -81,6 +81,18 @@ async def course_status(
     day_of_week: int | None = Query(default=None, ge=0, le=6),
     use_today: bool = Query(default=False),
 ):
+    paid_period_exists = exists(
+        select(1).where(
+            Payment.tenant_id == Attendance.tenant_id,
+            Payment.student_id == Attendance.student_id,
+            Payment.course_id == Attendance.course_id,
+            Payment.period_start != None,
+            Payment.period_end != None,
+            cast(Attendance.attended_at, Date) >= Payment.period_start,
+            cast(Attendance.attended_at, Date) <= Payment.period_end,
+        )
+    )
+
     # Subquery for attendance count per (student, course) within THEIR enrollment dates
     att_subquery = (
         select(
@@ -99,7 +111,7 @@ async def course_status(
             Attendance.tenant_id == tenant_id,
             cast(Attendance.attended_at, Date) >= Enrollment.start_date,
             or_(Enrollment.end_date == None, cast(Attendance.attended_at, Date) <= Enrollment.end_date),
-            or_(Attendance.notes == None, Attendance.notes != 'clase_suelta')
+            or_(Attendance.notes == None, Attendance.notes != 'clase_suelta', paid_period_exists)
         )
         .group_by(Enrollment.id, Attendance.student_id, Attendance.course_id)
         .subquery()
@@ -121,6 +133,7 @@ async def course_status(
         ))
         .where(
             Attendance.tenant_id == tenant_id,
+            not_(paid_period_exists),
             or_(
                 and_(Enrollment.end_date != None, cast(Attendance.attended_at, Date) > Enrollment.end_date),
                 Attendance.notes == 'clase_suelta'

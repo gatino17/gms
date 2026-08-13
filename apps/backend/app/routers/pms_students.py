@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, timedelta
-from sqlalchemy import select, func, case, or_, and_, cast, Date
+from sqlalchemy import select, func, case, or_, and_, cast, Date, exists, not_
 from sqlalchemy.orm import selectinload
 import secrets
 from datetime import datetime
@@ -1138,11 +1138,35 @@ async def attendance_calendar(
             Attendance.attended_at < (last_day + timedelta(days=1)),
         )
     )
+    pres = await db.execute(
+        select(Payment.course_id, Payment.period_start, Payment.period_end)
+        .where(
+            Payment.tenant_id == tenant_id,
+            Payment.student_id == student_id,
+            Payment.course_id != None,
+            Payment.period_start != None,
+            Payment.period_end != None,
+            Payment.period_start <= last_day,
+            Payment.period_end >= first_day,
+        )
+    )
+    paid_periods: dict[int, list[tuple[date, date]]] = {}
+    for cid, p_start, p_end in pres.all():
+        if cid is None or p_start is None or p_end is None:
+            continue
+        paid_periods.setdefault(int(cid), []).append((p_start, p_end))
+
+    def is_covered_by_paid_period(course_id: int | None, att_date: date) -> bool:
+        if course_id is None:
+            return False
+        return any(start <= att_date <= end for start, end in paid_periods.get(int(course_id), []))
+
     attended_map: dict[date, list[dict]] = {}
     for cid, at, rec, notes in ares.all():
         dt = at.date()
         if dt not in attended_map: attended_map[dt] = []
-        attended_map[dt].append({"course_id": cid, "is_recovery": bool(rec), "is_extra": notes == 'clase_suelta'})
+        is_extra = notes == 'clase_suelta' and not is_covered_by_paid_period(cid, dt)
+        attended_map[dt].append({"course_id": cid, "is_recovery": bool(rec), "is_extra": is_extra})
 
     days = []
     cur = first_day
@@ -1211,6 +1235,18 @@ async def get_student_full_stats(
         if not dows:
             continue
 
+        paid_period_exists = exists(
+            select(1).where(
+                Payment.tenant_id == Attendance.tenant_id,
+                Payment.student_id == Attendance.student_id,
+                Payment.course_id == Attendance.course_id,
+                Payment.period_start != None,
+                Payment.period_end != None,
+                cast(Attendance.attended_at, Date) >= Payment.period_start,
+                cast(Attendance.attended_at, Date) <= Payment.period_end,
+            )
+        )
+
         # 1. Calcular Esperados (dentro del periodo de matrícula)
         expected_count = 0
         if end:
@@ -1232,7 +1268,7 @@ async def get_student_full_stats(
                 Attendance.course_id == course_id,
                 cast(Attendance.attended_at, Date) >= start,
                 cast(Attendance.attended_at, Date) <= future_horizon,
-                or_(Attendance.notes == None, Attendance.notes != 'clase_suelta')
+                or_(Attendance.notes == None, Attendance.notes != 'clase_suelta', paid_period_exists)
             )
         )
         attended_count = ares.scalar() or 0
@@ -1246,6 +1282,7 @@ async def get_student_full_stats(
                     Attendance.tenant_id == tenant_id,
                     Attendance.student_id == student_id,
                     Attendance.course_id == course_id,
+                    not_(paid_period_exists),
                     or_(
                         cast(Attendance.attended_at, Date) > end,
                         Attendance.notes == 'clase_suelta'

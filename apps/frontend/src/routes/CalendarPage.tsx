@@ -25,6 +25,7 @@ type Course = {
   room_name?: string | null
   image_url?: string | null
   start_date?: string | null
+  is_active?: boolean
 }
 
 const DAY_NAMES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
@@ -84,7 +85,7 @@ export default function CalendarPage() {
       setLoading(true)
       try {
         const res = await api.get('/api/pms/courses', { params: { limit: 500 } })
-        setData(res.data.items || [])
+        setData((res.data.items || []).filter((course: Course) => course.is_active !== false))
       } finally { setLoading(false) }
     }
     load()

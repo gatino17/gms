@@ -478,8 +478,8 @@ export default function AttendanceKioskPage() {
             </div>
             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight truncate">Auto-Asistencia</h1>
             <p className="text-fuchsia-400 font-bold uppercase tracking-widest text-[11px] md:text-sm mt-1 truncate">
-              Selecciona tu clase para registrarte
-              <span className="hidden md:inline text-zinc-400"> · Disponible 30 min antes y hasta el termino de la clase</span>
+              Selecciona tu clase
+              <span className="hidden md:inline text-zinc-400"> · Disponible 30 min antes y durante la clase.</span>
             </p>
           </div>
         </div>

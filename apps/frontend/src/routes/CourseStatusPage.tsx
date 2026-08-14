@@ -195,6 +195,7 @@ export default function CourseStatusPage() {
   const [courseQ, setCourseQ] = useState('')
   const [studentQ, setStudentQ] = useState('')
   const [selectedDay, setSelectedDay] = useState<string>('')
+  const [billingTypeFilter, setBillingTypeFilter] = useState<'all' | 'regular' | 'single_class'>('all')
 
   // Enrollment Modal States
   const [enrollModalCourseId, setEnrollModalCourseId] = useState<number | null>(null)
@@ -414,10 +415,14 @@ export default function CourseStatusPage() {
       students: row.students.filter(s => {
         const matchesStudent = studentMatchesQuery(s, studentQ)
         const matchesPending = viewMode !== 'pending' || isPendingStatus(s.payment_status)
-        return matchesStudent && matchesPending
+        const matchesBillingType =
+          billingTypeFilter === 'all'
+          || (billingTypeFilter === 'single_class' && isSingleClassMode(s.enrollment_mode))
+          || (billingTypeFilter === 'regular' && !isSingleClassMode(s.enrollment_mode))
+        return matchesStudent && matchesPending && matchesBillingType
       })
-    })).filter(row => row.students.length > 0 || (!studentQ && viewMode !== 'pending'))
-  }, [data, studentQ, viewMode])
+    })).filter(row => row.students.length > 0 || (!studentQ && viewMode !== 'pending' && billingTypeFilter === 'all'))
+  }, [data, studentQ, viewMode, billingTypeFilter])
 
   const groupedByDay = useMemo(() => {
     const groups: Record<string, CourseRow[]> = {}
@@ -646,7 +651,7 @@ export default function CourseStatusPage() {
                  <input value={studentQ} onChange={e=>setStudentQ(e.target.value)} placeholder="Alumno..." className="w-full pl-10 pr-5 py-2.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none transition-all" />
               </div>
            </div>
-           <div className="flex items-center gap-2 w-full">
+           <div className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_1fr_auto] gap-2 w-full">
               <div className="relative flex-1">
                  <select value={selectedDay} onChange={e=>setSelectedDay(e.target.value)} className="w-full pl-5 pr-10 py-2.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none appearance-none transition-all">
                     <option value="">Cualquier dia</option>
@@ -656,7 +661,18 @@ export default function CourseStatusPage() {
                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                  </div>
               </div>
-              <button onClick={load} className="p-3 bg-fuchsia-50 text-fuchsia-600 rounded-xl hover:bg-fuchsia-600 hover:text-white transition-all shadow-sm shadow-fuchsia-100">
+              <div className="relative col-span-2 sm:col-span-1 sm:col-start-auto">
+                 <HiOutlineFilter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+                 <select value={billingTypeFilter} onChange={e=>setBillingTypeFilter(e.target.value as 'all' | 'regular' | 'single_class')} className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border-2 border-transparent focus:border-fuchsia-100 focus:bg-white rounded-xl text-sm font-bold outline-none appearance-none transition-all">
+                    <option value="all">Todos los cobros</option>
+                    <option value="regular">Mensualidad</option>
+                    <option value="single_class">Clase suelta</option>
+                 </select>
+                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                 </div>
+              </div>
+              <button onClick={load} className="row-start-1 col-start-2 sm:row-auto sm:col-auto p-3 bg-fuchsia-50 text-fuchsia-600 rounded-xl hover:bg-fuchsia-600 hover:text-white transition-all shadow-sm shadow-fuchsia-100">
                  <HiOutlineRefresh size={20} className={loading?'animate-spin':''} />
               </button>
            </div>

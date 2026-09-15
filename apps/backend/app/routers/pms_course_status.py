@@ -236,10 +236,36 @@ async def course_status(
     if teacher_q:
         stmt = stmt.where(Teacher.name.ilike(f"%{teacher_q}%"))
 
+    today = date.today()
     rows = (await db.execute(stmt.order_by(Course.name, Student.last_name))).all()
 
+    student_ids = sorted({student_obj.id for row in rows for student_obj in [row[2]] if student_obj})
+    highlight_months_by_student: dict[int, int] = {}
+    if student_ids:
+        monthly_rows = (
+            await db.execute(
+                select(Payment.student_id, Payment.period_start, Payment.period_end)
+                .where(
+                    Payment.tenant_id == tenant_id,
+                    Payment.student_id.in_(student_ids),
+                    Payment.period_start != None,
+                    Payment.period_end != None,
+                    Payment.period_end <= today,
+                    func.lower(Payment.type) == "monthly",
+                )
+            )
+        ).all()
+        paid_months_by_student: dict[int, set[tuple[int, int]]] = {}
+        for student_id, period_start, period_end in monthly_rows:
+            if not student_id or not period_start or not period_end:
+                continue
+            paid_months_by_student.setdefault(int(student_id), set()).add((period_start.year, period_start.month))
+        highlight_months_by_student = {
+            student_id: len(month_keys)
+            for student_id, month_keys in paid_months_by_student.items()
+        }
+
     grouped = {}
-    today = date.today()
 
     def count_weekdays(start, end, dows):
         if not start or not end or not dows: return 0
@@ -361,6 +387,7 @@ async def course_status(
                 "expected_count": expected,
                 "extra_count": display_extra_count,
                 "extra_dates": display_extra_dates,
+                "highlight_months": highlight_months_by_student.get(student_obj.id, 0),
                 "birthday_today": bool(student_obj.birthdate and student_obj.birthdate.month == today.month and student_obj.birthdate.day == today.day),
             }
             grouped[cid]["students"].append(student_data)

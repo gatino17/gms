@@ -63,6 +63,7 @@ type CourseRow = {
     expected_count?: number;
     extra_count?: number;
     extra_dates?: string[];
+    highlight_months?: number;
     birthday_today?: boolean;
   }[]
 }
@@ -129,6 +130,23 @@ const paymentLabel = (status?: string | null) => {
   if (isPaidStatus(status)) return 'Pagado'
   if (isInactiveStatus(status)) return 'Inactivo'
   return 'Pendiente'
+}
+
+const highlightTierLabel = (months?: number | null) => {
+  if (!months || months < 4) return ''
+  if (months >= 12) return '12M'
+  if (months >= 6) return '6M'
+  return '4M'
+}
+
+const StudentCode = ({ id, months, className = '' }: { id: number; months?: number | null; className?: string }) => {
+  const tier = highlightTierLabel(months)
+  return (
+    <div className={`text-[10px] font-bold text-gray-400 uppercase tracking-wider ${className}`}>
+      <span>Socio #{id}</span>
+      {tier && <span className="ml-1 text-fuchsia-600 font-black">· {tier}</span>}
+    </div>
+  )
 }
 
 const formatScheduleTime = (raw?: string | null) => {
@@ -803,7 +821,7 @@ export default function CourseStatusPage() {
                                                              {s.first_name} {s.last_name}
                                                              {s.birthday_today && <HiOutlineCake className="text-pink-500 shrink-0" size={16} />}
                                                           </div>
-                                                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mt-1">Socio #{s.id}</div>
+                                                          <StudentCode id={s.id} months={s.highlight_months} className="tracking-tighter mt-1" />
                                                        </div>
                                                       </div>
                                                 </td>
@@ -948,7 +966,7 @@ export default function CourseStatusPage() {
                                                  <div className="min-w-0 flex-1 space-y-2">
                                                    <div className="font-black text-sm text-gray-800 truncate">{s.first_name} {s.last_name}</div>
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
+                                                      <StudentCode id={s.id} months={s.highlight_months} />
                                                       {isSingleClassMode(s.enrollment_mode) && (
                                                         <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md">
                                                           Clase suelta
@@ -1015,7 +1033,7 @@ export default function CourseStatusPage() {
                                                  <div className="min-w-0 flex-1 space-y-2">
                                                    <div className="font-black text-sm text-gray-800 truncate">{s.first_name} {s.last_name}</div>
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Socio #{s.id}</div>
+                                                      <StudentCode id={s.id} months={s.highlight_months} />
                                                       {isSingleClassMode(s.enrollment_mode) && (
                                                         <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[8px] font-black uppercase tracking-widest rounded-md">
                                                           Clase suelta

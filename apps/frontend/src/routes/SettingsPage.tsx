@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
+import * as XLSX from 'xlsx'
 import { api, toAbsoluteUrl, getTenant } from '../lib/api'
 import { useTenant } from '../lib/tenant'
 import { REGION_PRESETS, findRegionPreset, sanitizePhonePrefix } from '../lib/phone'
@@ -16,7 +17,8 @@ import {
   HiOutlineUserGroup,
   HiOutlineDeviceMobile,
   HiOutlineClipboardCopy,
-  HiOutlineCheckCircle
+  HiOutlineCheckCircle,
+  HiOutlineDownload
 } from 'react-icons/hi'
 
 const whatsappTemplateOptions = [
@@ -75,6 +77,21 @@ type RoomItem = {
   capacity?: number | null
 }
 
+type StudentExportItem = {
+  id: number
+  first_name?: string | null
+  last_name?: string | null
+  email?: string | null
+  phone?: string | null
+  gender?: string | null
+  notes?: string | null
+  joined_at?: string | null
+  birthdate?: string | null
+  is_active?: boolean
+  enrollment_count?: number | null
+  has_registration_fee?: boolean
+}
+
 export default function SettingsPage() {
   const { tenantId } = useTenant()
   const [settings, setSettings] = useState<TenantSettings>({
@@ -119,6 +136,7 @@ export default function SettingsPage() {
   const [isSavingMsg, setIsSavingMsg] = useState(false)
   const [activeTemplateSid, setActiveTemplateSid] = useState<string>(whatsappTemplateOptions[0].sid)
   const [mobileCopyMessage, setMobileCopyMessage] = useState('')
+  const [exportingStudents, setExportingStudents] = useState(false)
 
   const activeTemplate =
     whatsappTemplateOptions.find((option) => option.sid === activeTemplateSid) || whatsappTemplateOptions[0]
@@ -336,6 +354,96 @@ export default function SettingsPage() {
       window.setTimeout(() => setMobileCopyMessage(''), 2500)
     } catch {
       setMobileCopyMessage('No se pudo copiar el link')
+    }
+  }
+
+  const formatExcelDate = (value?: string | null) => {
+    if (!value) return ''
+    const [year, month, day] = value.slice(0, 10).split('-')
+    return year && month && day ? `${day}/${month}/${year}` : value
+  }
+
+  const safeFileName = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'estudio'
+
+  const downloadStudentsExcel = async () => {
+    const currentTenantId = tenantId ?? (() => {
+      const raw = getTenant()
+      const n = raw ? Number(raw) : null
+      return Number.isFinite(n) ? n : null
+    })()
+    if (currentTenantId == null) {
+      alert('Selecciona un tenant para descargar los alumnos.')
+      return
+    }
+
+    setExportingStudents(true)
+    try {
+      const allStudents: StudentExportItem[] = []
+      const limit = 1000
+      let offset = 0
+      let total = Number.POSITIVE_INFINITY
+
+      while (offset < total) {
+        const { data } = await api.get<{ items: StudentExportItem[]; total: number }>('/api/pms/students', {
+          params: { limit, offset, name_sort: 'asc' },
+          headers: { 'X-Tenant-ID': currentTenantId },
+        })
+        const items = data.items || []
+        allStudents.push(...items)
+        total = Number(data.total ?? allStudents.length)
+        if (items.length < limit) break
+        offset += limit
+      }
+
+      if (!allStudents.length) {
+        alert('No hay alumnos registrados para exportar.')
+        return
+      }
+
+      const rows = allStudents.map((student, index) => ({
+        'N°': index + 1,
+        ID: student.id,
+        Nombre: `${student.first_name || ''} ${student.last_name || ''}`.trim(),
+        Email: student.email || '',
+        'WhatsApp / Teléfono': student.phone || '',
+        Género: student.gender || '',
+        'Fecha nacimiento': formatExcelDate(student.birthdate),
+        Ingreso: formatExcelDate(student.joined_at),
+        Estado: student.is_active ? 'Activo' : 'Inactivo',
+        'Inscripciones activas': student.enrollment_count ?? 0,
+        Matrícula: student.has_registration_fee ? 'Pagada' : 'Sin matrícula',
+        Notas: student.notes || '',
+      }))
+
+      const workbook = XLSX.utils.book_new()
+      const worksheet = XLSX.utils.json_to_sheet(rows)
+      worksheet['!cols'] = [
+        { wch: 6 },
+        { wch: 8 },
+        { wch: 32 },
+        { wch: 34 },
+        { wch: 20 },
+        { wch: 14 },
+        { wch: 18 },
+        { wch: 14 },
+        { wch: 12 },
+        { wch: 22 },
+        { wch: 14 },
+        { wch: 42 },
+      ]
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Alumnos')
+      const fileDate = new Date().toISOString().slice(0, 10)
+      XLSX.writeFile(workbook, `${safeFileName(settings.slug || settings.name || 'estudio')}_alumnos_${fileDate}.xlsx`)
+    } catch (e: any) {
+      alert('No se pudo generar el Excel: ' + (e?.message || 'Error desconocido'))
+    } finally {
+      setExportingStudents(false)
     }
   }
 
@@ -999,9 +1107,37 @@ export default function SettingsPage() {
           ))}
         </div>
       </div>
+
+      <div className="bg-white rounded-[32px] md:rounded-[48px] border border-gray-100 shadow-sm p-4 md:p-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+              <HiOutlineDownload className="text-2xl" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">Registros de alumnos</h2>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Descarga Excel</p>
+              <p className="text-sm text-gray-500 font-semibold max-w-2xl">
+                Exporta todos los alumnos del estudio con datos de contacto, estado, fecha de ingreso, inscripciones y matrícula.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={downloadStudentsExcel}
+            disabled={exportingStudents}
+            className="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-slate-950 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-slate-200 transition-all disabled:opacity-50 active:scale-95"
+          >
+            <HiOutlineDownload size={18} />
+            {exportingStudents ? 'Generando...' : 'Descargar alumnos'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
+
+
 
 
 

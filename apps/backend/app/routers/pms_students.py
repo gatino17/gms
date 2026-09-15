@@ -177,12 +177,35 @@ async def _student_highlight_progress(
             "expected": 0,
         }
 
-    base_start = getattr(student, "joined_at", None) or min(enr.start_date for enr, _course in active_rows if enr.start_date)
-    months_completed = _full_months_between(base_start, today)
+    course_ids = [course.id for _enr, course in active_rows]
+    monthly_period_rows = []
+    if course_ids:
+        monthly_period_rows = (
+            await db.execute(
+                select(Payment.course_id, Payment.period_start, Payment.period_end)
+                .where(
+                    Payment.tenant_id == tenant_id,
+                    Payment.student_id == student.id,
+                    Payment.course_id.in_(course_ids),
+                    func.lower(Payment.type) == "monthly",
+                    Payment.period_start != None,
+                    Payment.period_end != None,
+                )
+                .order_by(Payment.period_start.asc(), Payment.period_end.asc())
+            )
+        ).all()
+
+    paid_period_starts = [p_start for _course_id, p_start, _p_end in monthly_period_rows if p_start]
+    completed_period_keys = {
+        (p_start.year, p_start.month)
+        for _course_id, p_start, p_end in monthly_period_rows
+        if p_start and p_end and p_end <= today
+    }
+    months_completed = len(completed_period_keys)
+    base_start = min(paid_period_starts) if paid_period_starts else (getattr(student, "joined_at", None) or min(enr.start_date for enr, _course in active_rows if enr.start_date))
     payments_current = all(enr.end_date is not None and enr.end_date >= today for enr, _course in active_rows)
 
     min_cutoff = _subtract_months(today, 12)
-    course_ids = [course.id for _enr, course in active_rows]
     attendance_set: set[tuple[int, date]] = set()
     if course_ids:
         rows = (
@@ -202,7 +225,7 @@ async def _student_highlight_progress(
 
     def evaluate(months: int) -> dict[str, object]:
         cutoff = _subtract_months(today, months)
-        enough_time = bool(base_start and base_start <= cutoff and any(enr.start_date <= cutoff for enr, _course in active_rows))
+        enough_time = months_completed >= months
         expected = 0
         attended = 0
         for enr, course in active_rows:
@@ -283,12 +306,9 @@ async def _student_highlight_progress(
         stage_months = int(next_tier["months"])
     else:
         stage_months = int(active_tier["months"])
-    if base_start and stage_months > 0:
-        stage_target = _add_months(base_start, stage_months)
-        stage_total_days = max(1, (stage_target - base_start).days)
-        stage_elapsed_days = max(0, min(stage_total_days, (today - base_start).days))
-        time_progress = (stage_elapsed_days / stage_total_days) * 100
-        stage_progress_percent = int(round(max(time_progress, period_completion)))
+    if stage_months > 0:
+        stage_units = min(float(stage_months), float(months_completed) + (period_completion / 100.0))
+        stage_progress_percent = int(round((stage_units / float(stage_months)) * 100))
     else:
         stage_progress_percent = int(round(period_completion))
 

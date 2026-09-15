@@ -60,7 +60,7 @@ type KioskTenantInfo = {
 }
 
 export default function AttendanceKioskPage() {
-  const FEEDBACK_DURATION_MS = 4000
+  const FEEDBACK_DURATION_MS = 6000
   const COURSES_REFRESH_MS = 1000
   const STUDENT_SELECTION_IDLE_MS = 60000
   const navigate = useNavigate()
@@ -242,7 +242,11 @@ export default function AttendanceKioskPage() {
         courseName: selectedCourse.course.name,
         blockedMessage: selectedCourse.course.attendance_window_message || 'Dirígete a recepción para ingreso manual.',
       })
-      setTimeout(() => setFeedbackMsg(null), FEEDBACK_DURATION_MS)
+      setTimeout(() => {
+        setFeedbackMsg(null)
+        setSelectedCourse(null)
+        setStudentQuery('')
+      }, FEEDBACK_DURATION_MS)
       return
     }
     try {
@@ -295,7 +299,11 @@ export default function AttendanceKioskPage() {
           courseName: selectedCourse.course.name,
           blockedMessage: e.response?.data?.detail || 'Dirígete a recepción para ingreso manual.',
         })
-        setTimeout(() => setFeedbackMsg(null), FEEDBACK_DURATION_MS)
+        setTimeout(() => {
+          setFeedbackMsg(null)
+          setSelectedCourse(null)
+          setStudentQuery('')
+        }, FEEDBACK_DURATION_MS)
         return
       }
       alert('Error al marcar asistencia. Por favor, intenta nuevamente.')

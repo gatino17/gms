@@ -97,6 +97,8 @@ export default function AnnouncementsPage() {
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -134,6 +136,7 @@ export default function AnnouncementsPage() {
   const openCreate = () => {
     setEditingId(null)
     setDraft({ ...emptyDraft, start_date: todayYMD() })
+    setImageUploadError(null)
     setShowModal(true)
   }
 
@@ -151,6 +154,7 @@ export default function AnnouncementsPage() {
       link_url: item.link_url || "",
       is_active: item.is_active ?? true,
     })
+    setImageUploadError(null)
     setShowModal(true)
   }
 
@@ -158,6 +162,33 @@ export default function AnnouncementsPage() {
     setShowModal(false)
     setEditingId(null)
     setDraft({ ...emptyDraft, start_date: todayYMD() })
+    setImageUploadError(null)
+    setUploadingImage(false)
+  }
+
+  const uploadAnnouncementImage = async (file: File) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"]
+    if (!allowedTypes.includes(file.type)) {
+      setImageUploadError("Formato no permitido. Usa JPG, PNG o WEBP.")
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setImageUploadError("La imagen supera 2 MB. Reduce el tamaño y vuelve a intentarlo.")
+      return
+    }
+
+    setUploadingImage(true)
+    setImageUploadError(null)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await api.post<{ url: string }>("/api/pms/announcements/upload-image", fd, { headers: { "Content-Type": "multipart/form-data" } })
+      setDraft((current) => ({ ...current, image_url: res.data.url }))
+    } catch (e: any) {
+      setImageUploadError(e?.message || "No se pudo subir la imagen. Revisa el formato o tamaño.")
+    } finally {
+      setUploadingImage(false)
+    }
   }
 
   const buildPayload = () => ({
@@ -434,18 +465,28 @@ export default function AnnouncementsPage() {
                   ) : (
                     <>
                       <HiOutlinePhotograph size={40} className="text-gray-200" />
-                      <span className="mt-4 text-[8px] font-black uppercase text-gray-400">Subir imagen</span>
+                      <span className="mt-4 text-[8px] font-black uppercase text-gray-400">Subir imagen opcional</span>
+                      <span className="mt-1 text-[9px] font-bold text-gray-300">JPG, PNG o WEBP hasta 2 MB</span>
                     </>
                   )}
-                  <input type="file" className="absolute inset-0 cursor-pointer opacity-0" onChange={async (e) => {
+                  {uploadingImage ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 text-[10px] font-black uppercase tracking-widest text-fuchsia-600 backdrop-blur-sm">
+                      Subiendo imagen...
+                    </div>
+                  ) : null}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="absolute inset-0 cursor-pointer opacity-0" onChange={async (e) => {
                     const file = e.target.files?.[0]
-                    if (!file) return
-                    const fd = new FormData()
-                    fd.append("file", file)
-                    const res = await api.post<{ url: string }>("/api/pms/announcements/upload-image", fd, { headers: { "Content-Type": "multipart/form-data" } })
-                    setDraft({ ...draft, image_url: res.data.url })
+                    e.target.value = ""
+                    if (file) await uploadAnnouncementImage(file)
                   }} />
                 </div>
+                {imageUploadError ? (
+                  <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[10px] font-bold text-rose-600">
+                    {imageUploadError}
+                  </div>
+                ) : (
+                  <p className="px-2 text-[10px] font-bold text-gray-400">Si no agregas imagen, el aviso igual se publicara y se mostrara con un diseno automatico.</p>
+                )}
               </div>
             </div>
 
